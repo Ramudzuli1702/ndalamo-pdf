@@ -20,7 +20,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 3. **Never freeze the UI.** All processing runs on background threads with progress and cancel.
 4. **Plain-language errors.** Say what happened, confirm the original is safe, offer a next step. Technical details only on request.
 5. **Free for now.** No licensing, tiers or paywalls. But keep tools behind a clean interface so gating is easy later.
-6. **Permissive dependencies only** (Apache 2.0, MIT, BSD, MPL used as a separate process). **Do not use iText** (AGPL) or any GPL library linked into the app.
+6. **Permissive dependencies only:** Apache 2.0, MIT, BSD, EPL, LGPL, SIL OFL (fonts), GPL + Classpath Exception (JavaFX); MPL only as a separate process (LibreOffice). **Do not use iText** (AGPL) or any other GPL/AGPL library linked into the app.
 
 **Explicitly out of scope**
 - AI summariser, translation, anything that needs the internet.
@@ -73,7 +73,7 @@ ndalamo-pdf/
 ### 3.2 Packages (`core`)
 
 ```
-com.[org].ndalamo.core
+io.github.ramudzuli1702.ndalamo.core
 ├── tool        PdfTool, ToolCategory, ToolDescriptor, ToolRegistry
 ├── options     ToolOptions, OptionField (text, number, choice, checkbox, file, password)
 ├── job         Job, JobRunner, JobProgress, JobResult, FileResult, CancellationToken
@@ -428,7 +428,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 2. Before writing code, briefly state the plan for the chunk and the files that will change.
 3. Keep `core` free of JavaFX. Keep tools free of UI code.
 4. Every tool gets unit tests using small PDFs in `core/src/test/resources` / `tools/src/test/resources` (generate test PDFs with PDFBox in a test helper where possible).
-5. Never add a dependency that is GPL/AGPL or that makes network calls. Ask before adding any new dependency.
+5. Never add a dependency that is GPL/AGPL or that makes network calls. The libraries in §2 are pre-approved; ask before adding any other dependency.
 6. Never write to an input file. Assert this in tests.
 7. All user-facing text follows the error-copy formula in §6.3. Keep strings in a single resource bundle (`messages.properties`) to allow translation later.
 8. Run `mvn -q verify` before declaring a chunk done.
@@ -449,7 +449,6 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 
 ## 11. Open decisions
 - Tagline.
-- Java package root (`com.[org]`).
 - Which OCR languages to bundle beyond English (installer size vs. usefulness).
 - Whether to open-source the project.
 - Future paid tier (not now).

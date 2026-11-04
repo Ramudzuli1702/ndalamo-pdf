@@ -16,7 +16,7 @@ These are the source files of the Ndalamo design canvas. Each `.dc.html` file is
 | `Settings.dc.html` | Settings | 6.2 · 10 | 18 |
 | `Notifications.dc.html` | Toasts + system notification | 6.2 · 11 | 3, 17 |
 | `Dialogs.dc.html` | Password, confirm delete, file error, LibreOffice missing, unsaved changes, quit while running | 6.2 · 12 | 3, 6, 8, 10, 17 |
-| `Logo.dc.html` | Logo options — **V1 "Growth bar with a leaf" is the chosen logo** | 6.0 | 2, 20 |
+| `Logo.dc.html` | Logo options — **V1 "Growth bar with a leaf" is the chosen logo** (on the live canvas this board is `Logo3.dc.html`; `Logo.dc.html` and `Logo2.dc.html` there are earlier rounds) | 6.0 | 2, 20 |
 
 ## Reading tips
 - The visible markup sits inside `<x-dc> … </x-dc>`. Inline `style="…"` holds the exact CSS values to translate into `app.css`.
