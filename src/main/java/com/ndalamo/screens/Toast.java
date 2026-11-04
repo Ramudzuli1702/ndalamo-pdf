@@ -54,6 +54,13 @@ public class Toast extends HBox {
         return toast;
     }
 
+    /** "2 pages deleted · Undo" in the page workspace: hides after 8 seconds (SPEC §6.2, screen 11). */
+    public static Toast undo(String title, String body, Action undo) {
+        Toast toast = new Toast(Kind.INFO, title, body, undo);
+        toast.hideAfter(Duration.seconds(8));
+        return toast;
+    }
+
     /** A running task the user left: shows a progress bar until the flow replaces it. */
     public static Toast background(String title, String body, Action... actions) {
         Toast toast = new Toast(Kind.INFO, title, body, actions);
@@ -98,6 +105,7 @@ public class Toast extends HBox {
         HBox buttons = new HBox(14);
         for (Action action : actions) {
             Button button = new Button(action.label());
+            button.setMnemonicParsing(false);
             button.getStyleClass().add("text-button");
             button.setOnAction(e -> {
                 action.run().run();

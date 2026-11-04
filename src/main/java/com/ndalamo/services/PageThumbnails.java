@@ -134,6 +134,39 @@ public class PageThumbnails {
         return out;
     }
 
+    /**
+     * A bigger picture of one page, turned a further {@code extraRotation} degrees, for
+     * the crop dialog. Drawn on the background thread; the callback runs on the screen's thread.
+     */
+    public void renderLarge(Path file, int page, int extraRotation, int longSide, Consumer<Image> callback) {
+        DRAWER.execute(() -> {
+            try (PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
+                PDRectangle box = doc.getPage(page - 1).getCropBox();
+                float scale = longSide / Math.max(box.getWidth(), box.getHeight());
+                BufferedImage picture = new PDFRenderer(doc).renderImage(page - 1, scale, ImageType.RGB);
+                BufferedImage turned = turn(picture, extraRotation);
+                Image image = toFxImage(turned);
+                Platform.runLater(() -> callback.accept(image));
+            } catch (Exception e) {
+                log.debug("No large picture for {} page {}", file, page, e);
+            }
+        });
+    }
+
+    private static BufferedImage turn(BufferedImage picture, int degrees) {
+        int turn = Math.floorMod(degrees, 360);
+        if (turn == 0) return picture;
+        int w = picture.getWidth(), h = picture.getHeight();
+        boolean sideways = turn != 180;
+        BufferedImage out = new BufferedImage(sideways ? h : w, sideways ? w : h, BufferedImage.TYPE_INT_RGB);
+        var g = out.createGraphics();
+        g.translate(out.getWidth() / 2.0, out.getHeight() / 2.0);
+        g.rotate(Math.toRadians(turn));
+        g.drawImage(picture, -w / 2, -h / 2, null);
+        g.dispose();
+        return out;
+    }
+
     /** Calls back with the page's picture now if it's drawn, otherwise as soon as it is. */
     public void whenReady(Path file, int page, Consumer<Image> callback) {
         Image image = done.get(key(file, page));

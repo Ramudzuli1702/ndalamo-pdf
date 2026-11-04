@@ -8,6 +8,8 @@ import com.ndalamo.screens.LogoMark;
 import com.ndalamo.screens.MainWindow;
 import com.ndalamo.screens.ToolFlow;
 import com.ndalamo.screens.ToolScreen;
+import com.ndalamo.screens.WorkspaceScreen;
+import com.ndalamo.tools.WorkspaceTool;
 import com.ndalamo.services.JobService;
 import com.ndalamo.services.SettingsService;
 import com.ndalamo.tools.PdfTool;
@@ -24,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -44,7 +47,9 @@ public class NdalamoApp extends Application {
     private HomeScreen home;
     private ToolFlow toolFlow;
     private Settings settings;
+    private final SettingsService settingsService = new SettingsService();
     private JobService jobService;
+    private WorkspaceScreen workspace;      // kept, so files left open are still there next time
 
     @Override
     public void start(Stage stage) {
@@ -52,7 +57,7 @@ public class NdalamoApp extends Application {
         Thread.setDefaultUncaughtExceptionHandler((thread, e) ->
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
-        settings = new SettingsService().load();
+        settings = settingsService.load();
         jobService = new JobService(settings.workerThreads());
         log.info("Ndalamo started with {} worker thread(s)", settings.workerThreads());
 
@@ -66,8 +71,12 @@ public class NdalamoApp extends Application {
 
         // Ctrl+K: jump to the tool search from any screen
         scene.getAccelerators().put(new KeyCodeCombination(KeyCode.K, KeyCombination.SHORTCUT_DOWN), () -> {
-            showHome();
-            home.focusSearch();
+            Runnable goSearch = () -> {
+                showHome();
+                home.focusSearch();
+            };
+            if (window.current() == workspace) workspace.leave(goSearch);   // asks about unsaved edits first
+            else goSearch.run();
         });
 
         // Dropping files anywhere on the window (SPEC §6.2, screen 1)
@@ -116,7 +125,26 @@ public class NdalamoApp extends Application {
     }
 
     private void openTool(PdfTool tool) {
+        if (tool instanceof WorkspaceTool) {
+            window.show(workspace());
+            return;
+        }
         toolFlow.open(tool, List.of());
+    }
+
+    private WorkspaceScreen workspace() {
+        if (workspace == null) {
+            workspace = new WorkspaceScreen(window, settings, this::saveSettings, SaveTo.from(settings), this::showHome);
+        }
+        return workspace;
+    }
+
+    private void saveSettings() {
+        try {
+            settingsService.save(settings);
+        } catch (IOException e) {
+            log.warn("Could not save settings", e);
+        }
     }
 
     // ── Files ────────────────────────────────────────────────────────────
@@ -135,9 +163,13 @@ public class NdalamoApp extends Application {
 
     /** Files from the Choose files button or dropped on the window. */
     private void filesChosen(List<File> files) {
-        // On a tool screen, dropped files join that tool's list.
+        // On a tool screen, dropped files join that tool's list; in the workspace they open as tabs.
         if (window.current() instanceof ToolScreen toolScreen) {
             toolScreen.addFiles(files.stream().map(File::toPath).toList());
+            return;
+        }
+        if (window.current() == workspace && workspace != null) {
+            workspace.open(files.stream().map(File::toPath).toList());
             return;
         }
         // Suggested tools for these files (screen 3) are built in chunk 15.

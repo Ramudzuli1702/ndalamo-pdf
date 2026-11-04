@@ -24,7 +24,7 @@ public final class Tools {
             new SplitTool(),
             new RotateTool(),          // own cards for Rotate and Remove pages: decision 005
             new RemovePagesTool(),
-            soon("workspace", "Page workspace", "Reorder, rotate, remove, crop", "Organize"),
+            new WorkspaceTool(),
 
             new CompressTool(),
             new CompressTool(true),    // same tool, starting with "Target size" chosen

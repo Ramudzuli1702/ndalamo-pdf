@@ -414,4 +414,110 @@
 
 .save-text { -fx-font-size: 13px; -fx-fill: #5B616E; }
 
+.button-danger {
+    -fx-background-color: #B42318;
+    -fx-background-radius: 8;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-family: "IBM Plex Sans SmBld";
+    -fx-padding: 0 18;
+    -fx-cursor: hand;
+}
+.button-danger:hover { -fx-background-color: #8F1C13; }
+
 .dialog-card .password-field.field-error { -fx-border-color: #B42318; -fx-border-width: 2; }
+
+/* ── Page workspace (Workspace.dc.html) ─────────────────────────────── */
+
+.ws-tab, .ws-tab-active {
+    -fx-pref-height: 40;
+    -fx-padding: 0 8 0 14;
+    -fx-background-radius: 8 8 0 0;
+    -fx-cursor: hand;
+}
+.ws-tab .label { -fx-text-fill: #5B616E; }
+.ws-tab:hover { -fx-background-color: #F4F5F7; }
+.ws-tab-active {
+    -fx-background-color: #E8EDFB;
+    -fx-border-color: transparent transparent #2F5BEA transparent;
+    -fx-border-width: 0 0 2 0;
+}
+.ws-tab-active .label { -fx-font-family: "IBM Plex Sans SmBld"; }
+.tab-close {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 4;
+    -fx-cursor: hand;
+}
+.tab-close:hover { -fx-background-color: #D5D8DF; }
+.ws-tab-add {
+    -fx-pref-width: 40;
+    -fx-pref-height: 40;
+    -fx-background-color: transparent;
+    -fx-border-color: #A9B4D6;
+    -fx-border-style: dashed;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #2448C9;
+    -fx-font-size: 18px;
+    -fx-cursor: hand;
+}
+
+.ws-action-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 20;
+}
+.ws-action {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-pref-height: 36;
+    -fx-padding: 0 12;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+.ws-action:hover { -fx-background-color: #F4F5F7; }
+.ws-action:disabled { -fx-opacity: 0.45; }
+
+.ws-page {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.12), 4, 0, 0, 1);
+    -fx-cursor: hand;
+}
+.ws-page:hover { -fx-border-color: #A9B4D6; }
+.ws-page-selected, .ws-page-selected:hover { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
+.ws-drop-before .ws-page { -fx-border-color: #2F5BEA; -fx-border-width: 0 0 0 4; }
+
+.workspace-panel {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 24 20;
+}
+.ws-panel-button, .ws-panel-danger {
+    -fx-pref-height: 44;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 0 14;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+.ws-panel-button { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-text-fill: #16181D; }
+.ws-panel-button:hover { -fx-background-color: #F4F5F7; }
+.ws-panel-danger { -fx-background-color: #FFF6F5; -fx-border-color: #F0C6C0; -fx-text-fill: #B42318; }
+.ws-panel-danger:hover { -fx-background-color: #FDECEA; }
+.ws-panel-button:disabled, .ws-panel-danger:disabled { -fx-opacity: 0.45; }
+.workspace-panel .text-field {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-pref-height: 40;
+    -fx-padding: 0 12;
+}
+.workspace-panel .text-field:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }

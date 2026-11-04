@@ -167,6 +167,7 @@ public class ResultScreen extends BorderPane {
         FlowPane chips = new FlowPane(8, 8);
         for (PdfTool tool : next) {
             Button chip = new Button(tool.name());
+            chip.setMnemonicParsing(false);
             chip.getStyleClass().add("chip");
             chip.setOnAction(e -> onContinue.accept(tool, outputs));
             chips.getChildren().add(chip);
