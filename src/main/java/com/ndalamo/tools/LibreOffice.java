@@ -22,8 +22,8 @@ public final class LibreOffice {
 
     private static final Logger LOG = LoggerFactory.getLogger(LibreOffice.class);
 
-    /** A large spreadsheet can take a while; anything slower than this has hung. */
-    private static final long TIME_LIMIT_SECONDS = 10 * 60;
+    /** A normal file takes a few seconds and a large spreadsheet under a minute; anything slower has hung. */
+    private static final long TIME_LIMIT_SECONDS = 3 * 60;
 
     /** Set from Settings when the user picks soffice.exe with "Locate it"; null to search the usual places. */
     private static volatile String chosenLocation;
@@ -115,7 +115,12 @@ public final class LibreOffice {
         Path log = outFolder.resolve("libreoffice-output.txt");     // kept out of the pipe so it can't fill up and stall
 
         synchronized (ONE_AT_A_TIME) {
-            Process office = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
+            ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile());
+            // LibreOffice asks Windows about every printer when it starts. A network printer that can't be
+            // reached (e.g. a campus or office print server, away from it) makes that take minutes.
+            // Converting to PDF never prints, so tell it to skip the printer list: ~190 s became ~3 s.
+            builder.environment().put("SAL_DISABLE_PRINTERLIST", "1");
+            Process office = builder.start();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIME_LIMIT_SECONDS);
             while (!office.waitFor(200, TimeUnit.MILLISECONDS)) {
                 if (progress.isCancelled()) {
