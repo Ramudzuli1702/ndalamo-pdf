@@ -21,7 +21,6 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
@@ -32,6 +31,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 
@@ -68,6 +69,7 @@ public class ToolScreen extends BorderPane {
     private final Map<String, ToggleGroup> choiceGroups = new LinkedHashMap<>();
     private final Map<String, TextField> textBoxes = new LinkedHashMap<>();
     private final Map<String, OptionField> fieldsById = new LinkedHashMap<>();
+    private final Map<String, VBox> choiceBodies = new LinkedHashMap<>();   // "mode=Target size" → inside of that card
     private final PageThumbnails thumbnails = new PageThumbnails();
     private final PagePreview preview;
     private SaveTo saveTo;
@@ -75,7 +77,7 @@ public class ToolScreen extends BorderPane {
     private final Label summary = new Label();
     private final Label dragHint = new Label("Drag to reorder");
     private final VBox fileList = new VBox(12);
-    private final Label saveToText = new Label();
+    private final Text saveToText = new Text();
     private final Label problem = new Label();
     private boolean showingMistake;
     private final Button runButton = new Button();
@@ -307,67 +309,46 @@ public class ToolScreen extends BorderPane {
     // ── Right: options, save location, run ───────────────────────────────
 
     private VBox optionsPanel() {
-        VBox panel = new VBox(22);
+        VBox panel = new VBox(18);
         panel.getStyleClass().add("options-panel");
         panel.setPrefWidth(340);
         panel.setMinWidth(320);
         panel.setMaxWidth(380);
 
-        VBox basic = new VBox(14);
-        VBox advanced = new VBox(10);
+        VBox basic = new VBox(22);
+        VBox advanced = new VBox(8);
         for (OptionField field : tool.optionFields()) {
-            VBox control = optionControl(field);
-            (field.isAdvanced() ? advanced : basic).getChildren().add(control);
+            // A follow-up input ("MB per file") goes inside the card of the choice it belongs to,
+            // like the mockup's Target size card; everything else is listed in order.
+            VBox insideCard = field.getShownWhenId() == null ? null
+                    : choiceBodies.get(field.getShownWhenId() + "=" + field.getShownWhenValue());
+            VBox control = optionControl(field, insideCard != null);
+            if (insideCard != null) {
+                VBox.setMargin(control, new Insets(8, 0, 0, 0));
+                insideCard.getChildren().add(control);
+            } else {
+                (field.isAdvanced() ? advanced : basic).getChildren().add(control);
+            }
             if (field.getShownWhenId() != null) showOnlyWhen(control, field);
         }
         if (tool.optionFields().isEmpty()) {
             Label none = new Label(tool.oneOutput()
                     ? "Nothing to set — files are joined in the order shown on the left."
                     : "This tool has no options.");
-            none.getStyleClass().add("muted");
+            none.getStyleClass().add("small-muted");
             none.setWrapText(true);
             basic.getChildren().add(none);
         }
+
         // Options and "Save to" scroll if the window is short; the run button stays put below them.
         VBox settings = new VBox(22, basic);
-        if (!advanced.getChildren().isEmpty()) {
-            TitledPane more = new TitledPane("Advanced options", advanced);
-            more.setExpanded(false);
-            more.getStyleClass().add("details-pane");
-            settings.getChildren().add(more);
-        }
-
-        // Save to
-        Label saveLabel = new Label("Save to");
-        saveLabel.getStyleClass().add("small-heading");
-        saveToText.getStyleClass().add("small-muted");
-        saveToText.setWrapText(true);
-        Label namePattern = new Label(saveTo.describeName(tool.outputSuffix(), "pdf"));
-        namePattern.getStyleClass().addAll("small-muted", "mono");
-        Hyperlink change = new Hyperlink("Change");
-        change.getStyleClass().add("link");
-        change.setOnAction(e -> {
-            DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("Save results to");
-            File folder = chooser.showDialog(getScene().getWindow());
-            if (folder != null) {
-                saveTo = saveTo.inFolder(folder.toPath());
-                refresh();
-            }
-        });
-        VBox saveSection = new VBox(6, saveLabel, saveToText, namePattern);
-        if (tool.saveToNote() != null) {
-            Label note = new Label(tool.saveToNote());
-            note.getStyleClass().add("small-muted");
-            note.setWrapText(true);
-            saveSection.getChildren().add(note);
-        }
-        saveSection.getChildren().add(change);
-        saveSection.getStyleClass().add("save-section");
-        settings.getChildren().add(saveSection);
+        if (!advanced.getChildren().isEmpty()) settings.getChildren().add(advancedSection(advanced));
+        settings.getChildren().add(saveSection());
+        settings.setPadding(new Insets(0, 4, 0, 0));    // room for the slim scrollbar
 
         ScrollPane scroll = new ScrollPane(settings);
         scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.getStyleClass().add("plain-scroll");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
@@ -394,6 +375,61 @@ public class ToolScreen extends BorderPane {
         return panel;
     }
 
+    /** "Advanced options" with a small arrow; the options fold out underneath when clicked. */
+    private VBox advancedSection(VBox advanced) {
+        Region arrow = Icons.chevron(14, Theme.TEXT);
+        Button toggle = new Button("Advanced options", arrow);
+        toggle.getStyleClass().add("disclosure");
+        toggle.setGraphicTextGap(6);
+        advanced.setPadding(new Insets(10, 0, 0, 2));
+        advanced.setVisible(false);
+        advanced.setManaged(false);
+        toggle.setOnAction(e -> {
+            boolean open = !advanced.isVisible();
+            advanced.setVisible(open);
+            advanced.setManaged(open);
+            arrow.setRotate(open ? 90 : 0);
+        });
+        return new VBox(toggle, advanced);
+    }
+
+    /** "Save to" — where results go and what they're called, on one line like the mockup — and Change. */
+    private VBox saveSection() {
+        Label heading = new Label("Save to");
+        heading.getStyleClass().add("small-heading");
+
+        saveToText.getStyleClass().add("save-text");
+        Text pattern = new Text(saveTo.describeName(tool.outputSuffix(), "pdf"));
+        pattern.getStyleClass().addAll("mono-text");
+        Text separator = new Text(" · ");
+        separator.getStyleClass().add("save-text");
+        TextFlow where = new TextFlow(saveToText, separator, pattern);
+        where.getStyleClass().add("save-line");
+
+        Hyperlink change = new Hyperlink("Change");
+        change.getStyleClass().add("link");
+        change.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Save results to");
+            File folder = chooser.showDialog(getScene().getWindow());
+            if (folder != null) {
+                saveTo = saveTo.inFolder(folder.toPath());
+                refresh();
+            }
+        });
+
+        VBox section = new VBox(6, heading, where);
+        if (tool.saveToNote() != null) {
+            Label note = new Label(tool.saveToNote());
+            note.getStyleClass().add("small-muted");
+            note.setWrapText(true);
+            section.getChildren().add(note);
+        }
+        section.getChildren().add(change);
+        section.getStyleClass().add("save-section");
+        return section;
+    }
+
     /** The line above the run button: why it can't run yet (grey) or what to fix in the options (red). */
     private void showProblem(String text, boolean isMistake) {
         showingMistake = isMistake;
@@ -418,11 +454,15 @@ public class ToolScreen extends BorderPane {
         update.run();
     }
 
-    /** One control per option, chosen by its type. Remembers how to read the value back. */
-    private VBox optionControl(OptionField field) {
+    /**
+     * One control per option, chosen by its type. Remembers how to read the value back.
+     *
+     * @param insideCard true when it sits inside a choice card, where it's drawn more compactly
+     */
+    private VBox optionControl(OptionField field, boolean insideCard) {
         fieldsById.put(field.getId(), field);
         Label label = new Label(field.getLabel());
-        label.getStyleClass().add("small-heading");
+        label.getStyleClass().add(insideCard ? "inside-label" : "small-heading");
         VBox box = new VBox(8);
 
         switch (field.getType()) {
@@ -435,20 +475,21 @@ public class ToolScreen extends BorderPane {
             }
             case CHOICE -> {
                 ToggleGroup group = new ToggleGroup();
+                label.getStyleClass().setAll("label", "option-legend");
                 box.getChildren().add(label);
                 List<HBox> cards = new ArrayList<>();
                 for (int c = 0; c < field.getChoices().size(); c++) {
                     String choice = field.getChoices().get(c);
                     HBox card = choiceCard(choice, c < field.getChoiceDescriptions().size()
                             ? field.getChoiceDescriptions().get(c) : null, group);
+                    choiceBodies.put(field.getId() + "=" + choice, (VBox) card.getChildren().get(1));
                     cards.add(card);
                     box.getChildren().add(card);
                 }
                 choiceGroups.put(field.getId(), group);
                 // Outline the chosen card, like the mockup's options panel.
-                Runnable outline = () -> cards.forEach(card -> card.getStyleClass().remove("choice-selected"));
                 group.selectedToggleProperty().addListener((obs, old, now) -> {
-                    outline.run();
+                    cards.forEach(card -> card.getStyleClass().remove("choice-selected"));
                     if (now != null) ((Node) now).getParent().getStyleClass().add("choice-selected");
                     updatePreview();
                 });
@@ -460,20 +501,31 @@ public class ToolScreen extends BorderPane {
             }
             case NUMBER -> {
                 TextField number = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
-                number.setMaxWidth(100);
+                number.setPrefWidth(72);
+                number.setMaxWidth(72);
                 number.setPromptText(field.getHint());
+                number.setAccessibleText(field.getLabel());
                 number.textProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(), () -> parseNumber(number.getText()));
-                box.getChildren().addAll(label, number);
+                if (insideCard) {
+                    // "[ 2 ] MB per file", on one line as in the mockup
+                    HBox row = new HBox(8, number, label);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    box.getChildren().add(row);
+                } else {
+                    box.getChildren().addAll(label, number);
+                }
             }
             case PASSWORD -> {
                 PasswordField password = new PasswordField();
+                password.setAccessibleText(field.getLabel());
                 optionValues.put(field.getId(), password::getText);
                 box.getChildren().addAll(label, password);
             }
             case TEXT -> {
                 TextField text = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
                 text.setPromptText(field.getHint());
+                text.setAccessibleText(field.getLabel());
                 textBoxes.put(field.getId(), text);
                 text.textProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(), text::getText);
@@ -493,7 +545,9 @@ public class ToolScreen extends BorderPane {
                     }
                 });
                 optionValues.put(field.getId(), () -> picked[0]);
-                box.getChildren().addAll(label, new HBox(8, pick, chosen));
+                HBox row = new HBox(8, pick, chosen);
+                row.setAlignment(Pos.CENTER_LEFT);
+                box.getChildren().addAll(label, row);
             }
         }
         return box;
@@ -505,8 +559,9 @@ public class ToolScreen extends BorderPane {
         radio.setToggleGroup(group);
         radio.setUserData(choice);
         radio.setAccessibleText(choice);
+        HBox.setMargin(radio, new Insets(1, 0, 0, 0));
         Label title = new Label(choice);
-        title.getStyleClass().add("file-name");
+        title.getStyleClass().add("choice-title");
         VBox text = new VBox(2, title);
         if (description != null) {
             Label line = new Label(description);
@@ -518,7 +573,7 @@ public class ToolScreen extends BorderPane {
         HBox.setHgrow(text, Priority.ALWAYS);
         HBox card = new HBox(10, radio, text);
         card.getStyleClass().add("choice-card");
-        card.setAlignment(description == null ? Pos.CENTER_LEFT : Pos.TOP_LEFT);
+        card.setAlignment(Pos.TOP_LEFT);
         card.setOnMouseClicked(e -> radio.setSelected(true));    // the whole card is clickable
         return card;
     }

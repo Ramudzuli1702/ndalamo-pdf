@@ -53,7 +53,7 @@ public class SplitTool implements PdfTool {
         return List.of(
                 new OptionField(MODE, "Split by", OptionField.Type.CHOICE,
                         List.of(BY_RANGES, EVERY_N, EVERY_PAGE, BY_SIZE), BY_RANGES),
-                new OptionField(RANGES, "Page ranges — each becomes its own file", OptionField.Type.TEXT, "")
+                new OptionField(RANGES, "Each range becomes its own file", OptionField.Type.TEXT, "")
                         .hint("e.g. 1-3, 5, 8-10").shownWhen(MODE, BY_RANGES),
                 new OptionField(PAGES_PER_FILE, "Pages per file", OptionField.Type.NUMBER, 2)
                         .shownWhen(MODE, EVERY_N),

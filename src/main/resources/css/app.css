@@ -341,3 +341,75 @@
 }
 .file-status { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 13px; }
 .small-bar.bar-done > .bar { -fx-background-color: #2E8B57; }
+
+
+/* ── Options panel, matching Tool.dc.html (polish) ──────────────────── */
+
+.option-legend { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; }
+.choice-title { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 14px; }
+.inside-label { -fx-font-size: 13px; -fx-text-fill: #16181D; }
+.mono-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12.5px; -fx-fill: #5B616E; }
+.save-line .label { -fx-font-size: 13px; }
+
+/* Text boxes in the options panel and dialogs: plain bordered boxes, blue border when typing */
+.options-panel .text-field, .options-panel .password-field, .dialog-card .text-field, .dialog-card .password-field {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-pref-height: 36;
+    -fx-padding: 0 10;
+    -fx-prompt-text-fill: #8A909C;
+}
+.options-panel .text-field:focused, .options-panel .password-field:focused,
+.dialog-card .text-field:focused, .dialog-card .password-field:focused {
+    -fx-border-color: #2F5BEA;
+    -fx-border-width: 1.5;
+}
+
+/* Radio buttons and checkboxes in the brand blue */
+.radio-button .radio {
+    -fx-background-color: #B9BEC9, #FFFFFF;
+    -fx-background-insets: 0, 1.5;
+    -fx-background-radius: 999;
+    -fx-padding: 4;
+}
+.radio-button:selected .radio { -fx-background-color: #2F5BEA, #FFFFFF; }
+.radio-button .dot { -fx-background-color: transparent; -fx-background-radius: 999; -fx-padding: 4; }
+.radio-button:selected .dot { -fx-background-color: #2F5BEA; }
+.radio-button:focused .radio { -fx-effect: dropshadow(gaussian, #2F5BEA55, 4, 0.6, 0, 0); }
+
+.check-box { -fx-font-size: 14px; -fx-text-fill: #3A3F4A; -fx-label-padding: 0 0 0 4; }
+.check-box .box {
+    -fx-background-color: #B9BEC9, #FFFFFF;
+    -fx-background-insets: 0, 1.5;
+    -fx-background-radius: 4, 3;
+    -fx-padding: 3;
+}
+.check-box:selected .box { -fx-background-color: #2F5BEA, #2F5BEA; }
+.check-box .mark { -fx-background-color: transparent; -fx-padding: 5; }
+.check-box:selected .mark { -fx-background-color: #FFFFFF; }
+.check-box:focused .box { -fx-effect: dropshadow(gaussian, #2F5BEA55, 4, 0.6, 0, 0); }
+
+/* "Advanced options" link that folds out */
+.disclosure {
+    -fx-background-color: transparent;
+    -fx-padding: 2 0;
+    -fx-font-family: "IBM Plex Sans Medm";
+    -fx-font-size: 14px;
+    -fx-text-fill: #16181D;
+    -fx-cursor: hand;
+}
+.disclosure:hover { -fx-text-fill: #2448C9; }
+
+/* Slim scrollbars inside scrolling panels, no arrow buttons */
+.plain-scroll .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 8; -fx-padding: 0; }
+.plain-scroll .scroll-bar:horizontal { -fx-background-color: transparent; -fx-pref-height: 8; -fx-padding: 0; }
+.plain-scroll .scroll-bar .track { -fx-background-color: transparent; -fx-border-color: transparent; }
+.plain-scroll .scroll-bar .thumb { -fx-background-color: #D5D8DF; -fx-background-radius: 999; -fx-background-insets: 1; }
+.plain-scroll .scroll-bar .thumb:hover { -fx-background-color: #B9BEC9; }
+.plain-scroll .scroll-bar .increment-button, .plain-scroll .scroll-bar .decrement-button { -fx-padding: 0; -fx-pref-height: 0; -fx-pref-width: 0; }
+.plain-scroll .scroll-bar .increment-arrow, .plain-scroll .scroll-bar .decrement-arrow { -fx-padding: 0; -fx-shape: " "; }
+.plain-scroll > .corner { -fx-background-color: transparent; }
+
+.save-text { -fx-font-size: 13px; -fx-fill: #5B616E; }

@@ -43,6 +43,11 @@ public final class Icons {
         return draw(size, color, "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z", "M14 3v5h5");
     }
 
+    /** Small arrow pointing right; rotate it 90° to point down when something is open. */
+    public static Region chevron(double size, String color) {
+        return draw(size, color, "M9 6l6 6-6 6");
+    }
+
     public static Region back(double size, String color) {
         return draw(size, color, "M15 18l-6-6 6-6");
     }
