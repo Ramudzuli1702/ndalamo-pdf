@@ -33,7 +33,7 @@ public final class Tools {
 
             soon("pdf-to-word", "PDF to Word", "Editable .docx", "Convert"),
             soon("pdf-to-excel", "PDF to Excel", "Tables to .xlsx", "Convert"),
-            soon("office-to-pdf", "Office to PDF", "Word, Excel, PowerPoint", "Convert"),
+            new OfficeToPdfTool(),
             new ImageToPdfTool(),
             new PdfToJpgTool(),
             new OcrTool(),

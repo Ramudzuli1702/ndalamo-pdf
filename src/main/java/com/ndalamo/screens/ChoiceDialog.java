@@ -5,6 +5,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.function.Consumer;
@@ -54,6 +55,7 @@ public class ChoiceDialog extends VBox {
     public ChoiceDialog button(String label, Style style, Consumer<Boolean> onChosen) {
         Button button = new Button(label);
         button.setMnemonicParsing(false);     // keep "_" in file names visible
+        button.setMinWidth(Region.USE_PREF_SIZE);   // never cut a label short to "Ca…"
         switch (style) {
             case PRIMARY -> button.getStyleClass().addAll("button-primary", "button-dialog");
             case DANGER -> button.getStyleClass().addAll("button-danger", "button-dialog");
@@ -66,6 +68,12 @@ public class ChoiceDialog extends VBox {
             onChosen.accept(checkBox != null && checkBox.isSelected());
         });
         buttons.getChildren().add(button);
+        return this;
+    }
+
+    /** For dialogs with many or long answers; the usual width is 540. */
+    public ChoiceDialog width(double maxWidth) {
+        setMaxWidth(maxWidth);
         return this;
     }
 

@@ -40,7 +40,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 | OCR | Tess4J (Tesseract wrapper) + bundled `tessdata` | Apache 2.0 |
 | Table extraction | Tabula-java | MIT |
 | Office files (read/write) | Apache POI | Apache 2.0 |
-| Office to PDF | LibreOffice (headless, external process) via JODConverter | Apache 2.0 (JODConverter); LibreOffice runs as a separate program |
+| Office to PDF | LibreOffice (headless, external process), run directly with `soffice --convert-to pdf` (decision 008; JODConverter not needed) | LibreOffice (MPL) runs as a separate program |
 | JSON (settings, pipelines) | Gson | Apache 2.0 |
 | Logging | SLF4J + Logback (local log file only) | MIT / EPL-LGPL dual |
 | Testing | JUnit 5, AssertJ, TestFX (UI smoke tests) | EPL / Apache |
@@ -164,7 +164,7 @@ Rules:
 |---|---|
 | Image to PDF | JPG/PNG/BMP/TIFF (multi-page). Page size: fit image, A4, Letter; margins; orientation auto. |
 | PDF to JPG | Render each page at chosen DPI (72/150/300); or extract embedded images. Output a folder (or ZIP option). |
-| Office to PDF | Word, Excel, PowerPoint via LibreOffice headless (JODConverter). Detect LibreOffice automatically; if missing, show the "needs LibreOffice" dialog. Everything else must work without it. |
+| Office to PDF | Word, Excel, PowerPoint via LibreOffice headless (`soffice --convert-to pdf`, decision 008). Detect LibreOffice automatically; if missing, show the "needs LibreOffice" dialog. Everything else must work without it. |
 | OCR PDF | Tess4J; render each page at 300 DPI, OCR, add an invisible text layer over the original image. Skip pages that already have text (option). Languages from bundled `tessdata` (start with `eng`; add `afr` if available). |
 | PDF to Excel | Tabula-java (lattice for ruled tables, stream for whitespace tables, auto-try both) → Apache POI `.xlsx`, one sheet per table or per page (option). OCR first if the page has no text layer. |
 | PDF to Word | **Custom engine** (see §4.1). OCR mode for scans. |
@@ -426,7 +426,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 
 ### Phase 6 — Extras and shipping
 19. **Word add-in** (separate C# project) + install/remove from Settings.
-20. **Packaging:** jpackage Windows installer with bundled JRE, fonts, tessdata; Start-menu shortcut; optional Explorer right-click "Open with Ndalamo"; licences file.
+20. **Packaging:** jpackage Windows installer with bundled JRE, fonts, tessdata, and LibreOffice's installer run silently as a ticked option (decision 009); Start-menu shortcut; optional Explorer right-click "Open with Ndalamo"; licences file.
 
 ---
 
@@ -458,6 +458,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | 7 Image to PDF, PDF to JPG | Done 2026-11-04 | Image to PDF: JPG/PNG/BMP/GIF/TIFF (multi-page) into one PDF; A4, Letter or the picture's shape; landscape for wide pictures; margins; drag pages to reorder. Phone photos come out the right way up (EXIF orientation read without a library). Big photos shrunk to ~200 dpi (Advanced, on by default); unchanged JPEGs embedded byte for byte. PDF to JPG: each page at 72/150/300 dpi, or the pictures inside the PDF; click pages to choose; folder per PDF or one ZIP. Merge now shares the picture handling (TIFFs, phone photos). Result screen suggests tools for the new file type. 101 tests. |
 | 8 Page workspace | Done 2026-11-04 | Tabs per PDF (opened in the order chosen; + to open more; × to close), real thumbnails, click/Ctrl/Shift selection, drag to reorder or onto a tab to move pages, zoom. Rotate left/right, insert blank page, add pages from file, split after selection (new tab), crop (drag a box on a large view), delete (confirm with "Don't ask again" saved in Settings, then an 8 s Undo toast). Undo for every edit; Delete, Ctrl+Z, Ctrl+S, Ctrl+A. Right panel: extract selected pages to a new PDF, move to another tab, Save as name. "Save changes?" dialog lists the edits when leaving or closing a tab. Edits change a page list only; WorkspaceService writes the new PDF on save, never the original. Quitting the app with unsaved edits is guarded in chunk 17. 111 tests. |
 | 9 OCR | Done 2026-11-04 | OCR PDF: each page drawn at 300 dpi (grey) and read by Tesseract (Tess4J 5.19.0); every word written invisibly over the page at its place, so the page looks the same but text can be searched, selected and copied. Languages: English, Afrikaans, or both (tessdata_fast, bundled, copied to %LOCALAPPDATA%\Ndalamo\tessdata on first use). Skip pages that already have text (on by default). Notes: "N pages read · M words found"; blank or unreadable scans come back as PARTIAL with a hint. If Tesseract can't start (old/missing VC++ runtime), a plain error explains it instead of failing every file. Tess4J 5.20 crashes with JDK 22's older VC++ runtime — decision 007. 117 tests. |
+| 10 Office to PDF | Built 2026-11-04 — **conversion not yet tested with a real LibreOffice** | Word/Excel/PowerPoint, OpenDocument, RTF and CSV to PDF by running `soffice --headless --convert-to pdf` directly (decision 008; no JODConverter). Each file is copied to a temp folder under a plain name and converted there; LibreOffice uses its own profile folder; one conversion at a time; Cancel stops LibreOffice. Found via Settings ("Locate it"), Program Files, or the registry. Missing → "Office to PDF needs LibreOffice" dialog (Cancel, check again, Locate it, How to install → bundled help page). Office files show a coloured type label instead of a blank thumbnail. LibreOffice will ship inside the installer (decision 009). 125 tests pass; the 6 LibreOffice tests skip until it's installed (or run them with `-Dlibreoffice=<soffice.exe>`). To do: run them, and shorten the 10-minute hang limit once a normal conversion time is measured. |
 | … | | |
 
 ---

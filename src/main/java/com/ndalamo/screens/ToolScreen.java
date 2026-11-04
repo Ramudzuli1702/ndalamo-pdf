@@ -231,6 +231,23 @@ public class ToolScreen extends BorderPane {
         box.setText(text);
     }
 
+    /**
+     * Office files have no page pictures until they're converted, so their thumbnail
+     * shows the file type instead, in the colour people know it by. Null for PDFs and images.
+     */
+    private static Label typeBadge(String extension) {
+        String colour = switch (extension) {
+            case "doc", "docx", "odt", "rtf" -> "#2B579A";      // Word blue
+            case "xls", "xlsx", "ods", "csv" -> "#217346";      // Excel green
+            case "ppt", "pptx", "odp" -> "#C2410C";             // PowerPoint orange
+            default -> null;
+        };
+        if (colour == null) return null;
+        Label badge = new Label(extension.toUpperCase());
+        badge.setStyle("-fx-font-family: \"IBM Plex Sans SmBld\"; -fx-font-size: 9px; -fx-text-fill: " + colour + ";");
+        return badge;
+    }
+
     private HBox fileRow(int index) {
         Path file = files.get(index);
         FileInfo fileInfo = info.get(file);
@@ -244,6 +261,8 @@ public class ToolScreen extends BorderPane {
         thumbnail.getStyleClass().add("thumbnail");
         thumbnail.setMinSize(36, 51);
         thumbnail.setMaxSize(36, 51);
+        Label typeBadge = typeBadge(FileInspector.extension(file));
+        if (typeBadge != null) thumbnail.getChildren().add(typeBadge);
 
         Label name = new Label(file.getFileName().toString());
         name.getStyleClass().add("file-name");

@@ -196,6 +196,41 @@ final class TestFiles {
         return file;
     }
 
+    /**
+     * The smallest Word file that opens: a zip with the three parts a .docx needs.
+     * Each string becomes one page (page breaks between them).
+     */
+    static Path docx(Path folder, String name, String... pages) throws IOException {
+        StringBuilder body = new StringBuilder();
+        for (int i = 0; i < pages.length; i++) {
+            if (i > 0) body.append("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>");
+            body.append("<w:p><w:r><w:t xml:space=\"preserve\">").append(pages[i]).append("</w:t></w:r></w:p>");
+        }
+        Path file = folder.resolve(name);
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(file))) {
+            zipEntry(zip, "[Content_Types].xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+                    + "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+                    + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
+                    + "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
+                    + "</Types>");
+            zipEntry(zip, "_rels/.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                    + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>"
+                    + "</Relationships>");
+            zipEntry(zip, "word/document.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>"
+                    + body + "</w:body></w:document>");
+        }
+        return file;
+    }
+
+    private static void zipEntry(java.util.zip.ZipOutputStream zip, String name, String content) throws IOException {
+        zip.putNextEntry(new java.util.zip.ZipEntry(name));
+        zip.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
     static int pageCount(Path pdf) throws IOException {
         try (PDDocument doc = Loader.loadPDF(pdf.toFile())) {
             return doc.getNumberOfPages();

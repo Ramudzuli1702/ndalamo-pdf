@@ -4,6 +4,7 @@ import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
 import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
+import com.ndalamo.screens.LibreOfficeDialog;
 import com.ndalamo.screens.LogoMark;
 import com.ndalamo.screens.MainWindow;
 import com.ndalamo.screens.ToolFlow;
@@ -12,6 +13,8 @@ import com.ndalamo.screens.WorkspaceScreen;
 import com.ndalamo.tools.WorkspaceTool;
 import com.ndalamo.services.JobService;
 import com.ndalamo.services.SettingsService;
+import com.ndalamo.tools.LibreOffice;
+import com.ndalamo.tools.OfficeToPdfTool;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.utils.Theme;
 import javafx.application.Application;
@@ -26,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.io.IOException;
 import java.util.List;
 
@@ -58,6 +62,7 @@ public class NdalamoApp extends Application {
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
         settings = settingsService.load();
+        LibreOffice.setChosenLocation(settings.getLibreOfficePath());
         jobService = new JobService(settings.workerThreads());
         log.info("Ndalamo started with {} worker thread(s)", settings.workerThreads());
 
@@ -129,6 +134,11 @@ public class NdalamoApp extends Application {
             window.show(workspace());
             return;
         }
+        if (tool instanceof OfficeToPdfTool) {
+            // Only this tool needs LibreOffice; if it's missing, explain before showing the tool.
+            LibreOfficeDialog.whenFound(window, this::rememberLibreOffice, () -> toolFlow.open(tool, List.of()));
+            return;
+        }
         toolFlow.open(tool, List.of());
     }
 
@@ -137,6 +147,12 @@ public class NdalamoApp extends Application {
             workspace = new WorkspaceScreen(window, settings, this::saveSettings, SaveTo.from(settings), this::showHome);
         }
         return workspace;
+    }
+
+    private void rememberLibreOffice(Path program) {
+        settings.setLibreOfficePath(program.toString());
+        LibreOffice.setChosenLocation(program.toString());
+        saveSettings();
     }
 
     private void saveSettings() {

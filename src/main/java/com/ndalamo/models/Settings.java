@@ -29,6 +29,7 @@ public class Settings {
     private Appearance appearance = Appearance.LIGHT;
     private boolean rememberRecentFiles = true;
     private boolean askBeforeDeletingPages = true;
+    private String libreOfficePath;
 
     public SaveLocation getSaveLocation() { return saveLocation; }
     public void setSaveLocation(SaveLocation saveLocation) { this.saveLocation = saveLocation; }
@@ -57,6 +58,10 @@ public class Settings {
     /** Page workspace: show "Delete 2 pages?" before deleting, until the user ticks "Don't ask again". */
     public boolean isAskBeforeDeletingPages() { return askBeforeDeletingPages; }
     public void setAskBeforeDeletingPages(boolean ask) { this.askBeforeDeletingPages = ask; }
+
+    /** soffice.exe picked with "Locate it"; null to look in the usual places. Only Office to PDF uses it. */
+    public String getLibreOfficePath() { return libreOfficePath; }
+    public void setLibreOfficePath(String libreOfficePath) { this.libreOfficePath = libreOfficePath; }
 
     /** Number of background threads for jobs. Low-memory mode always uses one (SPEC §3.4). */
     public int workerThreads() {
