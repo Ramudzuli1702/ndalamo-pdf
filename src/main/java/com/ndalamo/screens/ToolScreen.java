@@ -61,6 +61,7 @@ public class ToolScreen extends BorderPane {
     private final List<Path> files = new ArrayList<>();
     private final Map<Path, FileInfo> info = new ConcurrentHashMap<>();
     private final Map<String, Supplier<Object>> optionValues = new LinkedHashMap<>();
+    private final Map<String, ToggleGroup> choiceGroups = new LinkedHashMap<>();
     private SaveTo saveTo;
 
     private final Label summary = new Label();
@@ -68,6 +69,7 @@ public class ToolScreen extends BorderPane {
     private final VBox fileList = new VBox(12);
     private final Label saveToText = new Label();
     private final Label problem = new Label();
+    private boolean showingMistake;
     private final Button runButton = new Button();
 
     public ToolScreen(PdfTool tool, List<Path> startingFiles, SaveTo saveTo, MainWindow window,
@@ -171,12 +173,12 @@ public class ToolScreen extends BorderPane {
         int needed = tool.minFiles();
         runButton.setText(tool.buttonLabel(files.size()));
         if (files.size() < needed) {
-            problem.setText("Add at least " + Format.count(needed, "file", "files") + ".");
-        } else {
-            problem.setText("");
+            showProblem("Add at least " + Format.count(needed, "file", "files") + ".", false);
+        } else if (!showingMistake) {
+            // A red options mistake stays until the user changes a choice or presses run again;
+            // a file finishing loading in the background mustn't wipe it.
+            showProblem("", false);
         }
-        problem.setManaged(!problem.getText().isEmpty());
-        problem.setVisible(!problem.getText().isEmpty());
         runButton.setDisable(files.size() < needed);
         saveToText.setText(saveTo.describeFolder(tool.oneOutput()));
     }
@@ -265,7 +267,9 @@ public class ToolScreen extends BorderPane {
         VBox basic = new VBox(14);
         VBox advanced = new VBox(10);
         for (OptionField field : tool.optionFields()) {
-            (field.isAdvanced() ? advanced : basic).getChildren().add(optionControl(field));
+            VBox control = optionControl(field);
+            (field.isAdvanced() ? advanced : basic).getChildren().add(control);
+            if (field.getShownWhenId() != null) showOnlyWhen(control, field);
         }
         if (tool.optionFields().isEmpty()) {
             Label none = new Label(tool.oneOutput()
@@ -275,12 +279,13 @@ public class ToolScreen extends BorderPane {
             none.setWrapText(true);
             basic.getChildren().add(none);
         }
-        panel.getChildren().add(basic);
+        // Options and "Save to" scroll if the window is short; the run button stays put below them.
+        VBox settings = new VBox(22, basic);
         if (!advanced.getChildren().isEmpty()) {
             TitledPane more = new TitledPane("Advanced options", advanced);
             more.setExpanded(false);
             more.getStyleClass().add("details-pane");
-            panel.getChildren().add(more);
+            settings.getChildren().add(more);
         }
 
         // Save to
@@ -301,24 +306,67 @@ public class ToolScreen extends BorderPane {
                 refresh();
             }
         });
-        VBox saveSection = new VBox(6, saveLabel, saveToText, namePattern, change);
+        VBox saveSection = new VBox(6, saveLabel, saveToText, namePattern);
+        if (tool.saveToNote() != null) {
+            Label note = new Label(tool.saveToNote());
+            note.getStyleClass().add("small-muted");
+            note.setWrapText(true);
+            saveSection.getChildren().add(note);
+        }
+        saveSection.getChildren().add(change);
         saveSection.getStyleClass().add("save-section");
+        settings.getChildren().add(saveSection);
 
-        Region push = new Region();
-        VBox.setVgrow(push, Priority.ALWAYS);
+        ScrollPane scroll = new ScrollPane(settings);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("plain-scroll");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
 
         problem.getStyleClass().add("small-muted");
+        problem.setWrapText(true);
+        problem.setMinHeight(Region.USE_PREF_SIZE);   // never squeeze the message away
         runButton.getStyleClass().addAll("button-primary", "run-button");
         runButton.setMaxWidth(Double.MAX_VALUE);
         runButton.setDefaultButton(true);
         runButton.setOnAction(e -> {
             Map<String, Object> options = new LinkedHashMap<>();
             optionValues.forEach((id, value) -> options.put(id, value.get()));
+            // Catch typing mistakes (like "1-x") here, before anything runs.
+            String optionProblem = tool.checkOptions(options);
+            if (optionProblem != null) {
+                showProblem(optionProblem, true);
+                return;
+            }
             onRun.run(List.copyOf(files), options, saveTo);
         });
 
-        panel.getChildren().addAll(saveSection, push, problem, runButton);
+        runButton.setMinHeight(Region.USE_PREF_SIZE);
+        panel.getChildren().addAll(scroll, problem, runButton);
         return panel;
+    }
+
+    /** The line above the run button: why it can't run yet (grey) or what to fix in the options (red). */
+    private void showProblem(String text, boolean isMistake) {
+        showingMistake = isMistake;
+        problem.setText(text);
+        problem.setStyle(isMistake ? "-fx-text-fill: " + Theme.DANGER + ";" : "");
+        problem.setManaged(!text.isEmpty());
+        problem.setVisible(!text.isEmpty());
+    }
+
+    /** Hides a field unless its choice field has the right value, e.g. "Pages per file" only for "Every N pages". */
+    private void showOnlyWhen(VBox control, OptionField field) {
+        ToggleGroup group = choiceGroups.get(field.getShownWhenId());
+        if (group == null) return;
+        Runnable update = () -> {
+            boolean show = group.getSelectedToggle() != null
+                    && field.getShownWhenValue().equals(group.getSelectedToggle().getUserData());
+            control.setVisible(show);
+            control.setManaged(show);
+            showProblem("", false);      // a new choice clears an old mistake message
+        };
+        group.selectedToggleProperty().addListener((obs, old, now) -> update.run());
+        update.run();
     }
 
     /** One control per option, chosen by its type. Remembers how to read the value back. */
@@ -344,12 +392,14 @@ public class ToolScreen extends BorderPane {
                     radio.setSelected(choice.equals(field.getDefaultValue()));
                     box.getChildren().add(radio);
                 }
+                choiceGroups.put(field.getId(), group);
                 optionValues.put(field.getId(),
                         () -> group.getSelectedToggle() == null ? null : group.getSelectedToggle().getUserData());
             }
             case NUMBER -> {
                 TextField number = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
                 number.setMaxWidth(100);
+                number.setPromptText(field.getHint());
                 optionValues.put(field.getId(), () -> parseNumber(number.getText()));
                 box.getChildren().addAll(label, number);
             }
@@ -360,6 +410,7 @@ public class ToolScreen extends BorderPane {
             }
             case TEXT -> {
                 TextField text = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
+                text.setPromptText(field.getHint());
                 optionValues.put(field.getId(), text::getText);
                 box.getChildren().addAll(label, text);
             }

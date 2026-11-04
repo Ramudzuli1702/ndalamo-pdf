@@ -52,6 +52,14 @@ public interface PdfTool {
         return true;
     }
 
+    /**
+     * Checks the options before anything runs, e.g. a page list typed as "1-x".
+     * Returns a plain sentence to show under the run button, or null if all is well.
+     */
+    default String checkOptions(Map<String, Object> options) {
+        return null;
+    }
+
     /** File extensions (lower case, no dot) the tool accepts. */
     default Set<String> fileTypes() {
         return Set.of("pdf");
@@ -70,6 +78,11 @@ public interface PdfTool {
     /** The word for {tool} in output names, e.g. "compressed". */
     default String outputSuffix() {
         return id();
+    }
+
+    /** Extra line under "Save to" on the tool screen, e.g. where Split puts its parts. Null for none. */
+    default String saveToNote() {
+        return null;
     }
 
     /** Run button, e.g. "Compress 3 files". */

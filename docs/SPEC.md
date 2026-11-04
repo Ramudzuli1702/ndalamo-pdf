@@ -104,7 +104,8 @@ public interface PdfTool {
     List<FileResult> run(List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress) throws Exception;
 
     // Optional, with defaults: fileTypes() ("pdf"), minFiles() (1), oneOutput() (false),
-    // outputSuffix() (id), buttonLabel/workingLabel/doneLabel ("Compress 3 files", ...)
+    // outputSuffix() (id), checkOptions(options) (catches mistakes like "1-x" before running),
+    // saveToNote(), buttonLabel/workingLabel/doneLabel ("Compress 3 files", ...)
 }
 ```
 
@@ -450,6 +451,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | 1 Project skeleton | Done 2026-11-04 | Single project (decision 003). Window opens with the header and logo; settings saved with Gson; JobService runs tools in the background with progress and cancel; OutputNames never picks the original file. 19 tests. |
 | 2 Home & navigation | Done 2026-11-04 | Home matches Main.dc.html: header with search (Ctrl+K, Esc clears), Pipelines and Settings buttons, sidebar, drop zone, tool cards by category. All tools listed as "Coming soon" placeholders (decision 004). IBM Plex Sans bundled. Pipelines, Settings, tool cards and dropped/chosen files open placeholder screens until their chunks. Recent files/tools show empty states until tools run; pinned-pipelines row comes with chunk 16. |
 | 3 Tool flow + Merge | Done 2026-11-04 | Merge PDF works end to end: tool screen (drag to reorder, add/remove, page counts, options built from optionFields, Save to with Change), progress (Cancel, Run in background with a progress toast), result (Open, Show in folder, Continue with chips), toasts, error dialog with Try again. Merge joins PDFs and images, skips damaged/password-protected files with a note. PdfTool.run now takes SaveTo; SafeSave writes via a temp file. Per-file progress cards come with Compress (chunk 5); recent files/tools in the sidebar are still empty. 34 tests. |
+| 4 Split, Rotate, Remove pages | Done 2026-11-04 | Split by page ranges, every N pages, every page or file size; parts go in a "<name>_split" folder named after their pages. Rotate (right/180°/left, all or listed pages, adds to an existing turn). Remove pages (refuses to remove every page). Rotate and Remove pages have their own Home cards (decision 005). Options panel: hints, options that show only for a matching choice, mistakes caught before running, options scroll on short windows. Open/Show in folder on a deleted result explains it instead of doing nothing. 54 tests. |
 | … | | |
 
 ---

@@ -78,8 +78,10 @@ public class ResultScreen extends BorderPane {
         String subtitle;
         if (nothingSaved) {
             subtitle = "Nothing was saved. Your original files were not changed.";
-        } else if (tool.oneOutput()) {
-            subtitle = Format.count(inputCount, "file", "files") + " → 1 PDF · " + Format.size(after);
+        } else if (outputs.size() != inputCount) {
+            // Merge (3 → 1) and Split (1 → 6): sizes before/after don't compare, so count files instead.
+            subtitle = Format.count(inputCount, "file", "files") + " → " + Format.count(outputs.size(), "PDF", "PDFs")
+                    + " · " + Format.size(after);
         } else {
             String saving = Format.saving(before, after);
             subtitle = Format.size(before) + " → " + Format.size(after) + (saving.isEmpty() ? "" : " · " + saving);
@@ -127,7 +129,9 @@ public class ResultScreen extends BorderPane {
             row.getStyleClass().add("result-row");
             row.setAlignment(Pos.CENTER_LEFT);
             if (result.getOutput() != null) {
-                Label sizes = new Label(Format.sizeChange(result.getSizeBefore(), result.getSizeAfter()));
+                Label sizes = new Label(result.getSizeBefore() > 0
+                        ? Format.sizeChange(result.getSizeBefore(), result.getSizeAfter())
+                        : Format.size(result.getSizeAfter()));
                 sizes.setMinWidth(Region.USE_PREF_SIZE);
                 Button open = new Button("Open");
                 open.getStyleClass().addAll("button-secondary", "button-small");

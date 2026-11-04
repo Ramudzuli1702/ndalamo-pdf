@@ -21,7 +21,9 @@ public final class Tools {
     // Names, descriptions and order follow docs/ui/screens/Main.dc.html.
     private static final List<PdfTool> ALL = List.of(
             new MergeTool(),
-            soon("split", "Split PDF", "By range, every page or size", "Organize"),
+            new SplitTool(),
+            new RotateTool(),          // own cards for Rotate and Remove pages: decision 005
+            new RemovePagesTool(),
             soon("workspace", "Page workspace", "Reorder, rotate, remove, crop", "Organize"),
 
             soon("compress", "Compress PDF", "Smaller files, same pages", "Optimize"),

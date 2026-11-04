@@ -7,14 +7,12 @@ import com.ndalamo.models.SaveTo;
 import com.ndalamo.services.FileInspector;
 import com.ndalamo.utils.Format;
 import com.ndalamo.utils.SafeSave;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 import java.io.IOException;
@@ -87,13 +85,11 @@ public class MergeTool implements PdfTool {
                 String name = input.getFileName().toString();
                 progress.update((double) i / inputs.size(), "Adding " + name);
                 try {
-                    PDDocument source = isImage(input) ? imageAsPage(input) : openPdf(input);
+                    PDDocument source = isImage(input) ? imageAsPage(input) : PdfFiles.open(input);
                     sources.add(source);
                     merger.appendDocument(merged, source);
-                } catch (InvalidPasswordException e) {
-                    skipped.add(name + " (needs a password)");
                 } catch (IOException e) {
-                    skipped.add(name + " (damaged or not a readable PDF)");
+                    skipped.add(name + " (" + PdfFiles.problem(e) + ")");
                 }
             }
 
@@ -122,14 +118,6 @@ public class MergeTool implements PdfTool {
 
     private static boolean isImage(Path file) {
         return FileInspector.IMAGE_EXTENSIONS.contains(FileInspector.extension(file));
-    }
-
-    private static PDDocument openPdf(Path file) throws IOException {
-        PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache());
-        // A PDF that opened without a password can still carry copy/print restrictions;
-        // the merged file is a new document, so it doesn't inherit them.
-        doc.setAllSecurityToBeRemoved(true);
-        return doc;
     }
 
     /** One A4 page with the image centred and scaled to fit (landscape for wide images). */

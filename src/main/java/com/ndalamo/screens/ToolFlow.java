@@ -72,10 +72,15 @@ public class ToolFlow {
                 },
                 results -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();
-                    if (job[0].isCancelled()) {
+                    if (job[0].isCancelled() && results.isEmpty()) {
                         window.show(toolScreen);
                         window.toast(Toast.info(tool.name() + " cancelled",
                                 "Nothing was saved and your files were not changed."));
+                    } else if (job[0].isCancelled()) {
+                        // Stopped partway through a batch: keep what was finished.
+                        showResults(tool, results, files.size());
+                        window.toast(Toast.info("Stopped early",
+                                "The files listed were finished and saved; the rest were left as they were."));
                     } else if (window.current() == progressScreen[0]) {
                         showResults(tool, results, files.size());
                     } else {

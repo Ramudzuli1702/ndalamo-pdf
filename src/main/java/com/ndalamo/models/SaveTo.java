@@ -42,11 +42,16 @@ public class SaveTo {
      * @param pages     for {pages}; 0 if unknown
      */
     public Path outputFor(Path input, String suffix, String extension, int pages) {
-        Path target = folder != null ? folder : input.toAbsolutePath().getParent();
+        Path target = folderFor(input);
         // Asking "replace or add a number?" comes with the Settings screen (chunk 18);
         // until then "ask" behaves like the safe default.
         Settings.IfExists rule = ifExists == Settings.IfExists.ASK ? Settings.IfExists.ADD_NUMBER : ifExists;
         return OutputNames.pick(input, target, pattern, suffix, extension, pages, rule);
+    }
+
+    /** The folder this input's output goes into: the fixed folder, or the one the input is in. */
+    public Path folderFor(Path input) {
+        return folder != null ? folder : input.toAbsolutePath().getParent();
     }
 
     /** Short description for the tool screen, e.g. "Same folder as each original". */
