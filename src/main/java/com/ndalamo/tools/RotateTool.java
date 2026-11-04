@@ -96,6 +96,8 @@ public class RotateTool implements PdfTool {
             if (progress.isCancelled()) break;
             Path input = inputs.get(i);
             progress.update((double) i / inputs.size(), "Rotating " + input.getFileName());
+            progress.file(i, 0.1, "Working");
+            int resultsBefore = results.size();
             try (PDDocument doc = PdfFiles.open(input)) {
                 List<Integer> pages = SOME.equals(options.get(WHICH))
                         ? PageRanges.pages(PageRanges.parse((String) options.get(PAGES), doc.getNumberOfPages()))
@@ -113,6 +115,7 @@ public class RotateTool implements PdfTool {
             } catch (IOException e) {
                 results.add(PdfFiles.failed(input, "Couldn't open it — it " + PdfFiles.problem(e)));
             }
+            progress.file(i, 1, fileStatus(results.subList(resultsBefore, results.size())));
         }
         progress.update(1, "Done");
         return results;
@@ -129,5 +132,12 @@ public class RotateTool implements PdfTool {
         List<Integer> pages = new ArrayList<>();
         for (int p = 1; p <= pageCount; p++) pages.add(p);
         return pages;
+    }
+
+    /** Short status for this file's card on the progress screen. */
+    private static String fileStatus(List<FileResult> forThisFile) {
+        if (forThisFile.isEmpty()) return "Stopped";
+        FileResult first = forThisFile.get(0);
+        return first.getStatus() == FileResult.Status.FAILED ? "Couldn't finish" : "Done";
     }
 }

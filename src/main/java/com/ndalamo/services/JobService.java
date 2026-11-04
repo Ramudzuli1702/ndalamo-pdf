@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -51,17 +50,26 @@ public class JobService {
     /**
      * Runs a tool on the given files in the background.
      *
-     * @param onProgress (fraction 0–1, status text), about ten times a second at most
+     * @param onProgress the whole job and each file, about ten times a second at most
      * @param onDone     the results; if the user cancelled, only the files finished so far
      * @param onError    the tool failed as a whole (per-file failures arrive in onDone instead)
      * @return call cancel() on it to stop the job
      */
     public Progress start(PdfTool tool, List<Path> inputs, Map<String, Object> options, SaveTo saveTo,
-                          BiConsumer<Double, String> onProgress,
+                          Progress.Listener onProgress,
                           Consumer<List<FileResult>> onDone,
                           Consumer<Throwable> onError) {
-        Progress progress = new Progress((fraction, status) ->
-                uiThread.execute(() -> onProgress.accept(fraction, status)));
+        Progress progress = new Progress(new Progress.Listener() {
+            @Override
+            public void overall(double fraction, String status) {
+                uiThread.execute(() -> onProgress.overall(fraction, status));
+            }
+
+            @Override
+            public void file(int index, double fraction, String status) {
+                uiThread.execute(() -> onProgress.file(index, fraction, status));
+            }
+        });
 
         workers.execute(() -> {
             if (progress.isCancelled()) {          // cancelled while still waiting in the queue

@@ -76,11 +76,14 @@ public class RemovePagesTool implements PdfTool {
             if (progress.isCancelled()) break;
             Path input = inputs.get(i);
             progress.update((double) i / inputs.size(), "Removing pages from " + input.getFileName());
+            progress.file(i, 0.1, "Working");
+            int resultsBefore = results.size();
             try (PDDocument doc = PdfFiles.open(input)) {
                 int before = doc.getNumberOfPages();
                 List<Integer> remove = PageRanges.pages(PageRanges.parse((String) options.get(PAGES), before));
                 if (remove.size() >= before) {
                     results.add(PdfFiles.failed(input, "That would remove every page, leaving an empty file"));
+                    progress.file(i, 1, "Couldn't finish");
                     continue;
                 }
                 // Highest page first, so removing one doesn't shift the numbers of the others.
@@ -96,8 +99,16 @@ public class RemovePagesTool implements PdfTool {
             } catch (IOException e) {
                 results.add(PdfFiles.failed(input, "Couldn't open it — it " + PdfFiles.problem(e)));
             }
+            progress.file(i, 1, fileStatus(results.subList(resultsBefore, results.size())));
         }
         progress.update(1, "Done");
         return results;
+    }
+
+    /** Short status for this file's card on the progress screen. */
+    private static String fileStatus(List<FileResult> forThisFile) {
+        if (forThisFile.isEmpty()) return "Stopped";
+        FileResult first = forThisFile.get(0);
+        return first.getStatus() == FileResult.Status.FAILED ? "Couldn't finish" : "Done";
     }
 }

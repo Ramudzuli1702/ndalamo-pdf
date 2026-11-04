@@ -26,8 +26,8 @@ public final class Tools {
             new RemovePagesTool(),
             soon("workspace", "Page workspace", "Reorder, rotate, remove, crop", "Organize"),
 
-            soon("compress", "Compress PDF", "Smaller files, same pages", "Optimize"),
-            soon("compress-to-size", "Compress to size", "e.g. under 2 MB for uploads", "Optimize"),
+            new CompressTool(),
+            new CompressTool(true),    // same tool, starting with "Target size" chosen
             soon("repair", "Repair PDF", "Fix damaged files", "Optimize"),
             soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
 

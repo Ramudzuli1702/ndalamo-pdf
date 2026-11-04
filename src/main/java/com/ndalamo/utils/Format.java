@@ -1,5 +1,6 @@
 package com.ndalamo.utils;
 
+import java.math.BigDecimal;
 import java.util.Locale;
 
 /** Turns numbers into the short text the screens show, e.g. "4.1 MB" or "56% smaller". */
@@ -13,6 +14,11 @@ public final class Format {
         if (bytes < 1024 * 1024) return Math.round(bytes / 1024.0) + " KB";
         if (bytes < 1024L * 1024 * 1024) return String.format(Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024));
         return String.format(Locale.ROOT, "%.1f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+
+    /** A size the user typed in MB, shown back the way they'd say it: 2 → "2 MB", 0.3 → "0.3 MB". */
+    public static String megabytes(double mb) {
+        return BigDecimal.valueOf(mb).stripTrailingZeros().toPlainString() + " MB";
     }
 
     /** "4.1 → 1.8 MB" when both are in MB, otherwise "820 KB → 1.2 MB". */

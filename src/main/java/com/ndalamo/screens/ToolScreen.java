@@ -12,6 +12,7 @@ import com.ndalamo.utils.Theme;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
@@ -435,15 +436,25 @@ public class ToolScreen extends BorderPane {
             case CHOICE -> {
                 ToggleGroup group = new ToggleGroup();
                 box.getChildren().add(label);
-                for (String choice : field.getChoices()) {
-                    RadioButton radio = new RadioButton(choice);
-                    radio.setToggleGroup(group);
-                    radio.setUserData(choice);
-                    radio.setSelected(choice.equals(field.getDefaultValue()));
-                    box.getChildren().add(radio);
+                List<HBox> cards = new ArrayList<>();
+                for (int c = 0; c < field.getChoices().size(); c++) {
+                    String choice = field.getChoices().get(c);
+                    HBox card = choiceCard(choice, c < field.getChoiceDescriptions().size()
+                            ? field.getChoiceDescriptions().get(c) : null, group);
+                    cards.add(card);
+                    box.getChildren().add(card);
                 }
                 choiceGroups.put(field.getId(), group);
-                group.selectedToggleProperty().addListener((obs, old, now) -> updatePreview());
+                // Outline the chosen card, like the mockup's options panel.
+                Runnable outline = () -> cards.forEach(card -> card.getStyleClass().remove("choice-selected"));
+                group.selectedToggleProperty().addListener((obs, old, now) -> {
+                    outline.run();
+                    if (now != null) ((Node) now).getParent().getStyleClass().add("choice-selected");
+                    updatePreview();
+                });
+                group.getToggles().stream()
+                        .filter(t -> t.getUserData().equals(field.getDefaultValue()))
+                        .findFirst().ifPresent(t -> t.setSelected(true));
                 optionValues.put(field.getId(),
                         () -> group.getSelectedToggle() == null ? null : group.getSelectedToggle().getUserData());
             }
@@ -486,6 +497,30 @@ public class ToolScreen extends BorderPane {
             }
         }
         return box;
+    }
+
+    /** One choice as a bordered card: a radio button, the choice and (optionally) a line explaining it. */
+    private static HBox choiceCard(String choice, String description, ToggleGroup group) {
+        RadioButton radio = new RadioButton();
+        radio.setToggleGroup(group);
+        radio.setUserData(choice);
+        radio.setAccessibleText(choice);
+        Label title = new Label(choice);
+        title.getStyleClass().add("file-name");
+        VBox text = new VBox(2, title);
+        if (description != null) {
+            Label line = new Label(description);
+            line.getStyleClass().add("file-meta");
+            line.setWrapText(true);
+            text.getChildren().add(line);
+        }
+        text.setMinWidth(0);
+        HBox.setHgrow(text, Priority.ALWAYS);
+        HBox card = new HBox(10, radio, text);
+        card.getStyleClass().add("choice-card");
+        card.setAlignment(description == null ? Pos.CENTER_LEFT : Pos.TOP_LEFT);
+        card.setOnMouseClicked(e -> radio.setSelected(true));    // the whole card is clickable
+        return card;
     }
 
     private static Double parseNumber(String text) {

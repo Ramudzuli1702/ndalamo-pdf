@@ -17,6 +17,7 @@ public class OptionField {
     private final Object defaultValue;
     private boolean advanced;           // shown under "Advanced options"
     private String hint;                // example text shown in an empty box, e.g. "e.g. 1-3, 5"
+    private List<String> choiceDescriptions = List.of();   // one line under each choice, optional
     private String shownWhenId;         // only show this field when another (choice) field...
     private String shownWhenValue;      // ...has this value
 
@@ -44,6 +45,12 @@ public class OptionField {
         return this;
     }
 
+    /** A short line under each choice, in the same order, e.g. "Good quality, good size". */
+    public OptionField describe(String... descriptions) {
+        this.choiceDescriptions = List.of(descriptions);
+        return this;
+    }
+
     /** Only shows this field while the choice field {@code choiceId} is set to {@code value}. */
     public OptionField shownWhen(String choiceId, String value) {
         this.shownWhenId = choiceId;
@@ -58,6 +65,7 @@ public class OptionField {
     public Object getDefaultValue() { return defaultValue; }
     public boolean isAdvanced() { return advanced; }
     public String getHint() { return hint; }
+    public List<String> getChoiceDescriptions() { return choiceDescriptions; }
     public String getShownWhenId() { return shownWhenId; }
     public String getShownWhenValue() { return shownWhenValue; }
 }

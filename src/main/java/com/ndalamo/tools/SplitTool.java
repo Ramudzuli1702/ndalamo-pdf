@@ -123,6 +123,8 @@ public class SplitTool implements PdfTool {
             if (progress.isCancelled()) break;
             Path input = inputs.get(i);
             progress.update((double) i / inputs.size(), "Splitting " + input.getFileName());
+            progress.file(i, 0.1, "Working");
+            int resultsBefore = results.size();
             try (PDDocument doc = PdfFiles.open(input)) {
                 List<Range> parts = parts(doc, options);
                 results.addAll(saveParts(doc, input, parts, saveTo, progress));
@@ -131,6 +133,7 @@ public class SplitTool implements PdfTool {
             } catch (IOException e) {
                 results.add(PdfFiles.failed(input, "Couldn't open it — it " + PdfFiles.problem(e)));
             }
+            progress.file(i, 1, fileStatus(results.subList(resultsBefore, results.size())));
         }
         progress.update(1, "Done");
         return results;
@@ -229,5 +232,12 @@ public class SplitTool implements PdfTool {
         try (var contents = Files.list(folder)) {
             if (contents.findAny().isEmpty()) Files.delete(folder);
         }
+    }
+
+    /** Short status for this file's card on the progress screen. */
+    private static String fileStatus(List<FileResult> forThisFile) {
+        if (forThisFile.isEmpty()) return "Stopped";
+        FileResult first = forThisFile.get(0);
+        return first.getStatus() == FileResult.Status.FAILED ? "Couldn't finish" : "Done";
     }
 }

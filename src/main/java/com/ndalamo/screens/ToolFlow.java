@@ -62,13 +62,22 @@ public class ToolFlow {
                     new Toast.Action("Cancel", cancel));
             window.toast(backgroundToast[0]);
         };
-        progressScreen[0] = new ProgressScreen(tool.name(), tool.workingLabel(files.size()), cancel, runInBackground);
+        progressScreen[0] = new ProgressScreen(tool.name(), tool.workingLabel(files.size()),
+                tool.oneOutput() ? List.of() : files, cancel, runInBackground);
         window.show(progressScreen[0]);
 
         job[0] = jobs.start(tool, files, options, target,
-                (fraction, status) -> {
-                    progressScreen[0].update(fraction, status);
-                    if (backgroundToast[0] != null) backgroundToast[0].setProgress(fraction, status);
+                new Progress.Listener() {
+                    @Override
+                    public void overall(double fraction, String status) {
+                        progressScreen[0].update(fraction, status);
+                        if (backgroundToast[0] != null) backgroundToast[0].setProgress(fraction, status);
+                    }
+
+                    @Override
+                    public void file(int index, double fraction, String status) {
+                        progressScreen[0].updateFile(index, fraction, status);
+                    }
                 },
                 results -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();

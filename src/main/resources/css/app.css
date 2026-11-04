@@ -313,3 +313,31 @@
 .page-caption { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
 .page-drop-target .page-frame { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
 .cut-marker { -fx-background-color: #2F5BEA; -fx-background-radius: 2; }
+
+/* ── Choice cards and progress cards (chunk 5) ──────────────────────── */
+
+.choice-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 12;
+    -fx-cursor: hand;
+}
+.choice-card:hover { -fx-border-color: #D5D8DF; }
+.choice-card.choice-selected {
+    -fx-border-color: #2F5BEA;
+    -fx-border-width: 2;
+    -fx-padding: 11;
+    -fx-background-color: #F5F7FE;
+}
+
+.progress-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14 16;
+}
+.file-status { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 13px; }
+.small-bar.bar-done > .bar { -fx-background-color: #2E8B57; }

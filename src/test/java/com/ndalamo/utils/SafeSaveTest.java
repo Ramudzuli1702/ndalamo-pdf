@@ -56,6 +56,8 @@ class SafeSaveTest {
         assertEquals("4.1 → 1.8 MB", Format.sizeChange(4_300_000, 1_887_437));
         assertEquals("56% smaller", Format.saving(100, 44));
         assertEquals("", Format.saving(100, 120));
+        assertEquals("2 MB", Format.megabytes(2.0));
+        assertEquals("0.25 MB", Format.megabytes(0.25));
     }
 
     private static long count(Path folder) throws IOException {
