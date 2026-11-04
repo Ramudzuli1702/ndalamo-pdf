@@ -19,6 +19,9 @@ import javafx.scene.layout.StackPane;
  */
 public class Header extends HBox {
 
+    /** Sidebar (260) + content padding (32) − header padding (24) − spacing (16). See HomeScreen. */
+    private static final double BRAND_WIDTH = 252;
+
     private final TextField search = new TextField();
 
     public Header(Runnable onPipelines, Runnable onSettings) {
@@ -34,6 +37,9 @@ public class Header extends HBox {
         name.getStyleClass().add("brand-name");
         HBox brand = new HBox(10, tile, name);
         brand.setAlignment(Pos.CENTER_LEFT);
+        // Wide enough that the search box starts where the tool cards start below it
+        brand.setMinWidth(BRAND_WIDTH);
+        brand.setPrefWidth(BRAND_WIDTH);
 
         // Search box: grows with the window, up to 560 px like the mockup
         search.setPromptText("Search tools — try “compress” or “to Word”");

@@ -25,9 +25,29 @@ public final class Icons {
         return draw(size, color, "M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0z", "M20 20l-3.5-3.5");
     }
 
+    /** A cog with eight teeth. (The mockup's circle-with-rays looked like a light/dark mode switch.) */
     public static Region settings(double size, String color) {
-        return draw(size, color, "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
-                "M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1");
+        return draw(size, color, GEAR, "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z");
+    }
+
+    private static final String GEAR = gearOutline(8, 9.5, 7.2);
+
+    /** The outline of a cog centred in the 24×24 drawing: flat-topped teeth, slightly narrower at the tip. */
+    private static String gearOutline(int teeth, double outer, double inner) {
+        StringBuilder path = new StringBuilder();
+        double step = 2 * Math.PI / teeth;
+        double base = step * 0.30;          // half the tooth's width where it meets the wheel
+        double tip = step * 0.20;           // half the tooth's width at its end
+        for (int i = 0; i < teeth; i++) {
+            double middle = i * step;
+            double[][] corners = {{middle - base, inner}, {middle - tip, outer}, {middle + tip, outer}, {middle + base, inner}};
+            for (int c = 0; c < corners.length; c++) {
+                double x = 12 + corners[c][1] * Math.cos(corners[c][0]);
+                double y = 12 + corners[c][1] * Math.sin(corners[c][0]);
+                path.append(i == 0 && c == 0 ? "M" : "L").append(String.format(java.util.Locale.ROOT, "%.2f %.2f ", x, y));
+            }
+        }
+        return path.append("Z").toString();
     }
 
     public static Region upload(double size, String color) {
