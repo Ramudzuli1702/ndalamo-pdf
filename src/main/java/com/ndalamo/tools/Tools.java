@@ -38,14 +38,14 @@ public final class Tools {
             soon("pdf-to-jpg", "PDF to JPG", "Pages as images", "Convert"),
             soon("ocr", "OCR PDF", "Make scans searchable", "Convert"),
 
-            soon("page-numbers", "Page numbers", "Position, style, start number", "Edit & sign"),
-            soon("watermark", "Watermark", "Text or image", "Edit & sign"),
+            new PageNumbersTool(),
+            new WatermarkTool(),
             soon("sign", "Sign PDF", "Draw, type or upload", "Edit & sign"),
             soon("redact", "Redact PDF", "Black out sensitive info", "Edit & sign"),
             soon("fill-forms", "Fill forms", "Complete PDF forms", "Edit & sign"),
 
-            soon("protect", "Protect PDF", "Add a password", "Security & compare"),
-            soon("unlock", "Unlock PDF", "Remove a known password", "Security & compare"),
+            new ProtectTool(),
+            new UnlockTool(),
             soon("compare", "Compare PDF", "Spot differences", "Security & compare"));
 
     private Tools() {}

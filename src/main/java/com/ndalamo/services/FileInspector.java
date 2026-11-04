@@ -37,11 +37,33 @@ public class FileInspector {
 
         // Temp-file cache: a 500 MB scan shouldn't need 500 MB of memory just to count pages.
         try (PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
-            return new FileInfo(size, doc.getNumberOfPages(), false, false);
+            return new FileInfo(size, doc.getNumberOfPages(), false, false, doc.isEncrypted());
         } catch (InvalidPasswordException e) {
             return new FileInfo(size, 0, true, false);
         } catch (IOException e) {
             return new FileInfo(size, 0, false, true);
+        }
+    }
+
+    /**
+     * Checks a password typed in the password dialog, without changing anything.
+     * For a file that opens without a password but has restrictions, only its full
+     * ("owner") password counts, since that's what removing restrictions needs.
+     */
+    public boolean passwordWorks(Path file, String password) {
+        try (PDDocument doc = Loader.loadPDF(file.toFile(), password, IOUtils.createTempFileOnlyStreamCache())) {
+            if (opensWithoutPassword(file)) return doc.getCurrentAccessPermission().isOwnerPermission();
+            return true;     // it needed a password to open, and this one opened it
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static boolean opensWithoutPassword(Path file) {
+        try (PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 

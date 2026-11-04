@@ -2,6 +2,7 @@ package com.ndalamo.tools;
 
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.OptionField;
+import com.ndalamo.models.PageStamp;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.utils.Format;
@@ -30,11 +31,15 @@ public interface PdfTool {
         MERGE,    // all pages of the result, in order; drag to reorder
         ROTATE,   // each file's pages; click to choose which to turn
         REMOVE,   // each file's pages; click to mark for removal
-        SPLIT     // pages coloured by the new file they go into; click to start a new file
+        SPLIT,    // pages coloured by the new file they go into; click to start a new file
+        STAMP     // each file's pages with the page number or watermark drawn where it will go
     }
 
     /** Option key for the page order dragged into place in the preview (a List of PageRef). */
     String PAGE_ORDER = "pageOrder";
+
+    /** Option key for passwords typed in the password dialog (a Map of file to password). Never saved. */
+    String PASSWORDS = "passwords";
 
     /** Stable id used in saved pipelines, e.g. "compress". Never change it once released. */
     String id();
@@ -117,6 +122,16 @@ public interface PdfTool {
     /** SPLIT: which pages go into each new file, or null if that's only known when it runs. */
     default List<PageRanges.Range> previewParts(Map<String, Object> options, int pageCount) {
         return null;
+    }
+
+    /** STAMP: what gets drawn on this page and where, or null for nothing on this page. */
+    default PageStamp previewStamp(Map<String, Object> options, int page, int pageCount) {
+        return null;
+    }
+
+    /** True if the tool screen should ask for the password of each locked file before running (Unlock). */
+    default boolean needsPasswords() {
+        return false;
     }
 
     /** Extra line under "Save to" on the tool screen, e.g. where Split puts its parts. Null for none. */

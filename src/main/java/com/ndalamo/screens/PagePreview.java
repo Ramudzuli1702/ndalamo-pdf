@@ -2,6 +2,7 @@ package com.ndalamo.screens;
 
 import com.ndalamo.models.FileInfo;
 import com.ndalamo.models.PageRef;
+import com.ndalamo.models.PageStamp;
 import com.ndalamo.services.PageThumbnails;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.tools.PdfTool.Preview;
@@ -9,6 +10,7 @@ import com.ndalamo.utils.Icons;
 import com.ndalamo.utils.PageRanges;
 import com.ndalamo.utils.PageRanges.Range;
 import com.ndalamo.utils.Theme;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Hyperlink;
@@ -23,6 +25,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -121,6 +124,7 @@ public class PagePreview extends VBox {
             case ROTATE -> "Click pages to choose which ones to turn." + forEvery;
             case REMOVE -> "Click pages to mark them for removal." + forEvery;
             case SPLIT -> "Each colour is a new file. Click a page to start a new file there." + forEvery;
+            case STAMP -> "Shows where it will go. Change the options on the right to move it.";
             case NONE -> "";
         };
     }
@@ -210,10 +214,13 @@ public class PagePreview extends VBox {
                         : card(file, page, String.valueOf(page), null);
                 case REMOVE -> chosen.contains(page) ? removed(card(file, page, String.valueOf(page), null))
                         : card(file, page, String.valueOf(page), null);
+                case STAMP -> stampCard(file, page, pageCount);
                 default -> splitCard(file, page, part, parts);
             };
-            card.setOnMouseClicked(e -> clicked(page, pageCount, chosen, parts));
-            card.setStyle("-fx-cursor: hand;");
+            if (tool.preview() != Preview.STAMP) {
+                card.setOnMouseClicked(e -> clicked(page, pageCount, chosen, parts));
+                card.setStyle("-fx-cursor: hand;");
+            }
             grid.getChildren().add(card);
         }
         section.getChildren().add(grid);
@@ -317,6 +324,48 @@ public class PagePreview extends VBox {
             return card;
         }
         return card(file, page, page + " · file " + (part + 1), PART_TINTS[part % PART_TINTS.length]);
+    }
+
+    /** A page with its page number or watermark drawn on top, where the tool will put it. */
+    private VBox stampCard(Path file, int page, int pageCount) {
+        VBox card = card(file, page, String.valueOf(page), null);
+        PageStamp stamp = tool.previewStamp(options, page, pageCount);
+        if (stamp == null) return card;
+        StackPane frame = (StackPane) card.getChildren().get(0);
+
+        Node mark = stamp.tiled() ? tiledMarks(stamp) : stampLabel(stamp);
+        StackPane.setAlignment(mark, switch (stamp.vertical() + "-" + stamp.horizontal()) {
+            case "top-left" -> Pos.TOP_LEFT;
+            case "top-right" -> Pos.TOP_RIGHT;
+            case "top-centre" -> Pos.TOP_CENTER;
+            case "bottom-left" -> Pos.BOTTOM_LEFT;
+            case "bottom-right" -> Pos.BOTTOM_RIGHT;
+            case "bottom-centre" -> Pos.BOTTOM_CENTER;
+            default -> Pos.CENTER;
+        });
+        StackPane.setMargin(mark, new Insets(5));
+        frame.getChildren().add(mark);
+        frame.setClip(new Rectangle(PAGE_W, PAGE_H));    // keep tiled marks inside the page
+        return card;
+    }
+
+    private static Label stampLabel(PageStamp stamp) {
+        Label label = new Label(stamp.text());
+        // Same share of the page width as on the real page, but never too small to see.
+        double size = Math.max(6, stamp.size() * PAGE_W);
+        label.setStyle("-fx-font-family: \"" + Theme.FONT + "\"; -fx-font-weight: bold; -fx-font-size: " + size
+                + "px; -fx-text-fill: " + stamp.colour() + ";");
+        label.setOpacity(Math.max(0.25, stamp.opacity()));    // a touch stronger than real, so it reads at thumbnail size
+        label.setRotate(-stamp.angle());                     // JavaFX turns clockwise, PDF anticlockwise
+        label.setMinWidth(Region.USE_PREF_SIZE);
+        return label;
+    }
+
+    private static Node tiledMarks(PageStamp stamp) {
+        VBox rows = new VBox(14);
+        rows.setAlignment(Pos.CENTER);
+        for (int r = 0; r < 6; r++) rows.getChildren().add(new HBox(10, stampLabel(stamp), stampLabel(stamp)));
+        return rows;
     }
 
     private static StackPane badge(Node icon, String colour) {

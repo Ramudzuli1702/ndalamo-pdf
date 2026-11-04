@@ -56,6 +56,21 @@ final class TestFiles {
         return file;
     }
 
+    /** A PDF that opens without a password but doesn't allow copying text (owner password "owner-secret"). */
+    static Path restrictedPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        try (PDDocument doc = new PDDocument()) {
+            doc.addPage(new PDPage());
+            AccessPermission limits = new AccessPermission();
+            limits.setCanExtractContent(false);
+            StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-secret", "", limits);
+            policy.setEncryptionKeyLength(256);
+            doc.protect(policy);
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
     /** A small PNG picture, wider than tall. */
     static Path png(Path folder, String name) throws IOException {
         BufferedImage image = new BufferedImage(300, 200, BufferedImage.TYPE_INT_RGB);

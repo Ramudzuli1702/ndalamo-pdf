@@ -38,7 +38,9 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,6 +276,9 @@ public class ToolScreen extends BorderPane {
         if (fileInfo == null) return "Checking…";
         String size = Format.size(fileInfo.getSize());
         if (fileInfo.isPasswordProtected()) return "Needs a password · " + size;
+        if (fileInfo.isRestricted()) {
+            return "Has print/copy limits · " + Format.count(fileInfo.getPages(), "page", "pages") + " · " + size;
+        }
         if (fileInfo.isDamaged()) return "Can't be read — it may be damaged · " + size;
         if (fileInfo.getPages() > 0) return Format.count(fileInfo.getPages(), "page", "pages") + " · " + size;
         return size;
@@ -367,12 +372,48 @@ public class ToolScreen extends BorderPane {
                 showProblem(optionProblem, true);
                 return;
             }
-            onRun.run(List.copyOf(files), options, saveTo);
+            if (!tool.needsPasswords()) {
+                onRun.run(List.copyOf(files), options, saveTo);
+                return;
+            }
+            // Unlock: ask for each locked file's password first, one dialog at a time.
+            List<Path> locked = files.stream().filter(f -> info.containsKey(f)
+                    && (info.get(f).isPasswordProtected() || info.get(f).isRestricted())).toList();
+            Map<Path, String> passwords = new LinkedHashMap<>();
+            List<Path> skipped = new ArrayList<>();
+            askPasswords(new ArrayDeque<>(locked), passwords, skipped, () -> {
+                List<Path> toRun = files.stream().filter(f -> !skipped.contains(f)).toList();
+                if (toRun.isEmpty()) {
+                    showProblem("Every file was skipped, so there's nothing to unlock.", true);
+                    return;
+                }
+                options.put(PdfTool.PASSWORDS, passwords);
+                onRun.run(toRun, options, saveTo);
+            });
         });
 
         runButton.setMinHeight(Region.USE_PREF_SIZE);
         panel.getChildren().addAll(scroll, problem, runButton);
         return panel;
+    }
+
+    /** Shows the password dialog for each file in turn, then carries on with {@code done}. */
+    private void askPasswords(Deque<Path> remaining, Map<Path, String> passwords, List<Path> skipped, Runnable done) {
+        Path file = remaining.poll();
+        if (file == null) {
+            done.run();
+            return;
+        }
+        boolean restrictedOnly = !info.get(file).isPasswordProtected();
+        window.showDialog(new PasswordDialog(window, file, restrictedOnly, inspector,
+                password -> {
+                    passwords.put(file, password);
+                    askPasswords(remaining, passwords, skipped, done);
+                },
+                () -> {
+                    skipped.add(file);
+                    askPasswords(remaining, passwords, skipped, done);
+                }));
     }
 
     /** "Advanced options" with a small arrow; the options fold out underneath when clicked. */
@@ -542,6 +583,7 @@ public class ToolScreen extends BorderPane {
                     if (file != null) {
                         picked[0] = file.toPath();
                         chosen.setText(file.getName());
+                        updatePreview();
                     }
                 });
                 optionValues.put(field.getId(), () -> picked[0]);

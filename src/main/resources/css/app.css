@@ -413,3 +413,5 @@
 .plain-scroll > .corner { -fx-background-color: transparent; }
 
 .save-text { -fx-font-size: 13px; -fx-fill: #5B616E; }
+
+.dialog-card .password-field.field-error { -fx-border-color: #B42318; -fx-border-width: 2; }
