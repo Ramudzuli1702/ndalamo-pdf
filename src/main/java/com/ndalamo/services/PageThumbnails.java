@@ -40,8 +40,10 @@ import java.util.function.Consumer;
  */
 public class PageThumbnails {
 
-    /** Pages longer than this many pixels on their long side are scaled down. */
-    private static final int LONG_SIDE = 200;
+    /** Long side in pixels for the small previews on tool screens. */
+    public static final int SMALL = 200;
+    /** Files longer than this get pictures at 60% size, so a 300-page scan doesn't fill a 4 GB laptop's memory. */
+    private static final int LONG_FILE = 150;
     /** Most pages drawn per file; a 900-page PDF shows its first 300. */
     public static final int MAX_PAGES = 300;
 
@@ -59,23 +61,35 @@ public class PageThumbnails {
     private final Map<String, Image> done = new HashMap<>();
     private final Map<String, List<Consumer<Image>>> waiting = new HashMap<>();
     private final Set<Path> started = new HashSet<>();
+    private final int longSide;
+
+    /** Pictures {@link #SMALL} pixels on their long side — enough for the tool screens' small previews. */
+    public PageThumbnails() {
+        this(SMALL);
+    }
+
+    /** @param longSide pixels on each picture's long side; bigger is sharper but uses more memory */
+    public PageThumbnails(int longSide) {
+        this.longSide = longSide;
+    }
 
     /** Starts drawing a file's pages in the background, unless that has already started. */
     public void start(Path file, int pageCount) {
         if (!started.add(file)) return;
         int pages = Math.min(pageCount, MAX_PAGES);
+        int side = pageCount > LONG_FILE ? (int) (longSide * 0.6) : longSide;
         DRAWER.execute(() -> {
             String ext = FileInspector.extension(file);
             boolean tiff = ext.equals("tif") || ext.equals("tiff");
             if (FileInspector.IMAGE_EXTENSIONS.contains(ext) || tiff) {
-                drawPictureFile(file, pages, tiff);
+                drawPictureFile(file, pages, tiff, side);
                 return;
             }
             try (PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
                 PDFRenderer renderer = new PDFRenderer(doc);
                 for (int i = 0; i < Math.min(pages, doc.getNumberOfPages()); i++) {
                     PDRectangle box = doc.getPage(i).getCropBox();
-                    float scale = LONG_SIDE / Math.max(box.getWidth(), box.getHeight());
+                    float scale = side / Math.max(box.getWidth(), box.getHeight());
                     Image image = toFxImage(renderer.renderImage(i, scale, ImageType.RGB));
                     int page = i + 1;
                     Platform.runLater(() -> deliver(file, page, image));
@@ -92,11 +106,11 @@ public class PageThumbnails {
      * note in phone photos, so those go through Java's image reader and are turned
      * the way the phone meant; everything else uses JavaFX's quicker loader.
      */
-    private void drawPictureFile(Path file, int pages, boolean tiff) {
+    private void drawPictureFile(Path file, int pages, boolean tiff, int side) {
         try {
             int orientation = tiff ? 1 : ExifOrientation.read(file);
             if (!tiff && orientation == 1) {
-                Image image = new Image(file.toUri().toString(), LONG_SIDE, LONG_SIDE, true, true, false);
+                Image image = new Image(file.toUri().toString(), side, side, true, true, false);
                 Platform.runLater(() -> deliver(file, 1, image));
                 return;
             }
@@ -108,7 +122,7 @@ public class PageThumbnails {
                     reader.setInput(in);
                     for (int i = 0; i < pages; i++) {
                         BufferedImage frame = ExifOrientation.apply(reader.read(i), orientation);
-                        Image image = toFxImage(smaller(frame));
+                        Image image = toFxImage(smaller(frame, side));
                         int page = i + 1;
                         Platform.runLater(() -> deliver(file, page, image));
                     }
@@ -121,9 +135,9 @@ public class PageThumbnails {
         }
     }
 
-    /** A copy no longer than LONG_SIDE on its long side, so big scans don't fill memory. */
-    private static BufferedImage smaller(BufferedImage picture) {
-        double scale = (double) LONG_SIDE / Math.max(picture.getWidth(), picture.getHeight());
+    /** A copy no longer than {@code side} on its long side, so big scans don't fill memory. */
+    private static BufferedImage smaller(BufferedImage picture, int side) {
+        double scale = (double) side / Math.max(picture.getWidth(), picture.getHeight());
         if (scale >= 1) return picture;
         int w = Math.max(1, (int) (picture.getWidth() * scale)), h = Math.max(1, (int) (picture.getHeight() * scale));
         BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);

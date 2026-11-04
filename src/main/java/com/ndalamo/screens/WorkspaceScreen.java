@@ -38,6 +38,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Screen;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,7 +68,7 @@ import java.util.stream.Collectors;
  */
 public class WorkspaceScreen extends BorderPane {
 
-    private static final double[] ZOOM_WIDTHS = {100, 125, 150, 180, 210};
+    private static final double[] ZOOM_WIDTHS = {100, 130, 160, 200, 250, 310};
     private static final double PAGE_RATIO = 297.0 / 210;    // A4 shape for every card
 
     private final MainWindow window;
@@ -76,13 +77,21 @@ public class WorkspaceScreen extends BorderPane {
     private final SaveTo saveTo;
     private final Runnable onHome;
     private final WorkspaceService service = new WorkspaceService();
-    private final PageThumbnails thumbnails = new PageThumbnails();
+    // Pages are drawn as sharp as the biggest zoom needs on this screen (Windows display scaling
+    // included), so zooming in shrinks a sharp picture rather than stretching a small one.
+    private final PageThumbnails thumbnails = new PageThumbnails(sharpEnoughForBiggestZoom());
 
     private final List<WorkspaceDocument> docs = new ArrayList<>();
     private WorkspaceDocument current;
     private final Set<Long> selected = new LinkedHashSet<>();
     private long anchor = -1;                 // where a Shift+click range starts
     private double pageWidth = ZOOM_WIDTHS[2];
+
+    private static int sharpEnoughForBiggestZoom() {
+        double screenScale = Screen.getPrimary().getOutputScaleX();       // 1.25 or 1.5 on most laptops
+        double biggestPage = ZOOM_WIDTHS[ZOOM_WIDTHS.length - 1] * PAGE_RATIO;
+        return (int) Math.min(720, Math.ceil(biggestPage * screenScale));
+    }
 
     private final HBox tabs = new HBox(4);
     private final Button undo = new Button("Undo");
