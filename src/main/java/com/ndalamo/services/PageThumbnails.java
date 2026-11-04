@@ -10,9 +10,13 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import com.ndalamo.utils.ExifOrientation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -61,9 +65,10 @@ public class PageThumbnails {
         if (!started.add(file)) return;
         int pages = Math.min(pageCount, MAX_PAGES);
         DRAWER.execute(() -> {
-            if (FileInspector.IMAGE_EXTENSIONS.contains(FileInspector.extension(file))) {
-                Image image = new Image(file.toUri().toString(), LONG_SIDE, LONG_SIDE, true, true, false);
-                Platform.runLater(() -> deliver(file, 1, image));
+            String ext = FileInspector.extension(file);
+            boolean tiff = ext.equals("tif") || ext.equals("tiff");
+            if (FileInspector.IMAGE_EXTENSIONS.contains(ext) || tiff) {
+                drawPictureFile(file, pages, tiff);
                 return;
             }
             try (PDDocument doc = Loader.loadPDF(file.toFile(), IOUtils.createTempFileOnlyStreamCache())) {
@@ -80,6 +85,53 @@ public class PageThumbnails {
                 log.debug("No thumbnails for {}", file, e);
             }
         });
+    }
+
+    /**
+     * Thumbnails for picture files. JavaFX can't open TIFFs and ignores the "turn me"
+     * note in phone photos, so those go through Java's image reader and are turned
+     * the way the phone meant; everything else uses JavaFX's quicker loader.
+     */
+    private void drawPictureFile(Path file, int pages, boolean tiff) {
+        try {
+            int orientation = tiff ? 1 : ExifOrientation.read(file);
+            if (!tiff && orientation == 1) {
+                Image image = new Image(file.toUri().toString(), LONG_SIDE, LONG_SIDE, true, true, false);
+                Platform.runLater(() -> deliver(file, 1, image));
+                return;
+            }
+            try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
+                var readers = ImageIO.getImageReaders(in);
+                if (!readers.hasNext()) return;
+                ImageReader reader = readers.next();
+                try {
+                    reader.setInput(in);
+                    for (int i = 0; i < pages; i++) {
+                        BufferedImage frame = ExifOrientation.apply(reader.read(i), orientation);
+                        Image image = toFxImage(smaller(frame));
+                        int page = i + 1;
+                        Platform.runLater(() -> deliver(file, page, image));
+                    }
+                } finally {
+                    reader.dispose();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("No thumbnail for {}", file, e);
+        }
+    }
+
+    /** A copy no longer than LONG_SIDE on its long side, so big scans don't fill memory. */
+    private static BufferedImage smaller(BufferedImage picture) {
+        double scale = (double) LONG_SIDE / Math.max(picture.getWidth(), picture.getHeight());
+        if (scale >= 1) return picture;
+        int w = Math.max(1, (int) (picture.getWidth() * scale)), h = Math.max(1, (int) (picture.getHeight() * scale));
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        var g = out.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(picture, 0, 0, w, h, null);
+        g.dispose();
+        return out;
     }
 
     /** Calls back with the page's picture now if it's drawn, otherwise as soon as it is. */

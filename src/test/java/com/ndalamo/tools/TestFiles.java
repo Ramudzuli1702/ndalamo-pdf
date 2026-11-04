@@ -114,6 +114,61 @@ final class TestFiles {
         return file;
     }
 
+    /**
+     * A 300×200 JPEG (left half orange, right half blue) with an EXIF note saying
+     * "turn me {@code orientation}" — how phones save photos taken upright.
+     */
+    static Path jpegWithOrientation(Path folder, String name, int orientation) throws IOException {
+        BufferedImage image = new BufferedImage(300, 200, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.ORANGE);
+        g.fillRect(0, 0, 150, 200);
+        g.setColor(Color.BLUE);
+        g.fillRect(150, 0, 150, 200);
+        g.dispose();
+        java.io.ByteArrayOutputStream plain = new java.io.ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", plain);
+        byte[] jpeg = plain.toByteArray();
+
+        // APP1 "Exif" block: big-endian TIFF header, one IFD entry, tag 0x0112 (orientation), type SHORT.
+        byte[] exif = {
+                (byte) 0xFF, (byte) 0xE1, 0, 34,                       // APP1, length 34
+                'E', 'x', 'i', 'f', 0, 0,
+                'M', 'M', 0, 42, 0, 0, 0, 8,                          // "MM", 42, first IFD at 8
+                0, 1,                                                 // one entry
+                0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, (byte) orientation, 0, 0,
+                0, 0, 0, 0};                                          // no next IFD
+        byte[] withExif = new byte[jpeg.length + exif.length];
+        System.arraycopy(jpeg, 0, withExif, 0, 2);                    // SOI
+        System.arraycopy(exif, 0, withExif, 2, exif.length);
+        System.arraycopy(jpeg, 2, withExif, 2 + exif.length, jpeg.length - 2);
+        return Files.write(folder.resolve(name), withExif);
+    }
+
+    /** A TIFF scan with several pages. */
+    static Path multiPageTiff(Path folder, String name, int pages) throws IOException {
+        Path file = folder.resolve(name);
+        javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("tiff").next();
+        try (javax.imageio.stream.ImageOutputStream out = ImageIO.createImageOutputStream(file.toFile())) {
+            writer.setOutput(out);
+            writer.prepareWriteSequence(null);
+            for (int p = 0; p < pages; p++) {
+                BufferedImage page = new BufferedImage(170, 240, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g = page.createGraphics();
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, 170, 240);
+                g.setColor(Color.BLACK);
+                g.drawString("Scan page " + (p + 1), 20, 40);
+                g.dispose();
+                writer.writeToSequence(new javax.imageio.IIOImage(page, null, null), null);
+            }
+            writer.endWriteSequence();
+        } finally {
+            writer.dispose();
+        }
+        return file;
+    }
+
     static int pageCount(Path pdf) throws IOException {
         try (PDDocument doc = Loader.loadPDF(pdf.toFile())) {
             return doc.getNumberOfPages();

@@ -440,7 +440,7 @@ public class ToolScreen extends BorderPane {
         heading.getStyleClass().add("small-heading");
 
         saveToText.getStyleClass().add("save-text");
-        Text pattern = new Text(saveTo.describeName(tool.outputSuffix(), "pdf"));
+        Text pattern = new Text(saveTo.describeName(tool.outputSuffix(), tool.outputExtension()));
         pattern.getStyleClass().addAll("mono-text");
         Text separator = new Text(" · ");
         separator.getStyleClass().add("save-text");

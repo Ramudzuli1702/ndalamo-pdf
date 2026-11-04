@@ -6,6 +6,9 @@ import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +36,7 @@ public class FileInspector {
 
         String ext = extension(file);
         if (IMAGE_EXTENSIONS.contains(ext)) return new FileInfo(size, 1, false, false);
+        if (ext.equals("tif") || ext.equals("tiff")) return new FileInfo(size, tiffPages(file), false, false);
         if (!ext.equals("pdf")) return new FileInfo(size, 0, false, false);
 
         // Temp-file cache: a 500 MB scan shouldn't need 500 MB of memory just to count pages.
@@ -64,6 +68,24 @@ public class FileInspector {
             return true;
         } catch (IOException e) {
             return false;
+        }
+    }
+
+    /** How many pages a TIFF scan holds; 0 if it can't be read. */
+    private static int tiffPages(Path file) {
+        try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
+            if (in == null) return 0;
+            var readers = ImageIO.getImageReaders(in);
+            if (!readers.hasNext()) return 0;
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(in);
+                return reader.getNumImages(true);
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            return 0;
         }
     }
 

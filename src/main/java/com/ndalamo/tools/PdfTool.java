@@ -30,6 +30,7 @@ public interface PdfTool {
         NONE,     // no page preview
         MERGE,    // all pages of the result, in order; drag to reorder
         ROTATE,   // each file's pages; click to choose which to turn
+        PICK,     // each file's pages; click to choose which to use (none chosen = all)
         REMOVE,   // each file's pages; click to mark for removal
         SPLIT,    // pages coloured by the new file they go into; click to start a new file
         STAMP     // each file's pages with the page number or watermark drawn where it will go
@@ -91,6 +92,11 @@ public interface PdfTool {
     /** True if the tool makes one output from all inputs (Merge), false if one per input. */
     default boolean oneOutput() {
         return false;
+    }
+
+    /** The kind of file the tool makes, e.g. "pdf" or "jpg" — shown in the "Save to" line. */
+    default String outputExtension() {
+        return "pdf";
     }
 
     /** The word for {tool} in output names, e.g. "compressed". */

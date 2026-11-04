@@ -11,10 +11,6 @@ import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +24,7 @@ import java.util.Set;
 
 /**
  * Merge PDF: joins files into one PDF in the order the user arranged them.
- * Images (JPG, PNG, BMP, GIF) are added as A4 pages, scaled to fit.
+ * Pictures (JPG, PNG, BMP, GIF, TIFF) are added as A4 pages, scaled to fit.
  *
  * A file that can't be read (damaged, or needs a password) is skipped and named
  * in the result note, so one bad file doesn't spoil the rest. The originals are
@@ -45,7 +41,7 @@ public class MergeTool implements PdfTool {
     @Override
     public Set<String> fileTypes() {
         Set<String> types = new HashSet<>(FileInspector.IMAGE_EXTENSIONS);
-        types.add("pdf");
+        types.addAll(Set.of("pdf", "tif", "tiff"));
         return types;
     }
 
@@ -89,10 +85,14 @@ public class MergeTool implements PdfTool {
                 String name = input.getFileName().toString();
                 progress.update((double) i / inputs.size(), "Adding " + name);
                 try {
-                    PDDocument source = isImage(input) ? imageAsPage(input) : PdfFiles.open(input);
-                    sources.add(source);
                     firstPageOf.put(input, merged.getNumberOfPages());
-                    merger.appendDocument(merged, source);
+                    if (isImage(input)) {
+                        ImagePages.addTo(merged, input, ImagePages.FILL_A4);    // phone photos the right way up, TIFFs page by page
+                    } else {
+                        PDDocument source = PdfFiles.open(input);
+                        sources.add(source);
+                        merger.appendDocument(merged, source);
+                    }
                 } catch (IOException e) {
                     skipped.add(name + " (" + PdfFiles.problem(e) + ")");
                 }
@@ -108,7 +108,7 @@ public class MergeTool implements PdfTool {
 
             @SuppressWarnings("unchecked")
             List<PageRef> order = (List<PageRef>) options.get(PAGE_ORDER);
-            if (order != null) reorder(merged, order, firstPageOf);
+            if (order != null) PdfFiles.reorderPages(merged, order, firstPageOf);
 
             progress.update(0.95, "Saving the merged PDF");
             Path output = saveTo.outputFor(first, outputSuffix(), "pdf", pages);
@@ -125,50 +125,8 @@ public class MergeTool implements PdfTool {
         }
     }
 
-    /**
-     * Puts the merged pages in the order dragged into place in the preview. The files
-     * are merged normally first (which keeps links and bookmarks working), then the
-     * finished pages are rearranged. Pages of skipped files are simply left out.
-     */
-    private static void reorder(PDDocument merged, List<PageRef> order, Map<Path, Integer> firstPageOf) {
-        List<PDPage> current = new ArrayList<>();
-        merged.getPages().forEach(current::add);
-        List<PDPage> wanted = new ArrayList<>();
-        for (PageRef ref : order) {
-            Integer start = firstPageOf.get(ref.file());
-            if (start != null && start + ref.page() - 1 < current.size()) wanted.add(current.get(start + ref.page() - 1));
-        }
-        for (PDPage page : current) {
-            if (!wanted.contains(page)) wanted.add(page);    // anything the order didn't mention stays, at the end
-        }
-        for (PDPage page : current) merged.getPages().remove(page);
-        for (PDPage page : wanted) merged.getPages().add(page);
-    }
-
     private static boolean isImage(Path file) {
-        return FileInspector.IMAGE_EXTENSIONS.contains(FileInspector.extension(file));
-    }
-
-    /** One A4 page with the image centred and scaled to fit (landscape for wide images). */
-    private static PDDocument imageAsPage(Path file) throws IOException {
-        PDDocument doc = new PDDocument();
-        try {
-            PDImageXObject image = PDImageXObject.createFromFileByContent(file.toFile(), doc);
-            boolean wide = image.getWidth() > image.getHeight();
-            PDRectangle a4 = wide ? new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth()) : PDRectangle.A4;
-            PDPage page = new PDPage(a4);
-            doc.addPage(page);
-
-            float scale = Math.min(a4.getWidth() / image.getWidth(), a4.getHeight() / image.getHeight());
-            float w = image.getWidth() * scale;
-            float h = image.getHeight() * scale;
-            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
-                content.drawImage(image, (a4.getWidth() - w) / 2, (a4.getHeight() - h) / 2, w, h);
-            }
-            return doc;
-        } catch (IOException | RuntimeException e) {
-            doc.close();
-            throw e instanceof IOException io ? io : new IOException(e);
-        }
+        String ext = FileInspector.extension(file);
+        return FileInspector.IMAGE_EXTENSIONS.contains(ext) || ext.equals("tif") || ext.equals("tiff");
     }
 }

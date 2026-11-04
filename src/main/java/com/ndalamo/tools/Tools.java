@@ -34,8 +34,8 @@ public final class Tools {
             soon("pdf-to-word", "PDF to Word", "Editable .docx", "Convert"),
             soon("pdf-to-excel", "PDF to Excel", "Tables to .xlsx", "Convert"),
             soon("office-to-pdf", "Office to PDF", "Word, Excel, PowerPoint", "Convert"),
-            soon("image-to-pdf", "Image to PDF", "JPG, PNG, scans", "Convert"),
-            soon("pdf-to-jpg", "PDF to JPG", "Pages as images", "Convert"),
+            new ImageToPdfTool(),
+            new PdfToJpgTool(),
             soon("ocr", "OCR PDF", "Make scans searchable", "Convert"),
 
             new PageNumbersTool(),

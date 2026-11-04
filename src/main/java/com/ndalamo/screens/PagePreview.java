@@ -120,8 +120,9 @@ public class PagePreview extends VBox {
     private String hint() {
         String forEvery = files.size() > 1 ? " Your choices apply to every file." : "";
         return switch (tool.preview()) {
-            case MERGE -> "The merged PDF, page by page. Drag pages to change their order.";
+            case MERGE -> "The finished PDF, page by page. Drag pages to change their order.";
             case ROTATE -> "Click pages to choose which ones to turn." + forEvery;
+            case PICK -> "Click pages to choose which to save. None chosen means every page." + forEvery;
             case REMOVE -> "Click pages to mark them for removal." + forEvery;
             case SPLIT -> "Each colour is a new file. Click a page to start a new file there." + forEvery;
             case STAMP -> "Shows where it will go. Change the options on the right to move it.";
@@ -210,7 +211,7 @@ public class PagePreview extends VBox {
             if (parts != null && part > 0 && parts.get(part).from() == page) grid.getChildren().add(cutMarker());
 
             VBox card = switch (tool.preview()) {
-                case ROTATE -> chosen.contains(page) ? rotated(card(file, page, String.valueOf(page), null), turn)
+                case ROTATE, PICK -> chosen.contains(page) ? rotated(card(file, page, String.valueOf(page), null), turn)
                         : card(file, page, String.valueOf(page), null);
                 case REMOVE -> chosen.contains(page) ? removed(card(file, page, String.valueOf(page), null))
                         : card(file, page, String.valueOf(page), null);

@@ -1,6 +1,7 @@
 package com.ndalamo.screens;
 
 import com.ndalamo.models.FileResult;
+import com.ndalamo.services.FileInspector;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.tools.Tools;
 import com.ndalamo.utils.FileActions;
@@ -22,6 +23,7 @@ import javafx.scene.layout.VBox;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.BiConsumer;
 
 /**
@@ -50,7 +52,7 @@ public class ResultScreen extends BorderPane {
         boolean anyPartial = results.stream().anyMatch(r -> r.getStatus() == FileResult.Status.PARTIAL);
 
         VBox content = new VBox(22, headline(tool, results, outputs, inputCount, anyPartial), resultList(results));
-        List<PdfTool> next = nextTools(tool, outputs.size());
+        List<PdfTool> next = nextTools(tool, outputs);
         if (!next.isEmpty()) content.getChildren().add(continueSection(next, outputs, onContinue));
         // "Save as pipeline" banner arrives with pipelines (chunk 16).
 
@@ -80,7 +82,9 @@ public class ResultScreen extends BorderPane {
             subtitle = "Nothing was saved. Your original files were not changed.";
         } else if (outputs.size() != inputCount) {
             // Merge (3 → 1) and Split (1 → 6): sizes before/after don't compare, so count files instead.
-            subtitle = Format.count(inputCount, "file", "files") + " → " + Format.count(outputs.size(), "PDF", "PDFs")
+            // Name the kind of file made: "3 JPGs", "1 PDF", "1 ZIP".
+            String kind = FileInspector.extension(outputs.get(0)).toUpperCase(Locale.ROOT);
+            subtitle = Format.count(inputCount, "file", "files") + " → " + Format.count(outputs.size(), kind, kind + "s")
                     + " · " + Format.size(after);
         } else {
             String saving = Format.saving(before, after);
@@ -145,10 +149,15 @@ public class ResultScreen extends BorderPane {
         return list;
     }
 
-    /** Built tools that can take these outputs next (e.g. Merge needs at least two). */
-    private static List<PdfTool> nextTools(PdfTool current, int outputCount) {
+    /**
+     * Built tools that can take these outputs next: after PDF to JPG that's Image to PDF,
+     * after Compress it's the PDF tools. Merge needs at least two files, and so on.
+     */
+    private static List<PdfTool> nextTools(PdfTool current, List<Path> outputs) {
+        if (outputs.isEmpty()) return List.of();
+        String type = FileInspector.extension(outputs.get(0));
         return Tools.all().stream()
-                .filter(t -> t.isReady() && t != current && t.fileTypes().contains("pdf") && t.minFiles() <= outputCount)
+                .filter(t -> t.isReady() && t != current && t.fileTypes().contains(type) && t.minFiles() <= outputs.size())
                 .toList();
     }
 
