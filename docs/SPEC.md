@@ -443,7 +443,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 
 | Chunk | Status | Notes |
 |---|---|---|
-| 1 Project skeleton | Not started | |
+| 1 Project skeleton | Done 2026-11-04 | Single project (decision 003). Window opens with the header and logo; settings saved with Gson; JobService runs tools in the background with progress and cancel; OutputNames never picks the original file. 19 tests. |
 | 2 Home & navigation | Not started | |
 | 3 Tool flow + Merge | Not started | |
 | … | | |
