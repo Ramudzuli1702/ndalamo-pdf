@@ -1,6 +1,7 @@
 package com.ndalamo.utils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,6 +69,22 @@ public final class PageRanges {
             ranges.add(new Range(from, to));
         }
         return ranges;
+    }
+
+    /** Writes pages back as text people read, e.g. [1, 2, 3, 5] becomes "1-3, 5". */
+    public static String format(Collection<Integer> pages) {
+        List<Integer> sorted = pages.stream().distinct().sorted().toList();
+        StringBuilder text = new StringBuilder();
+        int i = 0;
+        while (i < sorted.size()) {
+            int from = sorted.get(i);
+            int to = from;
+            while (i + 1 < sorted.size() && sorted.get(i + 1) == to + 1) to = sorted.get(++i);
+            if (!text.isEmpty()) text.append(", ");
+            text.append(from == to ? String.valueOf(from) : from + "-" + to);
+            i++;
+        }
+        return text.toString();
     }
 
     /** Every page number the ranges cover, each once, in page order. */

@@ -4,6 +4,7 @@ import com.ndalamo.models.FileInfo;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.services.FileInspector;
+import com.ndalamo.services.PageThumbnails;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.utils.Format;
 import com.ndalamo.utils.Icons;
@@ -21,12 +22,14 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -62,6 +65,10 @@ public class ToolScreen extends BorderPane {
     private final Map<Path, FileInfo> info = new ConcurrentHashMap<>();
     private final Map<String, Supplier<Object>> optionValues = new LinkedHashMap<>();
     private final Map<String, ToggleGroup> choiceGroups = new LinkedHashMap<>();
+    private final Map<String, TextField> textBoxes = new LinkedHashMap<>();
+    private final Map<String, OptionField> fieldsById = new LinkedHashMap<>();
+    private final PageThumbnails thumbnails = new PageThumbnails();
+    private final PagePreview preview;
     private SaveTo saveTo;
 
     private final Label summary = new Label();
@@ -78,6 +85,8 @@ public class ToolScreen extends BorderPane {
         this.window = window;
         this.saveTo = saveTo;
         this.onRun = onRun;
+        this.preview = tool.preview() == PdfTool.Preview.NONE ? null
+                : new PagePreview(tool, thumbnails, text -> setOptionText(tool.pagesOption(), text));
 
         ScreenHeader header = new ScreenHeader(tool.name(), onHome);
         Label step = new Label("Step 1 of 2 · Files and options");
@@ -127,6 +136,10 @@ public class ToolScreen extends BorderPane {
         top.setAlignment(Pos.CENTER_LEFT);
 
         VBox main = new VBox(12, top, fileList);
+        if (preview != null) {
+            VBox.setMargin(preview, new Insets(20, 0, 0, 0));
+            main.getChildren().add(preview);
+        }
         main.setPadding(new Insets(24));
         ScrollPane scroll = new ScrollPane(main);
         scroll.setFitToWidth(true);
@@ -147,6 +160,7 @@ public class ToolScreen extends BorderPane {
         CompletableFuture.supplyAsync(() -> inspector.inspect(file))
                 .thenAccept(result -> Platform.runLater(() -> {
                     info.put(file, result);
+                    if (result.getPages() > 0 && !result.isPasswordProtected()) thumbnails.start(file, result.getPages());
                     refresh();
                 }));
     }
@@ -181,13 +195,47 @@ public class ToolScreen extends BorderPane {
         }
         runButton.setDisable(files.size() < needed);
         saveToText.setText(saveTo.describeFolder(tool.oneOutput()));
+        updatePreview();
+    }
+
+    /** Redraws the page preview for the current files and options. */
+    private void updatePreview() {
+        if (preview != null) preview.show(files, info, currentOptions());
+    }
+
+    private Map<String, Object> currentOptions() {
+        Map<String, Object> options = new LinkedHashMap<>();
+        optionValues.forEach((id, value) -> options.put(id, value.get()));
+        return options;
+    }
+
+    /**
+     * Puts clicked pages into a page box, e.g. "2, 5-7". If the box only shows for a
+     * certain choice ("Only some pages"), that choice is picked too.
+     */
+    private void setOptionText(String id, String text) {
+        OptionField field = fieldsById.get(id);
+        TextField box = textBoxes.get(id);
+        if (field == null || box == null) return;
+        if (field.getShownWhenId() != null) {
+            ToggleGroup group = choiceGroups.get(field.getShownWhenId());
+            group.getToggles().stream()
+                    .filter(t -> field.getShownWhenValue().equals(t.getUserData()))
+                    .findFirst().ifPresent(t -> t.setSelected(true));
+        }
+        box.setText(text);
     }
 
     private HBox fileRow(int index) {
         Path file = files.get(index);
         FileInfo fileInfo = info.get(file);
 
-        Region thumbnail = new Region();          // page-shaped placeholder; real thumbnails come with the page workspace
+        ImageView firstPage = new ImageView();
+        firstPage.setFitWidth(34);
+        firstPage.setFitHeight(49);
+        firstPage.setPreserveRatio(true);
+        thumbnails.whenReady(file, 1, firstPage::setImage);
+        StackPane thumbnail = new StackPane(firstPage);
         thumbnail.getStyleClass().add("thumbnail");
         thumbnail.setMinSize(36, 51);
         thumbnail.setMaxSize(36, 51);
@@ -329,8 +377,8 @@ public class ToolScreen extends BorderPane {
         runButton.setMaxWidth(Double.MAX_VALUE);
         runButton.setDefaultButton(true);
         runButton.setOnAction(e -> {
-            Map<String, Object> options = new LinkedHashMap<>();
-            optionValues.forEach((id, value) -> options.put(id, value.get()));
+            Map<String, Object> options = currentOptions();
+            if (preview != null && preview.mergeOrder() != null) options.put(PdfTool.PAGE_ORDER, preview.mergeOrder());
             // Catch typing mistakes (like "1-x") here, before anything runs.
             String optionProblem = tool.checkOptions(options);
             if (optionProblem != null) {
@@ -371,6 +419,7 @@ public class ToolScreen extends BorderPane {
 
     /** One control per option, chosen by its type. Remembers how to read the value back. */
     private VBox optionControl(OptionField field) {
+        fieldsById.put(field.getId(), field);
         Label label = new Label(field.getLabel());
         label.getStyleClass().add("small-heading");
         VBox box = new VBox(8);
@@ -379,6 +428,7 @@ public class ToolScreen extends BorderPane {
             case CHECKBOX -> {
                 CheckBox check = new CheckBox(field.getLabel());
                 check.setSelected(Boolean.TRUE.equals(field.getDefaultValue()));
+                check.selectedProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(), check::isSelected);
                 box.getChildren().add(check);
             }
@@ -393,6 +443,7 @@ public class ToolScreen extends BorderPane {
                     box.getChildren().add(radio);
                 }
                 choiceGroups.put(field.getId(), group);
+                group.selectedToggleProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(),
                         () -> group.getSelectedToggle() == null ? null : group.getSelectedToggle().getUserData());
             }
@@ -400,6 +451,7 @@ public class ToolScreen extends BorderPane {
                 TextField number = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
                 number.setMaxWidth(100);
                 number.setPromptText(field.getHint());
+                number.textProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(), () -> parseNumber(number.getText()));
                 box.getChildren().addAll(label, number);
             }
@@ -411,6 +463,8 @@ public class ToolScreen extends BorderPane {
             case TEXT -> {
                 TextField text = new TextField(field.getDefaultValue() == null ? "" : field.getDefaultValue().toString());
                 text.setPromptText(field.getHint());
+                textBoxes.put(field.getId(), text);
+                text.textProperty().addListener((obs, old, now) -> updatePreview());
                 optionValues.put(field.getId(), text::getText);
                 box.getChildren().addAll(label, text);
             }

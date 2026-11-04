@@ -61,6 +61,25 @@ public class SplitTool implements PdfTool {
                         .shownWhen(MODE, BY_SIZE));
     }
 
+    @Override public Preview preview() { return Preview.SPLIT; }
+    @Override public String pagesOption() { return RANGES; }
+
+    @Override
+    public List<Range> previewParts(Map<String, Object> options, int pageCount) {
+        if (checkOptions(options) != null) return List.of();      // half-typed: show pages without groups
+        Object mode = options.get(MODE);
+        if (EVERY_PAGE.equals(mode)) return everyN(pageCount, 1);
+        if (EVERY_N.equals(mode)) return everyN(pageCount, ((Double) options.get(PAGES_PER_FILE)).intValue());
+        if (BY_RANGES.equals(mode)) {
+            try {
+                return PageRanges.parse((String) options.get(RANGES), pageCount);
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
+        }
+        return null;     // by size: the parts are only known once the pages are measured
+    }
+
     @Override
     public String checkOptions(Map<String, Object> options) {
         Object mode = options.get(MODE);

@@ -5,6 +5,7 @@ import com.ndalamo.models.OptionField;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.utils.Format;
+import com.ndalamo.utils.PageRanges;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -22,6 +23,18 @@ import java.util.Set;
  * - one bad file must not stop the others: return FAILED/SKIPPED for it and carry on.
  */
 public interface PdfTool {
+
+    /** How the tool screen previews pages (see PagePreview). */
+    enum Preview {
+        NONE,     // no page preview
+        MERGE,    // all pages of the result, in order; drag to reorder
+        ROTATE,   // each file's pages; click to choose which to turn
+        REMOVE,   // each file's pages; click to mark for removal
+        SPLIT     // pages coloured by the new file they go into; click to start a new file
+    }
+
+    /** Option key for the page order dragged into place in the preview (a List of PageRef). */
+    String PAGE_ORDER = "pageOrder";
 
     /** Stable id used in saved pipelines, e.g. "compress". Never change it once released. */
     String id();
@@ -78,6 +91,32 @@ public interface PdfTool {
     /** The word for {tool} in output names, e.g. "compressed". */
     default String outputSuffix() {
         return id();
+    }
+
+    // ── Page preview, with defaults for tools that don't have one ────────
+
+    default Preview preview() {
+        return Preview.NONE;
+    }
+
+    /** The text option that clicking pages writes into, e.g. "pages" for "2, 5-7". */
+    default String pagesOption() {
+        return null;
+    }
+
+    /** ROTATE / REMOVE: the pages the current options apply to, for a file with this many pages. */
+    default List<Integer> previewPages(Map<String, Object> options, int pageCount) {
+        return List.of();
+    }
+
+    /** ROTATE: how far chosen pages turn, in degrees clockwise. */
+    default int previewTurn(Map<String, Object> options) {
+        return 0;
+    }
+
+    /** SPLIT: which pages go into each new file, or null if that's only known when it runs. */
+    default List<PageRanges.Range> previewParts(Map<String, Object> options, int pageCount) {
+        return null;
     }
 
     /** Extra line under "Save to" on the tool screen, e.g. where Split puts its parts. Null for none. */

@@ -49,6 +49,24 @@ public class RotateTool implements PdfTool {
                         .hint("e.g. 1, 3-5").shownWhen(WHICH, SOME));
     }
 
+    @Override public Preview preview() { return Preview.ROTATE; }
+    @Override public String pagesOption() { return PAGES; }
+
+    @Override
+    public List<Integer> previewPages(Map<String, Object> options, int pageCount) {
+        if (!SOME.equals(options.get(WHICH))) return allPages(pageCount);
+        try {
+            return PageRanges.pages(PageRanges.parse((String) options.get(PAGES), pageCount));
+        } catch (IllegalArgumentException e) {
+            return List.of();      // half-typed or doesn't fit this file: nothing highlighted yet
+        }
+    }
+
+    @Override
+    public int previewTurn(Map<String, Object> options) {
+        return degrees(options);
+    }
+
     @Override
     public String checkOptions(Map<String, Object> options) {
         return SOME.equals(options.get(WHICH)) ? PageRanges.check((String) options.get(PAGES)) : null;
@@ -72,11 +90,7 @@ public class RotateTool implements PdfTool {
     @Override
     public List<FileResult> run(List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress)
             throws IOException {
-        int degrees = switch ((String) options.get(TURN)) {
-            case UPSIDE_DOWN -> 180;
-            case LEFT -> 270;
-            default -> 90;
-        };
+        int degrees = degrees(options);
         List<FileResult> results = new ArrayList<>();
         for (int i = 0; i < inputs.size(); i++) {
             if (progress.isCancelled()) break;
@@ -85,7 +99,7 @@ public class RotateTool implements PdfTool {
             try (PDDocument doc = PdfFiles.open(input)) {
                 List<Integer> pages = SOME.equals(options.get(WHICH))
                         ? PageRanges.pages(PageRanges.parse((String) options.get(PAGES), doc.getNumberOfPages()))
-                        : allPages(doc);
+                        : allPages(doc.getNumberOfPages());
                 for (int number : pages) {
                     PDPage page = doc.getPage(number - 1);
                     page.setRotation((page.getRotation() + degrees) % 360);   // adds to any turn it already had
@@ -104,9 +118,16 @@ public class RotateTool implements PdfTool {
         return results;
     }
 
-    private static List<Integer> allPages(PDDocument doc) {
+    private static int degrees(Map<String, Object> options) {
+        Object turn = options.get(TURN);
+        if (UPSIDE_DOWN.equals(turn)) return 180;
+        if (LEFT.equals(turn)) return 270;
+        return 90;
+    }
+
+    private static List<Integer> allPages(int pageCount) {
         List<Integer> pages = new ArrayList<>();
-        for (int p = 1; p <= doc.getNumberOfPages(); p++) pages.add(p);
+        for (int p = 1; p <= pageCount; p++) pages.add(p);
         return pages;
     }
 }

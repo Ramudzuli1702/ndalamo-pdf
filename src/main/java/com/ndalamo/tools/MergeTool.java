@@ -2,6 +2,7 @@ package com.ndalamo.tools;
 
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.OptionField;
+import com.ndalamo.models.PageRef;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.services.FileInspector;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +50,7 @@ public class MergeTool implements PdfTool {
     }
 
     @Override public int minFiles() { return 2; }
+    @Override public Preview preview() { return Preview.MERGE; }
     @Override public boolean oneOutput() { return true; }
     @Override public String outputSuffix() { return "merged"; }
 
@@ -74,6 +77,7 @@ public class MergeTool implements PdfTool {
         for (Path input : inputs) sizeBefore += Files.size(input);
 
         List<String> skipped = new ArrayList<>();
+        Map<Path, Integer> firstPageOf = new HashMap<>();    // where each file's pages start in the merged PDF
         List<PDDocument> sources = new ArrayList<>();   // must stay open until the merged file is saved
         PDFMergerUtility merger = new PDFMergerUtility();
 
@@ -87,6 +91,7 @@ public class MergeTool implements PdfTool {
                 try {
                     PDDocument source = isImage(input) ? imageAsPage(input) : PdfFiles.open(input);
                     sources.add(source);
+                    firstPageOf.put(input, merged.getNumberOfPages());
                     merger.appendDocument(merged, source);
                 } catch (IOException e) {
                     skipped.add(name + " (" + PdfFiles.problem(e) + ")");
@@ -101,6 +106,10 @@ public class MergeTool implements PdfTool {
             }
             if (progress.isCancelled()) return List.of();
 
+            @SuppressWarnings("unchecked")
+            List<PageRef> order = (List<PageRef>) options.get(PAGE_ORDER);
+            if (order != null) reorder(merged, order, firstPageOf);
+
             progress.update(0.95, "Saving the merged PDF");
             Path output = saveTo.outputFor(first, outputSuffix(), "pdf", pages);
             SafeSave.write(output, temp -> merged.save(temp.toFile()));
@@ -114,6 +123,26 @@ public class MergeTool implements PdfTool {
         } finally {
             for (PDDocument source : sources) source.close();
         }
+    }
+
+    /**
+     * Puts the merged pages in the order dragged into place in the preview. The files
+     * are merged normally first (which keeps links and bookmarks working), then the
+     * finished pages are rearranged. Pages of skipped files are simply left out.
+     */
+    private static void reorder(PDDocument merged, List<PageRef> order, Map<Path, Integer> firstPageOf) {
+        List<PDPage> current = new ArrayList<>();
+        merged.getPages().forEach(current::add);
+        List<PDPage> wanted = new ArrayList<>();
+        for (PageRef ref : order) {
+            Integer start = firstPageOf.get(ref.file());
+            if (start != null && start + ref.page() - 1 < current.size()) wanted.add(current.get(start + ref.page() - 1));
+        }
+        for (PDPage page : current) {
+            if (!wanted.contains(page)) wanted.add(page);    // anything the order didn't mention stays, at the end
+        }
+        for (PDPage page : current) merged.getPages().remove(page);
+        for (PDPage page : wanted) merged.getPages().add(page);
     }
 
     private static boolean isImage(Path file) {

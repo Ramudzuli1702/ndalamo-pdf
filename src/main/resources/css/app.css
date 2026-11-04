@@ -296,3 +296,20 @@
 }
 .dialog-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; }
 .dialog-text { -fx-font-size: 14px; -fx-text-fill: #3A3F4A; }
+
+/* ── Page preview on the tool screen ────────────────────────────────── */
+
+.page-preview { -fx-border-color: #E2E4E9; -fx-border-width: 1 0 0 0; -fx-padding: 20 0 0 0; }
+.page-frame {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.08), 6, 0, 0, 2);
+}
+.page-frame:hover { -fx-border-color: #2F5BEA; }
+.page-chosen { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
+.page-removed { -fx-border-color: #B42318; -fx-border-width: 2; }
+.page-caption { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+.page-drop-target .page-frame { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
+.cut-marker { -fx-background-color: #2F5BEA; -fx-background-radius: 2; }

@@ -36,6 +36,18 @@ public class RemovePagesTool implements PdfTool {
         return List.of(new OptionField(PAGES, "Pages to remove", OptionField.Type.TEXT, "").hint("e.g. 2, 5-7"));
     }
 
+    @Override public Preview preview() { return Preview.REMOVE; }
+    @Override public String pagesOption() { return PAGES; }
+
+    @Override
+    public List<Integer> previewPages(Map<String, Object> options, int pageCount) {
+        try {
+            return PageRanges.pages(PageRanges.parse((String) options.get(PAGES), pageCount));
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+    }
+
     @Override
     public String checkOptions(Map<String, Object> options) {
         return PageRanges.check((String) options.get(PAGES));
