@@ -33,8 +33,8 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 
 | Area | Choice | Licence |
 |---|---|---|
-| Language | Java 21 (LTS) | — |
-| UI | JavaFX 21 | GPL + Classpath Exception (fine) |
+| Language | Java 22 (see decision 002) | — |
+| UI | JavaFX 22 | GPL + Classpath Exception (fine) |
 | Build | Maven, multi-module | — |
 | Core PDF work | Apache PDFBox 3.x | Apache 2.0 |
 | OCR | Tess4J (Tesseract wrapper) + bundled `tessdata` | Apache 2.0 |
