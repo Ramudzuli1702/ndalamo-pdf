@@ -5,6 +5,7 @@ import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.services.JobService;
 import com.ndalamo.tools.PdfTool;
+import com.ndalamo.tools.ToolProblem;
 import com.ndalamo.utils.FileActions;
 import com.ndalamo.utils.Format;
 
@@ -99,10 +100,11 @@ public class ToolFlow {
                 error -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();
                     window.show(toolScreen);
-                    window.showDialog(new ErrorDialog(window,
-                            "Couldn’t finish " + tool.name(),
-                            "Something went wrong while working on your files. Your original files were not changed. "
-                                    + "You can try again; if it keeps happening, copy the technical details.",
+                    // A tool that knows what went wrong says so in plain words; otherwise a general message.
+                    String message = error instanceof ToolProblem problem ? problem.getMessage()
+                            : "Something went wrong while working on your files. Your original files were not changed. "
+                                    + "You can try again; if it keeps happening, copy the technical details.";
+                    window.showDialog(new ErrorDialog(window, "Couldn’t finish " + tool.name(), message,
                             error, "Try again", () -> run(tool, toolScreen, files, options, target)));
                 });
     }

@@ -169,6 +169,33 @@ final class TestFiles {
         return file;
     }
 
+    /**
+     * A scanned page: the lines are drawn into a 300 dpi picture and the picture is the
+     * whole page, so there's no selectable text until OCR adds it.
+     */
+    static Path scannedPdf(Path folder, String name, String... lines) throws IOException {
+        BufferedImage scan = new BufferedImage(2480, 3508, BufferedImage.TYPE_BYTE_GRAY);   // A4 at 300 dpi
+        Graphics2D g = scan.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, scan.getWidth(), scan.getHeight());
+        g.setColor(Color.BLACK);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 60));                 // about 14 pt
+        for (int i = 0; i < lines.length; i++) g.drawString(lines[i], 250, 400 + i * 110);
+        g.dispose();
+        Path file = folder.resolve(name);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            var image = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, scan);
+            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+                content.drawImage(image, 0, 0, page.getMediaBox().getWidth(), page.getMediaBox().getHeight());
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
     static int pageCount(Path pdf) throws IOException {
         try (PDDocument doc = Loader.loadPDF(pdf.toFile())) {
             return doc.getNumberOfPages();

@@ -605,7 +605,7 @@ public class ToolScreen extends BorderPane {
         Label title = new Label(choice);
         title.getStyleClass().add("choice-title");
         VBox text = new VBox(2, title);
-        if (description != null) {
+        if (description != null && !description.isBlank()) {
             Label line = new Label(description);
             line.getStyleClass().add("file-meta");
             line.setWrapText(true);

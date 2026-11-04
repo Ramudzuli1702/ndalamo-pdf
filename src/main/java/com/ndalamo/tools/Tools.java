@@ -36,7 +36,7 @@ public final class Tools {
             soon("office-to-pdf", "Office to PDF", "Word, Excel, PowerPoint", "Convert"),
             new ImageToPdfTool(),
             new PdfToJpgTool(),
-            soon("ocr", "OCR PDF", "Make scans searchable", "Convert"),
+            new OcrTool(),
 
             new PageNumbersTool(),
             new WatermarkTool(),
