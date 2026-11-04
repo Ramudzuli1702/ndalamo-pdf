@@ -41,7 +41,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 | Table extraction | Tabula-java | MIT |
 | Office files (read/write) | Apache POI | Apache 2.0 |
 | Office to PDF | LibreOffice (headless, external process) via JODConverter | Apache 2.0 (JODConverter); LibreOffice runs as a separate program |
-| JSON (settings, pipelines) | Jackson | Apache 2.0 |
+| JSON (settings, pipelines) | Gson | Apache 2.0 |
 | Logging | SLF4J + Logback (local log file only) | MIT / EPL-LGPL dual |
 | Testing | JUnit 5, AssertJ, TestFX (UI smoke tests) | EPL / Apache |
 | Packaging | jpackage (bundled JRE, Windows installer first) | — |
@@ -49,73 +49,76 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 
 Use the latest stable release of each library that is **at least two weeks old**. Pin exact versions in the parent `pom.xml` `<dependencyManagement>`.
 
-**Platform:** Windows first (Word add-in, Explorer integration, tray). Keep core code platform-neutral so macOS/Linux builds are possible later.
+**Platform:** Windows first (Word add-in, Explorer integration, tray). Keep tools and services platform-neutral so macOS/Linux builds are possible later.
 
 ---
 
 ## 3. Architecture
 
-### 3.1 Maven modules
+One Maven project with five folders, each with one job. Tools never contain screen code and screens never contain PDF code, so each file is about one thing and pipelines/watch folders can reuse the tools.
+
+### 3.1 Project layout
 
 ```
 ndalamo-pdf/
-├── pom.xml                 (parent: versions, plugins)
-├── core/                   (no JavaFX; pure logic, fully unit-tested)
-├── tools/                  (one class per tool; depends on core)
-├── app/                    (JavaFX UI; depends on core + tools)
-├── word-addin/             (C# VSTO project, built separately — Phase 6)
-├── docs/
-│   ├── SPEC.md             (this file)
-│   ├── decisions/          (decision records)
-│   └── ui/                 (mockup sources + index)
+├── pom.xml
+├── src/main/java/com/ndalamo/
+│   ├── NdalamoApp.java     starts the app and opens the window
+│   ├── screens/            what the user sees: screens, dialogs, toasts, header
+│   ├── tools/              what happens to the PDF: PdfTool, Tools (list of all tools), one class per tool
+│   ├── services/           behind-the-scenes jobs: JobService, SettingsService, PipelineService, WatchFolderService, FileInspector
+│   ├── models/             plain data: Settings, FileResult, OptionField, Progress, Pipeline, WatchFolder
+│   └── utils/              small helpers: Theme, OutputNames, Icons
+├── src/main/resources/     brand/, css/app.css, fonts/, logback.xml
+├── src/test/java/com/ndalamo/   tests, same folders
+├── word-addin/             C# VSTO project, built separately (Phase 6)
+└── docs/                   SPEC.md, decisions/, ui/
 ```
 
-### 3.2 Packages (`core`)
+### 3.2 How the pieces connect
 
 ```
-io.github.ramudzuli1702.ndalamo.core
-├── tool        PdfTool, ToolCategory, ToolDescriptor, ToolRegistry
-├── options     ToolOptions, OptionField (text, number, choice, checkbox, file, password)
-├── job         Job, JobRunner, JobProgress, JobResult, FileResult, CancellationToken
-├── io          OutputNamer, FileInspector (page count, size, has text layer, encrypted?)
-├── pipeline    Pipeline, PipelineStep, PipelineValidator, PipelineRunner, PipelineStore
-├── watch       WatchFolder, WatchFolderService, ActivityLog
-├── settings    Settings, SettingsStore (JSON in user app-data folder)
-└── error       ToolException, UserMessage (plain text + optional technical detail + suggested action)
+HomeScreen ──click "Compress"──► ToolScreen ──click "Compress 3 files"──► JobService
+                                                                              │
+                                                     runs in background ──► CompressTool
+                                                                              │
+ResultScreen ◄──────────── list of FileResult ◄──────────────────────────────┘
 ```
 
-### 3.3 Key interfaces (shape, not final code)
+1. The screen collects the files and options.
+2. `JobService` runs the tool in the background so the window never freezes.
+3. The tool does the PDF work and returns one `FileResult` per file.
+4. The result screen shows them.
+
+### 3.3 The tool contract (shape, not final code)
+
+Every tool is one class in `tools/` that implements `PdfTool`, and is added to the list in `Tools`. The home screen, search, pipeline builder and drop suggestions all read that list.
 
 ```java
 public interface PdfTool {
-    ToolDescriptor descriptor();            // id, name, short description, category, accepted input types
-    List<OptionField> optionFields();       // drives the options panel automatically
-    ToolOptions defaultOptions(Settings s);
-    void validate(List<Path> inputs, ToolOptions opts) throws ToolException;
-    JobResult run(List<Path> inputs, ToolOptions opts, JobProgress progress, CancellationToken cancel)
-        throws ToolException;
+    String id();                          // "compress" — never changes once released
+    String name();                        // "Compress PDF"
+    String description();                 // card text: "Smaller files, same pages"
+    String category();                    // "Optimize"
+    List<OptionField> optionFields();     // the options panel is built from these
+    List<FileResult> run(List<Path> inputs, Map<String, Object> options, Progress progress) throws Exception;
 }
-
-public record FileResult(Path input, Path output, long sizeBefore, long sizeAfter,
-                         Status status, UserMessage message) {
-    public enum Status { SUCCESS, PARTIAL, FAILED, SKIPPED }
-}
-
-public record UserMessage(String summary, String technicalDetail, SuggestedAction action) {}
 ```
 
+- `FileResult` (model): input, output, size before/after, status (`SUCCESS`, `PARTIAL`, `FAILED`, `SKIPPED`) and a plain-language note.
+- `Progress` (model): the tool calls `progress.update(0.62, "Compressing images · 62%")` and checks `progress.isCancelled()` between pages.
+
 Rules:
-- A tool **never** touches JavaFX. It reports through `JobProgress` (fraction 0–1 plus a short status line, e.g. "Compressing images · 62%").
-- A tool checks `cancel.isCancelled()` between pages and stops cleanly, deleting any half-written output.
+- A tool **never** touches JavaFX.
+- A tool checks `progress.isCancelled()` between pages and stops cleanly, deleting any half-written output.
 - Every tool writes to a **temp file first**, then moves it to the final name only on success.
 - One bad file in a batch must not stop the others: record it as `FAILED` or `SKIPPED` and continue.
-- `ToolRegistry` lists all tools; the home screen, search, pipeline palette and drop suggestions all read from it.
 
 ### 3.4 Threading
 
-- `JobRunner` uses a bounded executor. Parallelism comes from Settings: `Automatic` = `max(1, cores / 2)`, or a fixed 1/2/4.
-- Progress updates are pushed to the UI with `Platform.runLater`, throttled to at most ~10 per second.
-- "Low-memory mode" (Settings) makes PDFBox use temp-file-backed memory (`MemoryUsageSetting.setupTempFileOnly()`) and forces parallelism to 1.
+- `JobService` runs tools on background threads (a fixed thread pool) and passes progress to the screen with `Platform.runLater`, at most ~10 updates per second.
+- Files processed at once comes from Settings: `Automatic` = `max(1, cores / 2)`, or a fixed 1/2/4.
+- "Low-memory mode" (Settings) makes PDFBox use temp files instead of memory and forces one file at a time.
 
 ### 3.5 Output naming
 
@@ -233,7 +236,7 @@ Mockups: `docs/ui/screens/*.dc.html` (see `docs/ui/README.md` for which file is 
 
 ### 6.0 Logo
 Chosen mark: **a document outline with three rising green bars; the tallest bar sprouts a leaf** (growth you can measure + growth that is alive = "prosperity").
-- Files (in `app/src/main/resources/brand/`): `ndalamo-mark.svg` (colour, for light backgrounds), `ndalamo-mark-white.svg` (for dark/blue backgrounds), `ndalamo-app-icon.svg` (white mark on a #2F5BEA rounded square, 256 px), `ndalamo-favicon-small.svg` (simplified two-bar version for 16–24 px).
+- Files (in `src/main/resources/brand/`): `ndalamo-mark.svg` (colour, for light backgrounds), `ndalamo-mark-white.svg` (for dark/blue backgrounds), `ndalamo-app-icon.svg` (white mark on a #2F5BEA rounded square, 256 px), `ndalamo-favicon-small.svg` (simplified two-bar version for 16–24 px).
 - Lockup: mark + "Ndalamo" in IBM Plex Sans Bold, `#16181D`, mark height ≈ 1.6× the cap height.
 - Colours: outline `#16181D`, bars and leaf `#1E8A4C`; app icon background `#2F5BEA`.
 - Where it appears: Home header (white mark on blue tile + "Ndalamo"); every other screen's header (28 px colour mark at the far left, before the back button); Settings → About (48 px mark + "Ndalamo PDF"); system notifications and the tray icon (app icon); window title bar and taskbar (app icon); installer.
@@ -389,8 +392,8 @@ A .docx has no fixed pages; Word computes pagination when rendering. So this fea
 Each chunk must end with: code compiles, tests pass, the feature can be run and checked by hand. **Do not start the next chunk until the current one is confirmed working.**
 
 ### Phase 1 — Foundation
-1. **Project skeleton:** parent POM with pinned versions, `core`/`tools`/`app` modules, `PdfTool` and supporting interfaces, `JobRunner` with progress and cancel, `OutputNamer`, `SettingsStore`, logging. App opens an empty window with the header. *Tests:* OutputNamer patterns and collision numbering; JobRunner cancel.
-2. **Home screen and navigation:** design tokens in `app.css`, font bundling, header, sidebar, tool grid from `ToolRegistry`, search filtering, screen navigation, window-wide drag-and-drop hook.
+1. **Project skeleton:** `pom.xml` with pinned versions, `NdalamoApp`, `Theme`, `Header` + `LogoMark` (in `screens/`), `Settings` + `SettingsService`, `OutputNames`, `PdfTool` + `Progress` + `FileResult` + `OptionField`, `JobService` with progress and cancel, logging. App opens a window with the header. *Tests:* OutputNames patterns and collision numbering; JobService cancel.
+2. **Home screen and navigation:** design tokens in `Theme` and `app.css`, font bundling, header, sidebar, tool grid from `Tools`, search filtering, screen navigation, window-wide drag-and-drop hook.
 3. **Generic tool flow + Merge:** files-and-options screen generated from `optionFields()`, progress screen, result screen, toast system, error dialog. Implement **Merge** end to end.
 
 ### Phase 2 — Core PDF tools
@@ -426,11 +429,11 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 
 1. Read this file before starting a chunk. Work on **one chunk only**.
 2. Before writing code, briefly state the plan for the chunk and the files that will change.
-3. Keep `core` free of JavaFX. Keep tools free of UI code.
-4. Every tool gets unit tests using small PDFs in `core/src/test/resources` / `tools/src/test/resources` (generate test PDFs with PDFBox in a test helper where possible).
+3. Follow the layout in §3: tools have no JavaFX code, screens have no PDF code. Keep classes plain and easy to follow; no extra layers.
+4. Every tool gets unit tests in `src/test/java/com/ndalamo/tools/` using small PDFs (generate them with PDFBox in a test helper where possible).
 5. Never add a dependency that is GPL/AGPL or that makes network calls. The libraries in §2 are pre-approved; ask before adding any other dependency.
 6. Never write to an input file. Assert this in tests.
-7. All user-facing text follows the error-copy formula in §6.3. Keep strings in a single resource bundle (`messages.properties`) to allow translation later.
+7. All user-facing text follows the error-copy formula in §6.3.
 8. Run `mvn -q verify` before declaring a chunk done.
 9. At the end of each chunk, update the **Progress log** below.
 

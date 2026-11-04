@@ -11,14 +11,16 @@ A free, fully offline Windows desktop app for working with PDFs: merge, split, c
 - **Plain-language errors** that say what happened, confirm the original is safe, and suggest a next step.
 
 ## Tech stack
-Java 22 · JavaFX 22 · Maven (multi-module) · Apache PDFBox · Tess4J (OCR) · Tabula-java · Apache POI · JUnit 5/AssertJ. The Word add-in is a separate C# VSTO project.
+Java 22 · JavaFX 22 · Maven · Apache PDFBox · Tess4J (OCR) · Tabula-java · Apache POI · Gson · JUnit 5. The Word add-in is a separate C# VSTO project.
 
 ## Project layout
 | Folder | What it holds |
 |---|---|
-| `core/` | Pure logic with no UI: tool interfaces, jobs, output naming, settings |
-| `tools/` | One class per PDF tool |
-| `app/` | The JavaFX desktop app |
+| `src/main/java/com/ndalamo/screens/` | What the user sees: screens, dialogs, toasts |
+| `src/main/java/com/ndalamo/tools/` | The PDF work, one class per tool |
+| `src/main/java/com/ndalamo/services/` | Background jobs, saving settings, pipelines, watch folders |
+| `src/main/java/com/ndalamo/models/` | Plain data classes |
+| `src/main/java/com/ndalamo/utils/` | Small helpers: colours, output file names |
 | `docs/SPEC.md` | The full specification and build plan (source of truth) |
 | `docs/decisions/` | Decision records |
 | `docs/ui/` | UI mockups for every screen |
@@ -27,8 +29,8 @@ Java 22 · JavaFX 22 · Maven (multi-module) · Apache PDFBox · Tess4J (OCR) ·
 Requires JDK 22 and Maven 3.9+.
 
 ```
-mvn verify                      # build and run all tests
-mvn -pl app -am javafx:run      # start the app
+mvn verify        # build and run all tests
+mvn javafx:run    # start the app
 ```
 
 ## Status
