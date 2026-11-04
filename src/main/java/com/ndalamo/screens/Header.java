@@ -1,39 +1,76 @@
 package com.ndalamo.screens;
 
+import com.ndalamo.utils.Icons;
 import com.ndalamo.utils.Theme;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 
 /**
- * The bar across the top of the home screen: the logo on a blue tile and the
- * name "Ndalamo" (mockup: docs/ui/screens/Main.dc.html).
- * Search, Pipelines and Settings buttons are added in chunk 2.
+ * The bar across the top of the home screen (mockup: docs/ui/screens/Main.dc.html):
+ * logo + "Ndalamo", the tool search box, and the Pipelines and Settings buttons.
+ * Other screens use {@link ScreenHeader} instead.
  */
 public class Header extends HBox {
 
-    public Header() {
-        super(16);
-        setAlignment(Pos.CENTER_LEFT);
-        setPadding(new Insets(14, 24, 14, 24));
-        setStyle("-fx-background-color: " + Theme.SURFACE + ";"
-                + "-fx-border-color: " + Theme.BORDER + "; -fx-border-width: 0 0 1 0;");
+    private final TextField search = new TextField();
 
+    public Header(Runnable onPipelines, Runnable onSettings) {
+        getStyleClass().add("app-header");
+        setAlignment(Pos.CENTER_LEFT);
+
+        // Logo on a blue tile + name
         StackPane tile = new StackPane(LogoMark.white(22));
         tile.setMinSize(32, 32);
         tile.setMaxSize(32, 32);
         tile.setStyle("-fx-background-color: " + Theme.ACCENT + "; -fx-background-radius: " + Theme.RADIUS_SM + ";");
-
         Label name = new Label("Ndalamo");
-        name.setFont(Font.font(Theme.FONT, FontWeight.BOLD, 17));
-        name.setStyle("-fx-text-fill: " + Theme.TEXT + ";");
-
+        name.getStyleClass().add("brand-name");
         HBox brand = new HBox(10, tile, name);
         brand.setAlignment(Pos.CENTER_LEFT);
-        getChildren().add(brand);
+
+        // Search box: grows with the window, up to 560 px like the mockup
+        search.setPromptText("Search tools — try “compress” or “to Word”");
+        search.getStyleClass().add("search-field");
+        search.setAccessibleText("Search tools");
+        search.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) search.clear();
+        });
+        HBox.setHgrow(search, Priority.ALWAYS);
+        Label keyHint = new Label("Ctrl K");
+        keyHint.getStyleClass().add("key-hint");
+        HBox searchBox = new HBox(Icons.search(16, Theme.TEXT_MUTED), search, keyHint);
+        searchBox.getStyleClass().add("search-box");
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setMaxWidth(560);
+        searchBox.setOnMouseClicked(e -> search.requestFocus());
+        HBox.setHgrow(searchBox, Priority.ALWAYS);
+
+        // Buttons on the right
+        Button pipelines = new Button("Pipelines");
+        pipelines.getStyleClass().add("button-secondary");
+        pipelines.setOnAction(e -> onPipelines.run());
+
+        Button settings = new Button();
+        settings.setGraphic(Icons.settings(18, Theme.TEXT));
+        settings.getStyleClass().addAll("button-secondary", "icon-button");
+        settings.setAccessibleText("Settings");
+        settings.setOnAction(e -> onSettings.run());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.SOMETIMES);
+
+        getChildren().addAll(brand, searchBox, spacer, new HBox(8, pipelines, settings));
+    }
+
+    /** The search box, so the home screen can filter tools as the user types. */
+    public TextField getSearchField() {
+        return search;
     }
 }

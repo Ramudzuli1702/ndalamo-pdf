@@ -1,0 +1,168 @@
+/*
+ * Ndalamo styles. Colours match utils/Theme.java and SPEC §6.1 — change both together.
+ *
+ * Fonts: JavaFX treats Plex SemiBold and Medium as separate families, so
+ * semibold text uses "IBM Plex Sans SmBld" instead of -fx-font-weight (see Theme.java).
+ */
+
+.root {
+    -fx-font-family: "IBM Plex Sans";
+    -fx-font-size: 14px;
+    -fx-background-color: #F4F5F7;
+    -fx-text-fill: #16181D;
+    -fx-focus-color: #2F5BEA;
+    -fx-faint-focus-color: #2F5BEA22;
+}
+
+.label { -fx-text-fill: #16181D; }
+.semibold { -fx-font-family: "IBM Plex Sans SmBld"; }
+.muted { -fx-text-fill: #5B616E; }
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+.button-primary {
+    -fx-background-color: #2F5BEA;
+    -fx-background-radius: 8;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-family: "IBM Plex Sans SmBld";
+    -fx-font-size: 15px;
+    -fx-padding: 0 20;
+    -fx-pref-height: 44;
+    -fx-cursor: hand;
+}
+.button-primary:hover { -fx-background-color: #2448C9; }
+
+.button-secondary {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #16181D;
+    -fx-font-size: 14px;
+    -fx-padding: 0 14;
+    -fx-pref-height: 40;
+    -fx-cursor: hand;
+}
+.button-secondary:hover { -fx-background-color: #F4F5F7; }
+
+.icon-button {
+    -fx-pref-width: 44;
+    -fx-padding: 0;
+}
+
+/* ── Headers ────────────────────────────────────────────────────────── */
+
+.app-header {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 14 24;
+    -fx-spacing: 16;
+}
+
+.screen-header {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 20;
+    -fx-spacing: 12;
+}
+
+.brand-name { -fx-font-weight: bold; -fx-font-size: 17px; }
+.screen-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 16px; }
+
+.search-box {
+    -fx-background-color: #F9FAFB;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 0 14;
+    -fx-pref-height: 40;
+    -fx-spacing: 8;
+}
+.search-box:focus-within { -fx-border-color: #2F5BEA; }
+
+.search-field {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-prompt-text-fill: #5B616E;
+}
+
+.key-hint {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5B616E;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 4;
+    -fx-padding: 1 6;
+}
+
+/* ── Home sidebar ───────────────────────────────────────────────────── */
+
+.sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 24 20;
+}
+
+.sidebar-label { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+.empty-note { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
+.offline-badge { -fx-font-size: 13px; -fx-text-fill: #1E6B3A; }
+
+/* ── Drop zone ──────────────────────────────────────────────────────── */
+
+.drop-zone {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #A9B4D6;
+    -fx-border-width: 2;
+    -fx-border-style: dashed;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 28;
+    -fx-spacing: 20;
+}
+.drop-zone-icon { -fx-background-color: #E8EDFB; -fx-background-radius: 12; }
+.drop-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; }
+
+/* ── Tool cards ─────────────────────────────────────────────────────── */
+
+.section-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; }
+
+.tool-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14;
+    -fx-min-height: 72;
+    -fx-cursor: hand;
+}
+.tool-card:hover, .tool-card:focused { -fx-border-color: #2F5BEA; }
+/* Not-yet-built tools: no hover highlight or hand cursor, since they can't be opened. */
+.tool-card.not-ready { -fx-cursor: default; }
+.tool-card.not-ready:hover { -fx-border-color: #E2E4E9; }
+
+.tool-name { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 14px; }
+.tool-desc { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+
+.coming-soon {
+    -fx-font-size: 11px;
+    -fx-text-fill: #5B616E;
+    -fx-background-color: #ECEEF2;
+    -fx-background-radius: 999;
+    -fx-padding: 1 8;
+}
+
+/* ── Scrolling and plain cards ──────────────────────────────────────── */
+
+.plain-scroll, .plain-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; }
+.plain-scroll { -fx-padding: 0; }
+
+.card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 24;
+    -fx-spacing: 10;
+}

@@ -444,7 +444,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | Chunk | Status | Notes |
 |---|---|---|
 | 1 Project skeleton | Done 2026-11-04 | Single project (decision 003). Window opens with the header and logo; settings saved with Gson; JobService runs tools in the background with progress and cancel; OutputNames never picks the original file. 19 tests. |
-| 2 Home & navigation | Not started | |
+| 2 Home & navigation | Done 2026-11-04 | Home matches Main.dc.html: header with search (Ctrl+K, Esc clears), Pipelines and Settings buttons, sidebar, drop zone, tool cards by category. All tools listed as "Coming soon" placeholders (decision 004). IBM Plex Sans bundled. Pipelines, Settings, tool cards and dropped/chosen files open placeholder screens until their chunks. Recent files/tools show empty states until tools run; pinned-pipelines row comes with chunk 16. |
 | 3 Tool flow + Merge | Not started | |
 | … | | |
 

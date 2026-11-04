@@ -40,4 +40,9 @@ public interface PdfTool {
      * Throws only if the whole run fails; per-file problems go in the results.
      */
     List<FileResult> run(List<Path> inputs, Map<String, Object> options, Progress progress) throws Exception;
+
+    /** False only for {@link ComingSoonTool} placeholders, which Home shows greyed out. */
+    default boolean isReady() {
+        return true;
+    }
 }
