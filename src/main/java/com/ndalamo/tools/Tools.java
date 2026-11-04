@@ -20,7 +20,7 @@ public final class Tools {
 
     // Names, descriptions and order follow docs/ui/screens/Main.dc.html.
     private static final List<PdfTool> ALL = List.of(
-            soon("merge", "Merge PDF", "Combine files in any order", "Organize"),
+            new MergeTool(),
             soon("split", "Split PDF", "By range, every page or size", "Organize"),
             soon("workspace", "Page workspace", "Reorder, rotate, remove, crop", "Organize"),
 

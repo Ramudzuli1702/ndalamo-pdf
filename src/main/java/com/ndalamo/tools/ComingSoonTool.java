@@ -3,6 +3,7 @@ package com.ndalamo.tools;
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.Progress;
+import com.ndalamo.models.SaveTo;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -35,7 +36,7 @@ public class ComingSoonTool implements PdfTool {
     @Override public boolean isReady() { return false; }
 
     @Override
-    public List<FileResult> run(List<Path> inputs, Map<String, Object> options, Progress progress) {
+    public List<FileResult> run(List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress) {
         throw new UnsupportedOperationException(name + " isn't built yet");
     }
 }

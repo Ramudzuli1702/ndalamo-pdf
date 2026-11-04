@@ -166,3 +166,133 @@
     -fx-padding: 24;
     -fx-spacing: 10;
 }
+
+/* ── Tool flow (chunk 3) ────────────────────────────────────────────── */
+
+.step-label { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
+.page-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 24px; }
+.small-heading { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 13px; }
+.small-muted { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
+.mono { -fx-font-family: "Consolas", monospace; }
+
+.button-tall { -fx-pref-height: 44; -fx-padding: 0 18; }
+.button-small { -fx-pref-height: 36; -fx-padding: 0 12; -fx-font-size: 13px; }
+.button-dialog { -fx-pref-height: 40; -fx-font-size: 14px; }
+.run-button { -fx-pref-height: 48; }
+.button-primary:disabled { -fx-opacity: 0.45; }
+
+.icon-only {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-pref-width: 40;
+    -fx-pref-height: 40;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.icon-only:hover { -fx-background-color: #F4F5F7; }
+
+.link, .text-button {
+    -fx-text-fill: #2448C9;
+    -fx-font-family: "IBM Plex Sans SmBld";
+    -fx-font-size: 13px;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.link:hover, .text-button:hover { -fx-underline: true; }
+.link:visited { -fx-text-fill: #2448C9; }
+
+/* File list on the tool screen */
+.file-row {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 12 14;
+}
+.file-row.drop-target { -fx-border-color: #2F5BEA; -fx-border-width: 2; -fx-padding: 11 13; }
+.file-name { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 14px; }
+.file-meta { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+.thumbnail {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 3;
+}
+
+.options-panel {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 24 22;
+}
+.save-section { -fx-border-color: #E2E4E9; -fx-border-width: 1 0 0 0; -fx-padding: 18 0 0 0; }
+
+.details-pane > .title { -fx-background-color: transparent; -fx-padding: 4 0; }
+.details-pane > .content { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 8 0 0 0; }
+
+/* Progress bars: big one on the progress screen, small one in toasts */
+.big-bar > .track, .small-bar > .track {
+    -fx-background-color: #E2E4E9;
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
+}
+.big-bar > .bar, .small-bar > .bar {
+    -fx-background-color: #2F5BEA;
+    -fx-background-radius: 999;
+    -fx-background-insets: 0;
+}
+.big-bar > .bar { -fx-padding: 5; }
+.small-bar > .bar { -fx-padding: 3; }
+
+/* Result screen */
+.result-list {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+.result-row { -fx-padding: 14 16; -fx-border-color: #EEF0F4; -fx-border-width: 0 0 1 0; }
+
+.chip {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-pref-height: 40;
+    -fx-padding: 0 14;
+    -fx-cursor: hand;
+}
+.chip:hover { -fx-background-color: #F4F5F7; }
+
+/* Toasts */
+.toast {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E4E9;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 14 14 14 16;
+    -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.14), 24, 0, 0, 8);
+}
+.toast-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 14px; }
+.toast-body { -fx-font-size: 13px; -fx-text-fill: #3A3F4A; }
+.toast-close {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-pref-width: 32;
+    -fx-pref-height: 32;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.toast-close:hover { -fx-background-color: #F4F5F7; }
+
+/* Dialogs */
+.dim-backdrop { -fx-background-color: rgba(22,24,29,0.45); }
+.dialog-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 14;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 40, 0, 0, 16);
+}
+.dialog-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; }
+.dialog-text { -fx-font-size: 14px; -fx-text-fill: #3A3F4A; }

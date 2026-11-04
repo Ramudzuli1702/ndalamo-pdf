@@ -101,17 +101,21 @@ public interface PdfTool {
     String description();                 // card text: "Smaller files, same pages"
     String category();                    // "Optimize"
     List<OptionField> optionFields();     // the options panel is built from these
-    List<FileResult> run(List<Path> inputs, Map<String, Object> options, Progress progress) throws Exception;
+    List<FileResult> run(List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress) throws Exception;
+
+    // Optional, with defaults: fileTypes() ("pdf"), minFiles() (1), oneOutput() (false),
+    // outputSuffix() (id), buttonLabel/workingLabel/doneLabel ("Compress 3 files", ...)
 }
 ```
 
+- `SaveTo` (model): where outputs go and how they're named, from Settings. Tools call `saveTo.outputFor(input, "compressed", "pdf", pages)` and never pick names themselves.
 - `FileResult` (model): input, output, size before/after, status (`SUCCESS`, `PARTIAL`, `FAILED`, `SKIPPED`) and a plain-language note.
 - `Progress` (model): the tool calls `progress.update(0.62, "Compressing images · 62%")` and checks `progress.isCancelled()` between pages.
 
 Rules:
 - A tool **never** touches JavaFX.
-- A tool checks `progress.isCancelled()` between pages and stops cleanly, deleting any half-written output.
-- Every tool writes to a **temp file first**, then moves it to the final name only on success.
+- A tool checks `progress.isCancelled()` between pages and stops cleanly, leaving no output behind.
+- Every tool writes with `SafeSave` (a temp file first, moved to the final name only on success).
 - One bad file in a batch must not stop the others: record it as `FAILED` or `SKIPPED` and continue.
 
 ### 3.4 Threading
@@ -445,7 +449,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 |---|---|---|
 | 1 Project skeleton | Done 2026-11-04 | Single project (decision 003). Window opens with the header and logo; settings saved with Gson; JobService runs tools in the background with progress and cancel; OutputNames never picks the original file. 19 tests. |
 | 2 Home & navigation | Done 2026-11-04 | Home matches Main.dc.html: header with search (Ctrl+K, Esc clears), Pipelines and Settings buttons, sidebar, drop zone, tool cards by category. All tools listed as "Coming soon" placeholders (decision 004). IBM Plex Sans bundled. Pipelines, Settings, tool cards and dropped/chosen files open placeholder screens until their chunks. Recent files/tools show empty states until tools run; pinned-pipelines row comes with chunk 16. |
-| 3 Tool flow + Merge | Not started | |
+| 3 Tool flow + Merge | Done 2026-11-04 | Merge PDF works end to end: tool screen (drag to reorder, add/remove, page counts, options built from optionFields, Save to with Change), progress (Cancel, Run in background with a progress toast), result (Open, Show in folder, Continue with chips), toasts, error dialog with Try again. Merge joins PDFs and images, skips damaged/password-protected files with a note. PdfTool.run now takes SaveTo; SafeSave writes via a temp file. Per-file progress cards come with Compress (chunk 5); recent files/tools in the sidebar are still empty. 34 tests. |
 | … | | |
 
 ---

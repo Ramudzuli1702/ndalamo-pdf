@@ -1,15 +1,18 @@
 package com.ndalamo;
 
+import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
 import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.LogoMark;
+import com.ndalamo.screens.MainWindow;
+import com.ndalamo.screens.ToolFlow;
+import com.ndalamo.screens.ToolScreen;
 import com.ndalamo.services.JobService;
 import com.ndalamo.services.SettingsService;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.utils.Theme;
 import javafx.application.Application;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -26,9 +29,9 @@ import java.util.List;
 /**
  * Starts Ndalamo and switches between screens.
  *
- * Every screen is a whole page (header included); showing one just swaps the
- * window's content. Things that work on every screen live here: Ctrl+K search
- * and dropping files anywhere on the window.
+ * Every screen is a whole page (header included); showing one just swaps what
+ * MainWindow displays. Things that work on every screen live here: Ctrl+K search
+ * and dropping files anywhere on the window. Running a tool is ToolFlow's job.
  *
  * Run during development with: mvn javafx:run
  */
@@ -37,8 +40,10 @@ public class NdalamoApp extends Application {
     private static final Logger log = LoggerFactory.getLogger(NdalamoApp.class);
 
     private Stage stage;
-    private Scene scene;
+    private final MainWindow window = new MainWindow();
     private HomeScreen home;
+    private ToolFlow toolFlow;
+    private Settings settings;
     private JobService jobService;
 
     @Override
@@ -47,14 +52,16 @@ public class NdalamoApp extends Application {
         Thread.setDefaultUncaughtExceptionHandler((thread, e) ->
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
-        Settings settings = new SettingsService().load();
+        settings = new SettingsService().load();
         jobService = new JobService(settings.workerThreads());
         log.info("Ndalamo started with {} worker thread(s)", settings.workerThreads());
 
         Theme.loadFonts();   // must happen before any screen is built
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
+        toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), this::showHome);
+        window.show(home);
 
-        scene = new Scene(home, 1280, 800);
+        Scene scene = new Scene(window, 1280, 800);
         scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
 
         // Ctrl+K: jump to the tool search from any screen
@@ -91,31 +98,25 @@ public class NdalamoApp extends Application {
 
     // ── Navigation ───────────────────────────────────────────────────────
 
-    private void show(Parent screen) {
-        scene.setRoot(screen);
-    }
-
     private void showHome() {
-        show(home);
+        window.show(home);
     }
 
     private void showPipelines() {
-        show(new ComingSoonScreen("Pipelines",
+        window.show(new ComingSoonScreen("Pipelines",
                 "Saved chains of tools, like OCR → Compress → Protect, are built in chunk 16.",
                 List.of(), this::showHome));
     }
 
     private void showSettings() {
-        show(new ComingSoonScreen("Settings",
+        window.show(new ComingSoonScreen("Settings",
                 "The full settings screen is built in chunk 18. Your settings are already saved in "
                         + SettingsService.appDataFolder() + ".",
                 List.of(), this::showHome));
     }
 
     private void openTool(PdfTool tool) {
-        // Tool screens arrive in chunk 3; until then every card is a "Coming soon" placeholder.
-        show(new ComingSoonScreen(tool.name(), "This tool's screen is built in a later chunk.",
-                List.of(), this::showHome));
+        toolFlow.open(tool, List.of());
     }
 
     // ── Files ────────────────────────────────────────────────────────────
@@ -134,8 +135,13 @@ public class NdalamoApp extends Application {
 
     /** Files from the Choose files button or dropped on the window. */
     private void filesChosen(List<File> files) {
+        // On a tool screen, dropped files join that tool's list.
+        if (window.current() instanceof ToolScreen toolScreen) {
+            toolScreen.addFiles(files.stream().map(File::toPath).toList());
+            return;
+        }
         // Suggested tools for these files (screen 3) are built in chunk 15.
-        show(new ComingSoonScreen("Suggested tools",
+        window.show(new ComingSoonScreen("Suggested tools",
                 "Ndalamo will suggest the right tools for these files. That screen is built in chunk 15. "
                         + "Your files have not been changed.",
                 files.stream().map(File::getName).toList(), this::showHome));

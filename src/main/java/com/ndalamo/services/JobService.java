@@ -2,6 +2,7 @@ package com.ndalamo.services;
 
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.Progress;
+import com.ndalamo.models.SaveTo;
 import com.ndalamo.tools.PdfTool;
 import javafx.application.Platform;
 import org.slf4j.Logger;
@@ -55,7 +56,7 @@ public class JobService {
      * @param onError    the tool failed as a whole (per-file failures arrive in onDone instead)
      * @return call cancel() on it to stop the job
      */
-    public Progress start(PdfTool tool, List<Path> inputs, Map<String, Object> options,
+    public Progress start(PdfTool tool, List<Path> inputs, Map<String, Object> options, SaveTo saveTo,
                           BiConsumer<Double, String> onProgress,
                           Consumer<List<FileResult>> onDone,
                           Consumer<Throwable> onError) {
@@ -69,7 +70,7 @@ public class JobService {
             }
             log.info("Started {} on {} file(s)", tool.id(), inputs.size());
             try {
-                List<FileResult> results = tool.run(inputs, options, progress);
+                List<FileResult> results = tool.run(inputs, options, saveTo, progress);
                 log.info("Finished {}{}", tool.id(), progress.isCancelled() ? " (cancelled)" : "");
                 uiThread.execute(() -> onDone.accept(results));
             } catch (Throwable e) {

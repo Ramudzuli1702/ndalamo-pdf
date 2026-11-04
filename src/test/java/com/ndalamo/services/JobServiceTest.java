@@ -3,6 +3,7 @@ package com.ndalamo.services;
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.Progress;
+import com.ndalamo.models.SaveTo;
 import com.ndalamo.tools.PdfTool;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ class JobServiceTest {
             public String description() { return "For tests"; }
             public String category() { return "Organize"; }
             public List<OptionField> optionFields() { return List.of(); }
-            public List<FileResult> run(List<Path> inputs, Map<String, Object> options, Progress progress)
+            public List<FileResult> run(List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress)
                     throws Exception {
                 return work.run(progress);
             }
@@ -49,7 +50,7 @@ class JobServiceTest {
 
     private CompletableFuture<List<FileResult>> start(PdfTool tool) {
         CompletableFuture<List<FileResult>> done = new CompletableFuture<>();
-        jobs.start(tool, List.of(), Map.of(), (f, s) -> {}, done::complete, done::completeExceptionally);
+        jobs.start(tool, List.of(), Map.of(), null, (f, s) -> {}, done::complete, done::completeExceptionally);
         return done;
     }
 
@@ -76,7 +77,7 @@ class JobServiceTest {
                 Thread.sleep(1);
             }
             return List.of();
-        }), List.of(), Map.of(), (f, s) -> {}, done::complete, done::completeExceptionally);
+        }), List.of(), Map.of(), null, (f, s) -> {}, done::complete, done::completeExceptionally);
 
         assertTrue(started.await(10, TimeUnit.SECONDS));
         progress.cancel();
@@ -99,7 +100,7 @@ class JobServiceTest {
         Progress queued = jobs.start(fakeTool(p -> {
             secondRan.set(true);
             return List.of();
-        }), List.of(), Map.of(), (f, s) -> {}, done::complete, done::completeExceptionally);
+        }), List.of(), Map.of(), null, (f, s) -> {}, done::complete, done::completeExceptionally);
 
         queued.cancel();
         release.countDown();
@@ -126,7 +127,7 @@ class JobServiceTest {
         jobs.start(fakeTool(p -> {
             for (int i = 1; i <= 10_000; i++) p.update(i / 10_000.0, "Page " + i);
             return List.of();
-        }), List.of(), Map.of(), (f, s) -> received.add(f), done::complete, done::completeExceptionally);
+        }), List.of(), Map.of(), null, (f, s) -> received.add(f), done::complete, done::completeExceptionally);
 
         done.get(10, TimeUnit.SECONDS);
         assertTrue(received.size() < 10_000);

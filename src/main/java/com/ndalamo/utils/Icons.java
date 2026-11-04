@@ -47,14 +47,45 @@ public final class Icons {
         return draw(size, color, "M15 18l-6-6 6-6");
     }
 
+    // Status icons, drawn bolder (2.5–3 px) like the mockups' toasts and result screen.
+    public static Region check(double size, String color) {
+        return draw(size, color, 3, "M5 12l5 5 9-10");
+    }
+
+    public static Region cross(double size, String color) {
+        return draw(size, color, 2.5, "M7 7l10 10M17 7L7 17");
+    }
+
+    public static Region warning(double size, String color) {
+        return draw(size, color, 2.5, "M12 7v6M12 17h.01");
+    }
+
+    public static Region info(double size, String color) {
+        return draw(size, color, 2.5, "M12 11v6M12 7h.01");
+    }
+
+    /** Small "x" for remove and dismiss buttons. */
+    public static Region close(double size, String color) {
+        return draw(size, color, "M6 6l12 12M18 6L6 18");
+    }
+
+    /** Six dots: "you can drag this row". */
+    public static Region dragHandle(double size, String color) {
+        return draw(size, color, "M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01");
+    }
+
     private static Region draw(double size, String color, String... paths) {
+        return draw(size, color, 2, paths);
+    }
+
+    private static Region draw(double size, String color, double strokeWidth, String... paths) {
         Group drawing = new Group();
         for (String path : paths) {
             SVGPath svg = new SVGPath();
             svg.setContent(path);
             svg.setFill(null);
             svg.setStroke(Color.web(color));
-            svg.setStrokeWidth(2);
+            svg.setStrokeWidth(strokeWidth);
             svg.setStrokeLineCap(StrokeLineCap.ROUND);
             svg.setStrokeLineJoin(StrokeLineJoin.ROUND);
             drawing.getChildren().add(svg);
