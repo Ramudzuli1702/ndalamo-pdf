@@ -58,7 +58,7 @@ Use the latest stable release of each library that is **at least two weeks old**
 ### 3.1 Maven modules
 
 ```
-ndalamo/
+ndalamo-pdf/
 ├── pom.xml                 (parent: versions, plugins)
 ├── core/                   (no JavaFX; pure logic, fully unit-tested)
 ├── tools/                  (one class per tool; depends on core)
