@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dialogs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2448C9}a:hover{color:#1A3596}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1220px; box-sizing: border-box; padding: 48px; background: #5F6470; color: #16181D; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; align-content: start">
+
+  <div role="dialog" aria-labelledby="dlg-pw" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25)">
+    <h2 id="dlg-pw" style="margin: 0; font-size: 18px; font-weight: 600">This PDF is password-protected</h2>
+    <span style="font-size: 14px; color: #3A3F4A">Enter the password for <b>Bank_statement_Oct.pdf</b> to continue. It’s only used for this task and never stored.</span>
+    <label for="pw" style="font-size: 13px; font-weight: 600">Password</label>
+    <input id="pw" type="password" value="secret12" style="height: 42px; padding: 0 12px; border: 2px solid #B42318; border-radius: 8px; font: inherit; font-size: 14px">
+    <span style="font-size: 13px; color: #B42318">That password didn’t work. Try again.</span>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Skip this file</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Unlock</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="dlg-del" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); align-self: start">
+    <h2 id="dlg-del" style="margin: 0; font-size: 18px; font-weight: 600">Delete 2 pages?</h2>
+    <span style="font-size: 14px; color: #3A3F4A">Pages 3 and 4 will be removed from INF3B_Assignment2.pdf. You can undo until you save, and the original file stays untouched.</span>
+    <label style="display: flex; gap: 8px; font-size: 14px"><input type="checkbox"> Don’t ask again</label>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Cancel</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: #B42318; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Delete pages</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="dlg-err" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25)">
+    <div style="display: flex; gap: 12px; align-items: center">
+      <span style="flex: none; width: 36px; height: 36px; border-radius: 999px; background: #FDECEA; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.5" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"></path></svg>
+      </span>
+      <h2 id="dlg-err" style="margin: 0; font-size: 18px; font-weight: 600">Couldn’t open Thesis_final.pdf</h2>
+    </div>
+    <span style="font-size: 14px; color: #3A3F4A">The file looks damaged. Repair PDF can often recover it.</span>
+    <details open style="font-size: 13px">
+      <summary style="cursor: pointer; font-weight: 600">Technical details</summary>
+      <pre style="margin: 8px 0 0; padding: 10px 12px; background: #F4F5F7; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: #3A3F4A">java.io.IOException: Missing root object specification in trailer.
+  at org.apache.pdfbox.pdfparser.COSParser.parseTrailer</pre>
+    </details>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Copy details</button>
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Close</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Repair PDF</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="dlg-lo" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); align-self: start">
+    <h2 id="dlg-lo" style="margin: 0; font-size: 18px; font-weight: 600">Office to PDF needs LibreOffice</h2>
+    <span style="font-size: 14px; color: #3A3F4A">LibreOffice is free and does the Word, Excel and PowerPoint conversion on this PC. Install it once, then come back — every other tool works without it.</span>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">I’ve installed it — check again</button>
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Locate it</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">How to install</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="dlg-close" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); align-self: start">
+    <h2 id="dlg-close" style="margin: 0; font-size: 18px; font-weight: 600">Save changes to INF3B_Assignment2.pdf?</h2>
+    <span style="font-size: 14px; color: #3A3F4A">You deleted 2 pages and rotated 1. If you don’t save, these changes are lost.</span>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Don’t save</button>
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Cancel</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Save as new PDF</button>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="dlg-quit" style="background: #FFFFFF; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); align-self: start">
+    <h2 id="dlg-quit" style="margin: 0; font-size: 18px; font-weight: 600">A task is still running</h2>
+    <span style="font-size: 14px; color: #3A3F4A">OCR on Scan_0031.pdf is 40% done. Closing now cancels it. Watch folders keep working if you minimise to the tray instead.</span>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap">
+      <button style="height: 42px; padding: 0 16px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px">Cancel task and quit</button>
+      <button style="height: 42px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Minimise to tray</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BEA","options":["#2F5BEA","#C2410C","#0F766E","#16181D"]},"$preview":{"width":1280,"height":1220}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#2F5BEA' };
+  }
+}
+</script>
+</body>
+</html>

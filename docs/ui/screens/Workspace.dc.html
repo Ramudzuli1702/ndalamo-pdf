@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page workspace</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2448C9}a:hover{color:#1A3596}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F4F5F7; color: #16181D; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E4E9">
+    <svg role="img" aria-label="Ndalamo" width="28" height="28" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6H16a5 5 0 0 0-5 5v42a5 5 0 0 0 5 5h32a5 5 0 0 0 5-5V21z" stroke="#16181D" stroke-width="5"></path><path d="M38 6v15h15" stroke="#16181D" stroke-width="5"></path><path d="M22 48v-5M31 48v-10M40 48v-14" stroke="#1E8A4C" stroke-width="6"></path><path d="M40 34c0-6 3-9 9-9 0 6-3 9-9 9z" fill="#1E8A4C"></path></svg>
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 8px; text-decoration: none; color: #16181D; font-size: 14px; border: 1px solid #D5D8DF">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+      Home
+    </a>
+    <div style="display: flex; gap: 4px; flex-wrap: wrap">
+      <button style="height: 40px; padding: 0 14px; border: 0; border-radius: 8px 8px 0 0; background: #E8EDFB; border-bottom: 2px solid {{accent}}; font: inherit; font-size: 14px; font-weight: 600; color: #16181D">INF3B_Assignment2.pdf</button>
+      <button style="height: 40px; padding: 0 14px; border: 0; border-radius: 8px 8px 0 0; background: transparent; font: inherit; font-size: 14px; color: #5B616E">Cover_page.pdf</button>
+      <button aria-label="Open another PDF" style="width: 40px; height: 40px; border: 1px dashed #A9B4D6; border-radius: 8px; background: transparent; font: inherit; font-size: 18px; color: #2448C9">+</button>
+    </div>
+    <div style="margin-left: auto; display: flex; gap: 8px">
+      <button style="height: 40px; padding: 0 14px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; color: #16181D">Undo</button>
+      <button style="height: 40px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Save as new PDF</button>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E4E9">
+    <sc-for list="{{actions}}" as="a" hint-placeholder-count="7">
+      <button style="height: 36px; padding: 0 12px; border: 1px solid #D5D8DF; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; color: {{a.color}}">{{a.label}}</button>
+    </sc-for>
+    <span style="margin-left: auto; font-size: 13px; color: #5B616E">Zoom</span>
+    <label for="zoom" style="position: absolute; left: -9999px">Thumbnail size</label>
+    <input id="zoom" type="range" min="1" max="5" value="3" style="width: 120px">
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; flex: 1">
+    <main style="flex: 999 1 560px; min-width: 0; padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; align-content: start">
+      <sc-for list="{{pages}}" as="p" hint-placeholder-count="12">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <button aria-label="Page {{p.n}}" style="width: 100%; aspect-ratio: 210 / 297; background: #FFFFFF; border: {{p.border}}; border-radius: 6px; box-shadow: 0 1px 3px rgba(22,24,29,0.12); padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; transform: {{p.rotate}}">
+            <span style="display: block; height: 8px; width: 70%; background: #C9CDD6; border-radius: 2px"></span>
+            <span style="display: block; height: 5px; width: 100%; background: #E2E4E9; border-radius: 2px"></span>
+            <span style="display: block; height: 5px; width: 92%; background: #E2E4E9; border-radius: 2px"></span>
+            <span style="display: block; height: 5px; width: 96%; background: #E2E4E9; border-radius: 2px"></span>
+            <span style="display: block; height: 40px; width: 100%; background: #EEF0F4; border-radius: 3px"></span>
+            <span style="display: block; height: 5px; width: 88%; background: #E2E4E9; border-radius: 2px"></span>
+            <span style="display: block; height: 5px; width: 94%; background: #E2E4E9; border-radius: 2px"></span>
+            <sc-if value="{{p.selected}}" hint-placeholder-val="{{false}}">
+              <span style="position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 999px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>
+              </span>
+            </sc-if>
+          </button>
+          <span style="font-size: 13px; color: #5B616E">{{p.n}}</span>
+        </div>
+      </sc-for>
+    </main>
+
+    <aside style="flex: 1 1 260px; max-width: 300px; padding: 24px 20px; background: #FFFFFF; border-left: 1px solid #E2E4E9; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600">2 pages selected</h2>
+        <span style="font-size: 13px; color: #5B616E">Pages 3–4 · drag to move, or use the actions above</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <button style="height: 44px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; color: #16181D; text-align: left; padding: 0 14px">Extract to a new PDF</button>
+        <button style="height: 44px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; color: #16181D; text-align: left; padding: 0 14px">Move to Cover_page.pdf</button>
+        <button style="height: 44px; border: 1px solid #F0C6C0; border-radius: 8px; background: #FFF6F5; font: inherit; font-size: 14px; color: #B42318; text-align: left; padding: 0 14px">Delete selected pages</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 18px; border-top: 1px solid #E2E4E9">
+        <label for="outname" style="font-size: 13px; font-weight: 600">Save as</label>
+        <input id="outname" value="INF3B_Assignment2_edited.pdf" style="height: 40px; padding: 0 12px; border: 1px solid #D5D8DF; border-radius: 8px; font: inherit; font-size: 14px; color: #16181D">
+        <span style="font-size: 12px; color: #5B616E">The original file is never overwritten.</span>
+      </div>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5B616E">
+        <span>12 pages · 3.4 MB</span>
+        <span>Changes are applied when you save</span>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BEA","options":["#2F5BEA","#C2410C","#0F766E","#16181D"]},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#2F5BEA';
+    const selected = [3, 4];
+    const pages = [];
+    for (let n = 1; n <= 12; n++) {
+      const sel = selected.indexOf(n) !== -1;
+      pages.push({
+        n: n,
+        selected: sel,
+        border: sel ? '2px solid ' + accent : '1px solid #E2E4E9',
+        rotate: n === 7 ? 'rotate(90deg) scale(0.72)' : 'none'
+      });
+    }
+    return {
+      accent: accent,
+      pages: pages,
+      actions: [
+        { label: 'Rotate left', color: '#16181D' },
+        { label: 'Rotate right', color: '#16181D' },
+        { label: 'Insert blank page', color: '#16181D' },
+        { label: 'Add pages from file', color: '#16181D' },
+        { label: 'Split after selection', color: '#16181D' },
+        { label: 'Crop', color: '#16181D' },
+        { label: 'Delete', color: '#B42318' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

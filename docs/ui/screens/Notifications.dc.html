@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toasts and notifications</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2448C9}a:hover{color:#1A3596}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1000px; box-sizing: border-box; padding: 48px; background: #F4F5F7; color: #16181D; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; align-content: start">
+
+  <sc-for list="{{toasts}}" as="t" hint-placeholder-count="6">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 13px; font-weight: 600; color: #5B616E; letter-spacing: 0.04em; text-transform: uppercase">{{t.label}}</span>
+      <div role="status" style="width: 440px; display: flex; gap: 12px; padding: 14px 14px 14px 16px; background: #FFFFFF; border: 1px solid #E2E4E9; border-radius: 12px; box-shadow: 0 8px 24px rgba(22,24,29,0.14)">
+        <span style="flex: none; width: 32px; height: 32px; border-radius: 999px; background: {{t.tint}}; display: flex; align-items: center; justify-content: center">
+          <sc-if value="{{t.isSuccess}}" hint-placeholder-val="{{true}}">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.ink}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>
+          </sc-if>
+          <sc-if value="{{t.isWarn}}" hint-placeholder-val="{{false}}">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.ink}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v6M12 17h.01"></path></svg>
+          </sc-if>
+          <sc-if value="{{t.isError}}" hint-placeholder-val="{{false}}">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.ink}}" stroke-width="2.5" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"></path></svg>
+          </sc-if>
+          <sc-if value="{{t.isInfo}}" hint-placeholder-val="{{false}}">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.ink}}" stroke-width="2.5" stroke-linecap="round"><path d="M12 11v6M12 7h.01"></path></svg>
+          </sc-if>
+        </span>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+          <span style="font-size: 14px; font-weight: 600">{{t.title}}</span>
+          <span style="font-size: 13px; color: #3A3F4A">{{t.body}}</span>
+          <sc-if value="{{t.hasBar}}" hint-placeholder-val="{{false}}">
+            <span style="display: block; height: 6px; margin-top: 4px; background: #EEF0F4; border-radius: 999px; overflow: hidden"><span style="display: block; height: 100%; width: 40%; background: {{accent}}"></span></span>
+          </sc-if>
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px">
+            <sc-for list="{{t.actions}}" as="a" hint-placeholder-count="2">
+              <button style="border: 0; padding: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: #2448C9; min-height: 24px">{{a}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <button aria-label="Dismiss" style="flex: none; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B616E" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <span style="font-size: 12px; color: #5B616E">{{t.rule}}</span>
+    </div>
+  </sc-for>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <span style="font-size: 13px; font-weight: 600; color: #5B616E; letter-spacing: 0.04em; text-transform: uppercase">System notification (app minimised or in tray)</span>
+    <div style="width: 380px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: #202227; color: #F2F3F5; border-radius: 10px; box-shadow: 0 8px 24px rgba(22,24,29,0.3)">
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #B8BCC6"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6H16a5 5 0 0 0-5 5v42a5 5 0 0 0 5 5h32a5 5 0 0 0 5-5V21z" stroke="#FFFFFF" stroke-width="5"></path><path d="M38 6v15h15" stroke="#FFFFFF" stroke-width="5"></path><path d="M22 48v-5M31 48v-10M40 48v-14" stroke="#6FD39A" stroke-width="6"></path><path d="M40 34c0-6 3-9 9-9 0 6-3 9-9 9z" fill="#6FD39A"></path></svg>Ndalamo · now</span>
+      <span style="font-size: 14px; font-weight: 600">Watch folder: 3 files processed</span>
+      <span style="font-size: 13px; color: #D5D8DF">Client documents · 1 file failed (locked)</span>
+    </div>
+    <span style="font-size: 12px; color: #5B616E">Only when the window isn’t focused. Click opens the activity log.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BEA","options":["#2F5BEA","#C2410C","#0F766E","#16181D"]},"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kind = (k) => ({ isSuccess: k === 's', isWarn: k === 'w', isError: k === 'e', isInfo: k === 'i' });
+    return {
+      accent: this.props.accent ?? '#2F5BEA',
+      toasts: [
+        Object.assign({ label: 'Success', tint: '#E6F4EC', ink: '#1E6B3A', title: '3 files compressed', body: '11.2 MB → 4.9 MB · saved next to the originals', hasBar: false, actions: ['Show in folder', 'Open'], rule: 'Auto-hides after 6 s. Shown when the result screen isn’t visible.' }, kind('s')),
+        Object.assign({ label: 'Partial success', tint: '#FFF4E5', ink: '#9A3412', title: '2 of 3 files under 2 MB', body: 'Lecture_slides_wk9.pdf reached 2.6 MB.', hasBar: false, actions: ['View details', 'Try Strong'], rule: 'Stays until dismissed.' }, kind('w')),
+        Object.assign({ label: 'Error', tint: '#FDECEA', ink: '#B42318', title: 'Couldn’t convert Report.docx', body: 'LibreOffice stopped responding. Your file wasn’t changed.', hasBar: false, actions: ['Try again', 'Copy error details'], rule: 'Stays until dismissed. Plain-language cause first; technical details on request.' }, kind('e')),
+        Object.assign({ label: 'Background task', tint: '#E8EDFB', ink: '#2448C9', title: 'OCR running · page 4 of 10', body: 'Scan_0031.pdf', hasBar: true, actions: ['Show', 'Cancel'], rule: 'Appears when you leave a running task. Turns into a success or error toast.' }, kind('i')),
+        Object.assign({ label: 'Undo', tint: '#ECEEF2', ink: '#2E333D', title: '2 pages deleted', body: 'Nothing is saved until you click Save.', hasBar: false, actions: ['Undo'], rule: 'Page workspace only. 8 s, or until the next action.' }, kind('i'))
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

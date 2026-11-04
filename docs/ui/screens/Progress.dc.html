@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compressing in progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2448C9}a:hover{color:#1A3596}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F4F5F7; color: #16181D; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E4E9">
+    <svg role="img" aria-label="Ndalamo" width="28" height="28" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6H16a5 5 0 0 0-5 5v42a5 5 0 0 0 5 5h32a5 5 0 0 0 5-5V21z" stroke="#16181D" stroke-width="5"></path><path d="M38 6v15h15" stroke="#16181D" stroke-width="5"></path><path d="M22 48v-5M31 48v-10M40 48v-14" stroke="#1E8A4C" stroke-width="6"></path><path d="M40 34c0-6 3-9 9-9 0 6-3 9-9 9z" fill="#1E8A4C"></path></svg>
+    <span style="font-size: 16px; font-weight: 600">Compress PDF</span>
+    <span style="font-size: 13px; color: #5B616E">Step 2 of 2 · Working</span>
+  </header>
+
+  <main style="width: 100%; max-width: 760px; margin: 0 auto; padding: 48px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600">Compressing 3 files…</h1>
+      <div style="height: 10px; background: #E2E4E9; border-radius: 999px; overflow: hidden">
+        <div style="height: 100%; width: 54%; background: {{accent}}"></div>
+      </div>
+      <span style="font-size: 13px; color: #5B616E">1 of 3 done · about 20 seconds left · you can keep using the app</span>
+    </div>
+
+    <sc-for list="{{files}}" as="f" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: #FFFFFF; border: 1px solid #E2E4E9; border-radius: 10px">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <span style="font-size: 14px; font-weight: 500; flex: 1">{{f.name}}</span>
+          <span style="font-size: 13px; color: {{f.statusColor}}; font-weight: 500">{{f.status}}</span>
+        </div>
+        <div style="height: 6px; background: #EEF0F4; border-radius: 999px; overflow: hidden">
+          <div style="height: 100%; width: {{f.pct}}; background: {{f.barColor}}"></div>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap">
+      <button style="height: 44px; padding: 0 18px; border: 1px solid #D5D8DF; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; color: #16181D">Cancel</button>
+      <a href="Result.dc.html" style="height: 44px; padding: 0 18px; border-radius: 8px; background: #FFFFFF; border: 1px solid #D5D8DF; color: #16181D; text-decoration: none; display: flex; align-items: center; font-size: 14px">Run in background</a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BEA","options":["#2F5BEA","#C2410C","#0F766E","#16181D"]},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#2F5BEA';
+    return {
+      accent: accent,
+      files: [
+        { name: 'INF3B_Assignment2.pdf', status: 'Done · 4.1 → 1.8 MB', statusColor: '#1E6B3A', pct: '100%', barColor: '#2E8B57' },
+        { name: 'Lecture_slides_wk9.pdf', status: 'Compressing images · 62%', statusColor: '#16181D', pct: '62%', barColor: accent },
+        { name: 'Certificate_scan.pdf', status: 'Waiting', statusColor: '#5B616E', pct: '0%', barColor: accent }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

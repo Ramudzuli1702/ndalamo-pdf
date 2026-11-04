@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compression result</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2448C9}a:hover{color:#1A3596}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #F4F5F7; color: #16181D; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E2E4E9">
+    <svg role="img" aria-label="Ndalamo" width="28" height="28" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M38 6H16a5 5 0 0 0-5 5v42a5 5 0 0 0 5 5h32a5 5 0 0 0 5-5V21z" stroke="#16181D" stroke-width="5"></path><path d="M38 6v15h15" stroke="#16181D" stroke-width="5"></path><path d="M22 48v-5M31 48v-10M40 48v-14" stroke="#1E8A4C" stroke-width="6"></path><path d="M40 34c0-6 3-9 9-9 0 6-3 9-9 9z" fill="#1E8A4C"></path></svg>
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 8px; text-decoration: none; color: #16181D; font-size: 14px; border: 1px solid #D5D8DF">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+      Home
+    </a>
+    <span style="font-size: 16px; font-weight: 600">Compress PDF</span>
+    <span style="font-size: 13px; color: #5B616E">Done</span>
+  </header>
+
+  <main style="width: 100%; max-width: 820px; margin: 0 auto; padding: 40px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+      <div style="width: 52px; height: 52px; border-radius: 999px; background: #E6F4EC; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1E6B3A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1 1 300px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">3 files compressed</h1>
+        <span style="font-size: 14px; color: #5B616E">11.2 MB → 4.9 MB · 56% smaller</span>
+      </div>
+      <button style="height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Show in folder</button>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E2E4E9; border-radius: 10px; overflow-x: auto">
+      <sc-for list="{{files}}" as="f" hint-placeholder-count="3">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #EEF0F4">
+          <div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 14px; font-weight: 500">{{f.name}}</span>
+            <span style="font-size: 12px; color: {{f.noteColor}}">{{f.note}}</span>
+          </div>
+          <span style="font-size: 14px; font-variant-numeric: tabular-nums">{{f.sizes}}</span>
+          <button style="height: 36px; padding: 0 12px; border: 1px solid #D5D8DF; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; color: #16181D">Open</button>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">Continue with these files</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{next}}" as="n" hint-placeholder-count="4">
+          <button style="height: 40px; padding: 0 14px; border: 1px solid #D5D8DF; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 14px; color: #16181D">{{n}}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #EEF2FD">
+      <span style="font-size: 14px; flex: 1 1 280px">Do this often? Save “Compress to 2 MB” as a one-click pipeline.</span>
+      <a href="PipelineBuilder.dc.html" style="font-size: 14px; font-weight: 600">Save as pipeline</a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2F5BEA","options":["#2F5BEA","#C2410C","#0F766E","#16181D"]},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      accent: this.props.accent ?? '#2F5BEA',
+      files: [
+        { name: 'INF3B_Assignment2_compressed.pdf', note: 'Under 2 MB', noteColor: '#1E6B3A', sizes: '4.1 → 1.8 MB' },
+        { name: 'Lecture_slides_wk9_compressed.pdf', note: 'Reached 2.6 MB — smaller would make slides unreadable. Try “Strong” or split it.', noteColor: '#9A3412', sizes: '5.6 → 2.6 MB' },
+        { name: 'Certificate_scan_compressed.pdf', note: 'Under 2 MB', noteColor: '#1E6B3A', sizes: '1.5 → 0.5 MB' }
+      ],
+      next: ['Merge into one PDF', 'Add page numbers', 'Protect with password', 'Split PDF']
+    };
+  }
+}
+</script>
+</body>
+</html>
