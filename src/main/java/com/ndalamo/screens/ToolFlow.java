@@ -94,7 +94,7 @@ public class ToolFlow {
     }
 
     private void showResults(PdfTool tool, List<FileResult> results, int inputCount) {
-        window.show(new ResultScreen(tool, results, inputCount, showHome, this::open));
+        window.show(new ResultScreen(tool, results, inputCount, window, showHome, this::open));
     }
 
     /** The toast shown when a run finishes while the user is elsewhere in the app. */
@@ -106,8 +106,11 @@ public class ToolFlow {
         }
         long after = results.stream().mapToLong(FileResult::getSizeAfter).sum();
         boolean partial = results.stream().anyMatch(r -> r.getStatus() != FileResult.Status.SUCCESS);
-        Toast.Action show = new Toast.Action("Show in folder", () -> FileActions.showInFolder(outputs.get(0)));
-        Toast.Action open = new Toast.Action("Open", () -> FileActions.open(outputs.get(0)));
+        Path first = outputs.get(0);
+        Toast.Action show = new Toast.Action("Show in folder",
+                () -> MessageDialog.ifFileExists(window, first, () -> FileActions.showInFolder(first)));
+        Toast.Action open = new Toast.Action("Open",
+                () -> MessageDialog.ifFileExists(window, first, () -> FileActions.open(first)));
         return partial
                 ? Toast.partial(tool.doneLabel(inputCount), "Some files were skipped.", details, show)
                 : Toast.success(tool.doneLabel(inputCount), Format.size(after) + " · saved", show, open);

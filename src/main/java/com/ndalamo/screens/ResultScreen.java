@@ -35,8 +35,11 @@ public class ResultScreen extends BorderPane {
      * @param inputCount how many files went in (Merge turns 3 into 1)
      * @param onContinue opens another tool with these outputs already added
      */
-    public ResultScreen(PdfTool tool, List<FileResult> results, int inputCount, Runnable onHome,
+    private final MainWindow window;
+
+    public ResultScreen(PdfTool tool, List<FileResult> results, int inputCount, MainWindow window, Runnable onHome,
                         BiConsumer<PdfTool, List<Path>> onContinue) {
+        this.window = window;
         ScreenHeader header = new ScreenHeader(tool.name(), onHome);
         Label step = new Label("Done");
         step.getStyleClass().add("step-label");
@@ -95,7 +98,8 @@ public class ResultScreen extends BorderPane {
             Button show = new Button("Show in folder");
             show.getStyleClass().add("button-primary");
             show.setMinWidth(Region.USE_PREF_SIZE);
-            show.setOnAction(e -> FileActions.showInFolder(outputs.get(0)));
+            show.setOnAction(e -> MessageDialog.ifFileExists(window, outputs.get(0),
+                    () -> FileActions.showInFolder(outputs.get(0))));
             row.getChildren().add(show);
         }
         return row;
@@ -128,7 +132,8 @@ public class ResultScreen extends BorderPane {
                 Button open = new Button("Open");
                 open.getStyleClass().addAll("button-secondary", "button-small");
                 open.setMinWidth(Region.USE_PREF_SIZE);
-                open.setOnAction(e -> FileActions.open(result.getOutput()));
+                open.setOnAction(e -> MessageDialog.ifFileExists(window, result.getOutput(),
+                        () -> FileActions.open(result.getOutput())));
                 row.getChildren().addAll(sizes, open);
             }
             list.getChildren().add(row);
