@@ -15,16 +15,48 @@ import java.util.List;
  * - the text size changes (a heading and the text under it);
  * - the line before ended well short of the right edge (the end of a paragraph,
  *   or a line on its own such as an address line);
- * - the line starts further right than the paragraph so far (an indented first line).
+ * - the line starts further right than the paragraph so far (an indented first line);
+ * - the line starts with a bullet or a list number ("•", "3.", "b)", "(iv)").
  * Words hyphenated across a line break are joined again ("docu- ment" → "document").
  */
 final class WordLayout {
 
     enum Alignment { LEFT, CENTRE, RIGHT, JUSTIFIED }
 
-    /** A paragraph: its words in reading order, where it sits, and the space above it (points). */
+    /**
+     * A paragraph: its words in reading order, where it sits, and the space above it
+     * (points). For a list item, {@code marker} is its bullet or number, and {@code words}
+     * leave it out.
+     */
     record Paragraph(List<TextWord> words, Alignment alignment, float indent, float firstLineIndent,
-                     float spaceBefore, boolean endsSentence) {}
+                     float spaceBefore, boolean endsSentence, ListMarker marker) {
+
+        /** The paragraph's text size: the size most of its letters have. */
+        float size() {
+            return mostCommonSize(words);
+        }
+
+        boolean allBold() {
+            return words.stream().allMatch(TextWord::bold);
+        }
+    }
+
+    /**
+     * A list item's bullet or number. {@code format} is Word's name for the numbering
+     * ("bullet", "decimal", "lowerLetter", "upperLetter", "lowerRoman", "upperRoman") and
+     * {@code pattern} how it's written, e.g. "%1." or "(%1)".
+     */
+    record ListMarker(String format, String pattern, int number, float markerLeft, float textLeft, TextWord word) {
+        boolean bullet() {
+            return format.equals("bullet");
+        }
+    }
+
+    /** Characters PDFs use as bullets, including the private-use ones Word writes for its Symbol bullets. */
+    private static final String BULLETS = "•◦▪▫■□●○‣⁃–—-*➢➤►✓✔"
+            + "\uF0B7\uF0A7\uF076\uF0D8\uF0FC";     // Symbol and Wingdings bullets from Word
+    private static final java.util.regex.Pattern NUMBERED =
+            java.util.regex.Pattern.compile("^(\\()?(\\d{1,3}|[a-zA-Z]|[ivxlcIVXLC]{1,6})([.)])?$");
 
     /** What the page's text block looks like, measured once per page. */
     record Margins(float left, float right) {}
@@ -55,7 +87,8 @@ final class WordLayout {
                 boolean previousEndedShort = roomLeft > (firstWord.right() - firstWord.left()) + previous.size() * 0.6f;
                 // Compared with the paragraph's second line onwards, since its first line may itself be indented.
                 boolean indented = current.size() > 1 && line.left() > bodyLeft(current) + line.size() * 0.8f;
-                if (biggerGap || sizeChanged || previousEndedShort || indented) {
+                boolean listItem = marker(line.words()) != null;
+                if (biggerGap || sizeChanged || previousEndedShort || indented || listItem) {
                     paragraphs.add(paragraph(current, margins, spaceBefore));
                     spaceBefore = Math.max(0, gap - line.size() * 1.25f);
                     current = new ArrayList<>();
@@ -82,8 +115,7 @@ final class WordLayout {
                 // Join "docu-" and "ment" into one word, keeping the first part's look.
                 TextWord head = words.remove(words.size() - 1);
                 TextWord tail = lineWords.get(0);
-                words.add(new TextWord(head.text().substring(0, head.text().length() - 1) + tail.text(),
-                        head.left(), tail.right(), head.baseline(), head.size(), head.font(), head.bold(), head.italic(), head.colour()));
+                words.add(head.withText(head.text().substring(0, head.text().length() - 1) + tail.text(), tail.right()));
                 words.addAll(lineWords.subList(1, lineWords.size()));
             } else {
                 words.addAll(lineWords);
@@ -94,6 +126,14 @@ final class WordLayout {
         float left = lines.size() > 1 ? bodyLeft(lines) : first.left();
         float indent = Math.max(0, left - margins.left());
         float firstLineIndent = first.left() - left;
+
+        ListMarker marker = marker(first.words());
+        if (marker != null) {
+            words.remove(0);
+            // The text lines up after the marker, and the marker hangs out to the left of it.
+            indent = Math.max(0, marker.textLeft() - margins.left());
+            firstLineIndent = marker.markerLeft() - marker.textLeft();
+        }
 
         Alignment alignment = Alignment.LEFT;
         // Justified: every line but the last reaches the right edge. Uneven text never lines up that exactly.
@@ -116,13 +156,71 @@ final class WordLayout {
                 alignment = Alignment.RIGHT;                          // e.g. a date at the top right of a letter
             }
         }
+        if (marker != null) alignment = alignment == Alignment.JUSTIFIED ? Alignment.JUSTIFIED : Alignment.LEFT;
         if (alignment == Alignment.CENTRE || alignment == Alignment.RIGHT) {
             indent = 0;
             firstLineIndent = 0;
         }
         String lastText = words.get(words.size() - 1).text();
         boolean endsSentence = lastText.matches(".*[.!?:;\"”’)]$");
-        return new Paragraph(words, alignment, indent, firstLineIndent, spaceBefore, endsSentence);
+        return new Paragraph(words, alignment, indent, firstLineIndent, spaceBefore, endsSentence, marker);
+    }
+
+    /**
+     * The line's bullet or list number, or null. The marker must be followed by more
+     * text on the line. A dash or "o" only counts with a clear gap after it, since
+     * sentences can start with those.
+     */
+    static ListMarker marker(List<TextWord> line) {
+        if (line.size() < 2) return null;
+        TextWord first = line.get(0), next = line.get(1);
+        String t = first.text();
+        float gap = next.left() - first.right();
+        boolean clearGap = gap > first.size() * 0.6f;
+
+        if (t.length() == 1 && BULLETS.indexOf(t.charAt(0)) >= 0) {
+            boolean needsGap = "–—-*".indexOf(t.charAt(0)) >= 0;
+            if (!needsGap || clearGap) return new ListMarker("bullet", t, 0, first.left(), next.left(), first);
+        }
+        if (t.equals("o") && clearGap && first.font().contains("Courier")) {
+            return new ListMarker("bullet", t, 0, first.left(), next.left(), first);
+        }
+        java.util.regex.Matcher m = NUMBERED.matcher(t);
+        if (!m.matches()) return null;
+        boolean open = m.group(1) != null;
+        String closing = m.group(3);
+        if (closing == null || (open && !closing.equals(")"))) return null;   // "3" alone, or "(3." aren't markers
+        String value = m.group(2);
+        String pattern = (open ? "(" : "") + "%1" + closing;
+        if (value.matches("\\d+")) return new ListMarker("decimal", pattern, Integer.parseInt(value), first.left(), next.left(), first);
+        if (value.matches("[ivxlc]+")) return new ListMarker("lowerRoman", pattern, roman(value), first.left(), next.left(), first);
+        if (value.matches("[IVXLC]+")) return new ListMarker("upperRoman", pattern, roman(value), first.left(), next.left(), first);
+        if (value.length() == 1 && Character.isLowerCase(value.charAt(0))) {
+            return new ListMarker("lowerLetter", pattern, value.charAt(0) - 'a' + 1, first.left(), next.left(), first);
+        }
+        if (value.length() == 1) return new ListMarker("upperLetter", pattern, value.charAt(0) - 'A' + 1, first.left(), next.left(), first);
+        return null;
+    }
+
+    private static int roman(String numeral) {
+        String s = numeral.toLowerCase();
+        int total = 0;
+        for (int i = 0; i < s.length(); i++) {
+            int value = romanDigit(s.charAt(i));
+            if (i + 1 < s.length() && value < romanDigit(s.charAt(i + 1))) total -= value;
+            else total += value;
+        }
+        return total;
+    }
+
+    private static int romanDigit(char c) {
+        return switch (c) {
+            case 'i' -> 1;
+            case 'v' -> 5;
+            case 'x' -> 10;
+            case 'l' -> 50;
+            default -> 100;
+        };
     }
 
     private static boolean endsWithHyphen(TextWord word) {

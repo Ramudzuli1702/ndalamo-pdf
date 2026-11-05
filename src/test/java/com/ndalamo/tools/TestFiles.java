@@ -379,6 +379,51 @@ final class TestFiles {
     }
 
     /**
+     * A page with a 20 pt title, a 14 pt section heading, body text with one underlined
+     * phrase, a bulleted list, a numbered list that starts at 3 with a lettered sub-item,
+     * and a small bordered box whose bottom border must not count as an underline.
+     */
+    static Path structuredPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
+                writeLine(c, bold, 20, 72, 770, "Club rules");
+                writeLine(c, bold, 14, 72, 735, "Membership");
+                String before = "Read the ";
+                writeLine(c, regular, 11, 72, 710, before + "joining form" + " carefully before you sign it.");
+                float underlineStart = 72 + regular.getStringWidth(before) / 1000 * 11;
+                float underlineEnd = underlineStart + regular.getStringWidth("joining form") / 1000 * 11;
+                c.setLineWidth(0.6f);
+                c.moveTo(underlineStart, 708);
+                c.lineTo(underlineEnd, 708);
+                c.stroke();
+                String[] bullets = {"Bring your identity document.", "Pay the joining fee of R 50.", "Attend one meeting first."};
+                for (int i = 0; i < bullets.length; i++) {
+                    writeLine(c, regular, 11, 80, 685 - i * 16, "•");
+                    writeLine(c, regular, 11, 96, 685 - i * 16, bullets[i]);
+                }
+                writeLine(c, bold, 14, 72, 620, "Meetings");
+                writeLine(c, regular, 11, 80, 595, "3.");
+                writeLine(c, regular, 11, 96, 595, "The chairperson opens the meeting.");
+                writeLine(c, regular, 11, 96, 579, "a)");
+                writeLine(c, regular, 11, 112, 579, "Apologies are read out.");
+                writeLine(c, regular, 11, 80, 563, "4.");
+                writeLine(c, regular, 11, 96, 563, "The treasurer reports.");
+                // A bordered note: its bottom edge sits just under the text, like an underline would.
+                writeLine(c, regular, 11, 80, 520, "Note: meetings start on time.");
+                c.addRect(74, 518, 200, 16);
+                c.stroke();
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /**
      * Breaks text into lines no wider than {@code width}, like a word processor does,
      * hyphenating a long word at the end of a line when its first part fits.
      */

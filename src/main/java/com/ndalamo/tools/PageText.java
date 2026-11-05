@@ -28,12 +28,21 @@ final class PageText {
 
     /** One word, or part of a word where its look changes (e.g. a bold first letter). */
     record TextWord(String text, float left, float right, float baseline, float size,
-                    String font, boolean bold, boolean italic, int colour) {
+                    String font, boolean bold, boolean italic, int colour, boolean underline) {
 
-        /** Same font, size, weight, slant and colour: can go in one Word run. */
+        /** Same font, size, weight, slant, colour and underline: can go in one Word run. */
         boolean looksLike(TextWord other) {
-            return font.equals(other.font) && Math.abs(size - other.size) < 0.6f
-                    && bold == other.bold && italic == other.italic && colour == other.colour;
+            return font.equals(other.font) && Math.abs(size - other.size) < 0.6f && bold == other.bold
+                    && italic == other.italic && colour == other.colour && underline == other.underline;
+        }
+
+        /** The same word with different text, e.g. a hyphenated word joined again. */
+        TextWord withText(String newText, float newRight) {
+            return new TextWord(newText, left, newRight, baseline, size, font, bold, italic, colour, underline);
+        }
+
+        TextWord underlined() {
+            return new TextWord(text, left, right, baseline, size, font, bold, italic, colour, true);
         }
     }
 
@@ -96,7 +105,35 @@ final class PageText {
                 first.getXDirAdj(), last.getXDirAdj() + last.getWidthDirAdj(), first.getYDirAdj(),
                 Math.round(first.getFontSizeInPt() * 2) / 2f,          // to the nearest half point, like Word
                 familyName(name), isBold(font, name), isItalic(font, name),
-                colours.getOrDefault(first, 0)));
+                colours.getOrDefault(first, 0), false));
+    }
+
+    /**
+     * PDFs draw underlines as separate lines, so a word counts as underlined when a
+     * horizontal line runs just below its baseline, under most of the word. Lines
+     * that meet a vertical line are table borders, not underlines.
+     */
+    static List<TextWord> markUnderlines(List<TextWord> words, List<PageContent.Rule> rules) {
+        List<PageContent.Rule> horizontal = new ArrayList<>(), vertical = new ArrayList<>();
+        for (PageContent.Rule rule : rules) (rule.horizontal() ? horizontal : vertical).add(rule);
+        horizontal.removeIf(h -> vertical.stream().anyMatch(v -> v.position() >= h.from() - 2 && v.position() <= h.to() + 2
+                && h.position() >= v.from() - 2 && h.position() <= v.to() + 2));
+        if (horizontal.isEmpty()) return words;
+
+        List<TextWord> marked = new ArrayList<>(words.size());
+        for (TextWord word : words) {
+            boolean under = false;
+            for (PageContent.Rule rule : horizontal) {
+                float below = rule.position() - word.baseline();
+                float covered = Math.min(rule.to(), word.right()) - Math.max(rule.from(), word.left());
+                if (below >= 0 && below <= word.size() * 0.35f && covered >= (word.right() - word.left()) * 0.7f) {
+                    under = true;
+                    break;
+                }
+            }
+            marked.add(under ? word.underlined() : word);
+        }
+        return marked;
     }
 
     private static boolean sameLook(TextPosition a, TextPosition b, Map<TextPosition, Integer> colours) {

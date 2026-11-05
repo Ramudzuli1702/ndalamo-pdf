@@ -12,6 +12,7 @@ import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -29,10 +30,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PDF to Word: turns a PDF into an editable .docx (SPEC §4.1). Built in steps;
- * this one (12a) brings over the text: paragraphs, alignment, indents, and each
- * word's font, size, bold, italic and colour. Headings and lists, pictures,
- * tables, columns and scans come in later steps. The goal is a clean document to
+ * PDF to Word: turns a PDF into an editable .docx (SPEC §4.1). Built in steps.
+ * So far: paragraphs, alignment, indents, each word's font, size, bold, italic,
+ * underline and colour (12a), and headings and lists (12b, see WordStyles).
+ * Pictures, tables, columns and scans come in later steps. The goal is a clean document to
  * edit, not an exact copy of the page. The PDF is only read.
  */
 public class PdfToWordTool implements PdfTool {
@@ -134,7 +135,8 @@ public class PdfToWordTool implements PdfTool {
             String status = "Page " + page + " of " + doc.getNumberOfPages();
             progress.file(index, (n + 0.1) / pages.size() * 0.8, status);
             progress.update((index + (double) n / pages.size()) / fileCount, "Reading " + input.getFileName() + " · " + status);
-            pageWords.add(PageText.words(doc, page - 1));
+            List<TextWord> words = PageText.words(doc, page - 1);
+            pageWords.add(PageText.markUnderlines(words, PageContent.rules(doc.getPage(page - 1))));
         }
 
         float left = Float.MAX_VALUE, right = 0, top = Float.MAX_VALUE;
@@ -158,8 +160,19 @@ public class PdfToWordTool implements PdfTool {
         int paragraphCount = 0, scans = 0;
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
+        List<List<Paragraph>> pageParagraphs = new ArrayList<>();
+        List<Paragraph> allParagraphs = new ArrayList<>();
+        for (List<TextWord> words : pageWords) {
+            List<Paragraph> paragraphs = WordLayout.paragraphs(words, margins);
+            pageParagraphs.add(paragraphs);
+            allParagraphs.addAll(paragraphs);
+        }
+        Map<Paragraph, Integer> headings = WordStyles.headings(allParagraphs, WordStyles.bodySize(pageWords));
+
         try (XWPFDocument word = new XWPFDocument()) {
             setPage(word, pageWidth, pageHeight, left, pageWidth - right, top);
+            if (!headings.isEmpty()) WordStyles.addHeadingStyles(word);
+            Map<Paragraph, WordStyles.ListPlace> lists = WordStyles.lists(word, allParagraphs, headings);
             XWPFParagraph last = null;
             Paragraph lastParagraph = null;
             for (int n = 0; n < pageWords.size(); n++) {
@@ -169,18 +182,19 @@ public class PdfToWordTool implements PdfTool {
                 for (TextWord w : words) letters += w.text().length();
                 if (letters < HAS_TEXT) scans++;
 
-                List<Paragraph> paragraphs = WordLayout.paragraphs(words, margins);
+                List<Paragraph> paragraphs = pageParagraphs.get(n);
                 for (int p = 0; p < paragraphs.size(); p++) {
                     Paragraph paragraph = paragraphs.get(p);
                     boolean firstOnPage = p == 0 && n > 0;
                     // Without page breaks, a sentence that runs over onto the next page stays one paragraph.
                     if (firstOnPage && !pageBreaks && last != null && !lastParagraph.endsSentence()
-                            && flowing(lastParagraph) && flowing(paragraph)) {
+                            && flowing(lastParagraph) && flowing(paragraph) && paragraph.marker() == null
+                            && !headings.containsKey(paragraph) && !headings.containsKey(lastParagraph)) {
                         addRuns(last, paragraph.words(), true);
                         lastParagraph = paragraph;
                         continue;
                     }
-                    last = write(word, paragraph);
+                    last = write(word, paragraph, headings.get(paragraph), lists.get(paragraph));
                     if (firstOnPage && pageBreaks) last.setPageBreak(true);
                     lastParagraph = paragraph;
                     paragraphCount++;
@@ -212,8 +226,14 @@ public class PdfToWordTool implements PdfTool {
         return paragraph.alignment() == WordLayout.Alignment.LEFT || paragraph.alignment() == WordLayout.Alignment.JUSTIFIED;
     }
 
-    private static XWPFParagraph write(XWPFDocument word, Paragraph paragraph) {
+    private static XWPFParagraph write(XWPFDocument word, Paragraph paragraph, Integer headingLevel,
+                                       WordStyles.ListPlace listPlace) {
         XWPFParagraph p = word.createParagraph();
+        if (headingLevel != null) p.setStyle("Heading" + headingLevel);
+        if (listPlace != null) {
+            p.setNumID(listPlace.numId());
+            p.setNumILvl(BigInteger.valueOf(listPlace.level()));
+        }
         p.setAlignment(switch (paragraph.alignment()) {
             case CENTRE -> ParagraphAlignment.CENTER;
             case RIGHT -> ParagraphAlignment.RIGHT;
@@ -225,7 +245,13 @@ public class PdfToWordTool implements PdfTool {
         if (paragraph.indent() > 2) p.setIndentationLeft(twips(paragraph.indent()));
         if (paragraph.firstLineIndent() > 2) p.setIndentationFirstLine(twips(paragraph.firstLineIndent()));
         else if (paragraph.firstLineIndent() < -2) p.setIndentationHanging(twips(-paragraph.firstLineIndent()));
-        addRuns(p, paragraph.words(), false);
+        List<TextWord> words = paragraph.words();
+        if (paragraph.marker() != null && listPlace == null) {
+            // A numbered heading ("1. Contributions"): the number stays as text in the heading.
+            words = new ArrayList<>(words);
+            words.add(0, paragraph.marker().word());
+        }
+        addRuns(p, words, false);
         return p;
     }
 
@@ -236,9 +262,11 @@ public class PdfToWordTool implements PdfTool {
         boolean spaceFirst = afterExistingText;
         for (TextWord w : words) {
             if (look != null && !w.looksLike(look)) {
+                // The space between two runs goes with whichever isn't underlined, so no underlined gap shows.
+                if (!look.underline()) text.append(' ');
                 addRun(p, text.toString(), look);
                 text.setLength(0);
-                spaceFirst = true;
+                spaceFirst = look.underline();
             }
             if (text.length() > 0 || spaceFirst) text.append(' ');
             spaceFirst = false;
@@ -256,6 +284,7 @@ public class PdfToWordTool implements PdfTool {
         if (look.bold()) run.setBold(true);
         if (look.italic()) run.setItalic(true);
         if (look.colour() != 0) run.setColor(String.format("%06X", look.colour()));
+        if (look.underline()) run.setUnderline(UnderlinePatterns.SINGLE);
     }
 
     /** Page size and margins like the PDF's, so lines break in about the same places. */

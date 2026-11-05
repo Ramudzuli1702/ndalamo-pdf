@@ -165,6 +165,76 @@ class PdfToWordToolTest {
         assertFalse(Files.exists(dir.resolve("Letter_editable.docx")));
     }
 
+    private static XWPFParagraph find(XWPFDocument word, String start) {
+        return word.getParagraphs().stream().filter(p -> p.getText().startsWith(start)).findFirst()
+                .orElseThrow(() -> new AssertionError("no paragraph starting \"" + start + "\" in " + texts(word)));
+    }
+
+    @Test
+    void biggerTextBecomesHeadings() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.structuredPdf(dir, "Rules.pdf"), true))) {
+            assertEquals("Heading1", find(word, "Club rules").getStyle());
+            assertEquals("Heading2", find(word, "Membership").getStyle());
+            assertEquals("Heading2", find(word, "Meetings").getStyle());
+            assertNull(find(word, "Read the").getStyle(), "body text stays plain");
+            assertNotNull(word.getStyles().getStyle("Heading1"), "Word needs the style defined to use it");
+        }
+    }
+
+    @Test
+    void bulletsAndNumbersBecomeWordLists() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.structuredPdf(dir, "Rules.pdf"), true))) {
+            XWPFParagraph bullet = find(word, "Bring your identity document.");
+            assertNotNull(bullet.getNumID(), "a real list item, not a typed bullet");
+            assertEquals("bullet", bullet.getNumFmt());
+            assertEquals(bullet.getNumID(), find(word, "Attend one meeting first.").getNumID(), "one list");
+
+            XWPFParagraph three = find(word, "The chairperson opens the meeting.");
+            assertEquals("decimal", three.getNumFmt());
+            assertEquals(3, three.getNumStartOverride().intValue(), "numbering continues at 3 as in the PDF");
+            XWPFParagraph sub = find(word, "Apologies are read out.");
+            assertEquals(three.getNumID(), sub.getNumID());
+            assertEquals(1, sub.getNumIlvl().intValue(), "a level deeper");
+            assertEquals("lowerLetter", sub.getNumFmt());
+            assertEquals(three.getNumID(), find(word, "The treasurer reports.").getNumID());
+        }
+    }
+
+    @Test
+    void underlinesAreKeptButBoxBordersAreNot() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.structuredPdf(dir, "Rules.pdf"), true))) {
+            List<String> underlined = find(word, "Read the").getRuns().stream()
+                    .filter(r -> r.getUnderline() != org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE)
+                    .map(XWPFRun::text).toList();
+            assertEquals(List.of("joining form"), underlined);
+            assertTrue(find(word, "Note:").getRuns().stream()
+                    .allMatch(r -> r.getUnderline() == org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE));
+        }
+    }
+
+    @Test
+    void listMarkersAreRecognised() {
+        assertEquals("bullet", marker("•").format());
+        assertEquals("bullet", marker("").format(), "Word's Symbol-font bullet");
+        assertEquals(3, marker("3.").number());
+        assertEquals("%1.", marker("3.").pattern());
+        assertEquals("lowerLetter", marker("b)").format());
+        assertEquals("(%1)", marker("(iv)").pattern());
+        assertEquals(4, marker("(iv)").number());
+        assertEquals("upperRoman", marker("II.").format());
+        assertNull(marker("2026."), "a year is not a list number");
+        assertNull(marker("3"), "a number without . or ) is just a number");
+        assertNull(WordLayout.marker(List.of(word("-", 72), word("well", 76))), "a dash right before a word is not a bullet");
+    }
+
+    private static PageText.TextWord word(String text, float left) {
+        return new PageText.TextWord(text, left, left + text.length() * 5, 100, 11, "Arial", false, false, 0, false);
+    }
+
+    private static WordLayout.ListMarker marker(String text) {
+        return WordLayout.marker(List.of(word(text, 72), word("Item", 100)));
+    }
+
     @Test
     void fontNamesAreTheOnesWordKnows() {
         assertEquals("Times New Roman", PageText.familyName("ABCDEF+TimesNewRomanPS-BoldMT"));
