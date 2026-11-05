@@ -216,8 +216,14 @@ final class TableFinder {
 
         StringBuilder[][] cells = new StringBuilder[block.size()][edges.size() - 1];
         for (int row = 0; row < block.size(); row++) {
+            Box previous = null;
+            int column = -1;
             for (Box word : block.get(row)) {
-                int column = slot(edges, word.centreX());
+                // Words a normal space apart belong to the same cell, even when a long text spills over
+                // into the next column (spreadsheets do that), so only a column gap starts a new cell.
+                boolean sameCell = previous != null && word.left() - previous.right() <= columnGap;
+                if (!sameCell) column = slot(edges, word.centreX());
+                previous = word;
                 if (column < 0) continue;
                 if (cells[row][column] == null) cells[row][column] = new StringBuilder(word.text());
                 else cells[row][column].append(' ').append(word.text());

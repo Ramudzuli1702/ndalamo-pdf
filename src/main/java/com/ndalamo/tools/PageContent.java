@@ -48,15 +48,14 @@ final class PageContent {
         PDFTextStripper stripper = new PDFTextStripper() {
             @Override
             protected void writeString(String text, List<TextPosition> letters) {
-                if (text.isBlank() || letters.isEmpty()) return;
-                float left = Float.MAX_VALUE, top = Float.MAX_VALUE, right = -Float.MAX_VALUE, bottom = -Float.MAX_VALUE;
-                for (TextPosition letter : letters) {
-                    left = Math.min(left, letter.getXDirAdj());
-                    right = Math.max(right, letter.getXDirAdj() + letter.getWidthDirAdj());
-                    top = Math.min(top, letter.getYDirAdj() - letter.getHeightDir());   // y is the baseline
-                    bottom = Math.max(bottom, letter.getYDirAdj());
+                // This can be a whole line with real spaces in it (PDFBox only splits where it adds
+                // spaces itself), so split at the spaces to get single words.
+                int start = 0;
+                for (int i = 0; i <= letters.size(); i++) {
+                    if (i < letters.size() && !letters.get(i).getUnicode().isBlank()) continue;
+                    if (i > start) words.add(box(letters.subList(start, i)));
+                    start = i + 1;
                 }
-                words.add(new Box(text.strip(), left, top, right, bottom));
             }
         };
         stripper.setSortByPosition(true);
@@ -64,6 +63,19 @@ final class PageContent {
         stripper.setEndPage(pageIndex + 1);
         stripper.getText(doc);
         return words;
+    }
+
+    private static Box box(List<TextPosition> letters) {
+        StringBuilder text = new StringBuilder();
+        float left = Float.MAX_VALUE, top = Float.MAX_VALUE, right = -Float.MAX_VALUE, bottom = -Float.MAX_VALUE;
+        for (TextPosition letter : letters) {
+            text.append(letter.getUnicode());
+            left = Math.min(left, letter.getXDirAdj());
+            right = Math.max(right, letter.getXDirAdj() + letter.getWidthDirAdj());
+            top = Math.min(top, letter.getYDirAdj() - letter.getHeightDir());   // y is the baseline
+            bottom = Math.max(bottom, letter.getYDirAdj());
+        }
+        return new Box(text.toString(), left, top, right, bottom);
     }
 
     /**

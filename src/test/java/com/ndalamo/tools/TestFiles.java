@@ -17,6 +17,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Makes small PDFs and images for tool tests, so no test files need to be checked in. */
 final class TestFiles {
@@ -318,6 +320,95 @@ final class TestFiles {
             doc.save(file.toFile());
         }
         return file;
+    }
+
+    /**
+     * A two-page letter: centred bold title, a date on the right, an address block,
+     * two paragraphs wrapped over several lines (one word hyphenated across a line,
+     * one word in red italics), and a paragraph on page 2.
+     */
+    static Path letterPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        PDType1Font italic = new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage first = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);    // 595 × 842
+            doc.addPage(first);
+            try (PDPageContentStream c = new PDPageContentStream(doc, first)) {
+                String title = "Application for a bursary";
+                writeLine(c, bold, 16, (595 - bold.getStringWidth(title) / 1000 * 16) / 2, 770, title);
+                String date = "4 November 2026";
+                writeLine(c, regular, 11, 523 - regular.getStringWidth(date) / 1000 * 11, 735, date);
+                writeLine(c, regular, 11, 72, 700, "The Bursary Office");
+                writeLine(c, regular, 11, 72, 686, "University of Johannesburg");
+                writeLine(c, regular, 11, 72, 672, "Auckland Park");
+                String paragraph1 = "I am writing to apply for the bursary for the next academic year. I am a "
+                        + "second-year undergraduate student in information technology and have kept an average above seventy percent "
+                        + "in all my modules while working part time at the campus documentation centre to pay for my "
+                        + "transport and textbooks.";
+                List<String> lines = wrap(regular, 11, paragraph1, 451);
+                for (int i = 0; i < lines.size(); i++) writeLine(c, regular, 11, 72, 630 - i * 14, lines.get(i));
+                // Second paragraph, with one red italic word partway through the first line.
+                float y = 630 - lines.size() * 14 - 14;
+                List<String> second = wrap(regular, 11, "My results are attached to this letter, together with a letter "
+                        + "of support from my lecturer and a copy of my identity document, as the application form asks.", 451);
+                c.beginText();
+                c.setFont(regular, 11);
+                c.newLineAtOffset(72, y);
+                c.showText("My results are ");
+                c.setFont(italic, 11);
+                c.setNonStrokingColor(new Color(200, 30, 30));
+                c.showText("attached");
+                c.setFont(regular, 11);
+                c.setNonStrokingColor(Color.BLACK);
+                c.showText(second.get(0).substring("My results are attached".length()));
+                c.endText();
+                for (int i = 1; i < second.size(); i++) writeLine(c, regular, 11, 72, y - i * 14, second.get(i));
+            }
+            PDPage second = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(second);
+            try (PDPageContentStream c = new PDPageContentStream(doc, second)) {
+                List<String> lines = wrap(regular, 11, "Thank you for considering my application. I look forward to "
+                        + "hearing from you, and I am happy to come in for an interview at any time that suits the office.", 451);
+                for (int i = 0; i < lines.size(); i++) writeLine(c, regular, 11, 72, 770 - i * 14, lines.get(i));
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /**
+     * Breaks text into lines no wider than {@code width}, like a word processor does,
+     * hyphenating a long word at the end of a line when its first part fits.
+     */
+    static List<String> wrap(PDType1Font font, float size, String text, float width) throws IOException {
+        List<String> lines = new ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : text.split(" ")) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (font.getStringWidth(candidate) / 1000 * size <= width) {
+                line = new StringBuilder(candidate);
+                continue;
+            }
+            // Try to hyphenate: keep at least 4 letters before and 3 after the break.
+            boolean split = false;
+            for (int cut = word.length() - 3; cut >= 4 && !split; cut--) {
+                String head = (line.isEmpty() ? "" : line + " ") + word.substring(0, cut) + "-";
+                if (word.length() >= 8 && Character.isLetter(word.charAt(cut - 1))
+                        && font.getStringWidth(head) / 1000 * size <= width) {
+                    lines.add(head);
+                    line = new StringBuilder(word.substring(cut));
+                    split = true;
+                }
+            }
+            if (!split) {
+                lines.add(line.toString());
+                line = new StringBuilder(word);
+            }
+        }
+        if (!line.isEmpty()) lines.add(line.toString());
+        return lines;
     }
 
     private static void writeLine(PDPageContentStream content, PDType1Font font, float size, float x, float y, String text)

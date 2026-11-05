@@ -31,7 +31,7 @@ public final class Tools {
             soon("repair", "Repair PDF", "Fix damaged files", "Optimize"),
             soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
 
-            soon("pdf-to-word", "PDF to Word", "Editable .docx", "Convert"),
+            new PdfToWordTool(),
             new PdfToExcelTool(),
             new OfficeToPdfTool(),
             new ImageToPdfTool(),

@@ -68,6 +68,23 @@ class TableFinderTest {
     }
 
     @Test
+    void textSpillingOverTheNextColumnStaysInItsCell() {
+        // Spreadsheets let a long description run on over the next column; its last word sits above the amounts.
+        List<Box> words = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            float y = 100 + i * 14;
+            words.add(word("0" + (i + 1) + "/10", 72, y));
+            words.addAll(sentence(i == 2 ? "Debit order insurance premium" : "Groceries", 130, y));
+            words.add(rightAligned("-" + (i + 1) + "0.00", 320, y));     // "premium" ends near x 265, over this column
+        }
+
+        List<Table> tables = TableFinder.find(words, List.of());
+
+        assertEquals("Debit order insurance premium", tables.get(0).rows().get(2).get(1));
+        assertEquals("-30.00", tables.get(0).rows().get(2).get(2));
+    }
+
+    @Test
     void ordinaryParagraphsAreNotTables() {
         List<Box> words = new ArrayList<>();
         words.addAll(sentence("Thank you for banking with us. Your statement is attached below", 72, 100));
