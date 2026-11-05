@@ -26,10 +26,11 @@ final class WordLayout {
     /**
      * A paragraph: its words in reading order, where it sits, and the space above it
      * (points). For a list item, {@code marker} is its bullet or number, and {@code words}
-     * leave it out.
+     * leave it out. {@code top} and {@code bottom} place it on the page, so pictures can
+     * go in between paragraphs.
      */
     record Paragraph(List<TextWord> words, Alignment alignment, float indent, float firstLineIndent,
-                     float spaceBefore, boolean endsSentence, ListMarker marker) {
+                     float spaceBefore, boolean endsSentence, ListMarker marker, float top, float bottom) {
 
         /** The paragraph's text size: the size most of its letters have. */
         float size() {
@@ -163,7 +164,9 @@ final class WordLayout {
         }
         String lastText = words.get(words.size() - 1).text();
         boolean endsSentence = lastText.matches(".*[.!?:;\"”’)]$");
-        return new Paragraph(words, alignment, indent, firstLineIndent, spaceBefore, endsSentence, marker);
+        float top = first.baseline() - first.size() * 0.8f;          // about where the tallest letters reach
+        float bottom = lines.get(lines.size() - 1).baseline() + lines.get(lines.size() - 1).size() * 0.25f;
+        return new Paragraph(words, alignment, indent, firstLineIndent, spaceBefore, endsSentence, marker, top, bottom);
     }
 
     /**

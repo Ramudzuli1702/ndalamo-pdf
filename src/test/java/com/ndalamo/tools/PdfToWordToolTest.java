@@ -213,6 +213,50 @@ class PdfToWordToolTest {
     }
 
     @Test
+    void picturesGoBetweenTheRightParagraphs() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.picturesPdf(dir, "Report.pdf"), true))) {
+            List<String> order = word.getParagraphs().stream()
+                    .map(p -> p.getRuns().stream().anyMatch(r -> !r.getEmbeddedPictures().isEmpty()) ? "[picture]" : p.getText())
+                    .filter(t -> !t.isBlank()).toList();
+            assertEquals(List.of("[picture]", "Site visit report", "The new classroom block was finished in October.",
+                    "[picture]", "The roof was checked after the first heavy rain."), order, "the dot is left out");
+        }
+    }
+
+    @Test
+    void picturesKeepTheirSizeAlignmentAndQuality() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.picturesPdf(dir, "Report.pdf"), true))) {
+            List<XWPFParagraph> withPictures = word.getParagraphs().stream()
+                    .filter(p -> p.getRuns().stream().anyMatch(r -> !r.getEmbeddedPictures().isEmpty())).toList();
+            XWPFParagraph logo = withPictures.get(0), photo = withPictures.get(1);
+            assertEquals(ParagraphAlignment.RIGHT, logo.getAlignment());
+            assertEquals(ParagraphAlignment.CENTER, photo.getAlignment());
+
+            var photoData = photo.getRuns().get(0).getEmbeddedPictures().get(0).getPictureData();
+            assertArrayEquals(Files.readAllBytes(dir.resolve("photo.jpg")), photoData.getData(), "the JPEG is copied, not re-compressed");
+            long widthEmu = photo.getRuns().get(0).getEmbeddedPictures().get(0).getCTPicture().getSpPr().getXfrm().getExt().getCx();
+            assertEquals(200, widthEmu / 12700.0, 0.5, "200 points wide, as in the PDF");
+
+            var logoData = logo.getRuns().get(0).getEmbeddedPictures().get(0).getPictureData();
+            assertEquals("png", logoData.suggestFileExtension());
+            var logoImage = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(logoData.getData()));
+            assertTrue(logoImage.getColorModel().hasAlpha(), "the logo keeps its transparent background");
+            assertEquals(0, logoImage.getRGB(0, 0) >>> 24, "corner is see-through");
+        }
+    }
+
+    @Test
+    void picturesCanBeLeftOut() throws Exception {
+        Map<String, Object> options = options(true);
+        options.put(PdfToWordTool.PICTURES, false);
+        FileResult result = new PdfToWordTool().run(List.of(TestFiles.picturesPdf(dir, "Report.pdf")), options, sameFolder,
+                new Progress()).get(0);
+        try (XWPFDocument word = open(result.getOutput())) {
+            assertTrue(word.getAllPictures().isEmpty());
+        }
+    }
+
+    @Test
     void listMarkersAreRecognised() {
         assertEquals("bullet", marker("•").format());
         assertEquals("bullet", marker("").format(), "Word's Symbol-font bullet");

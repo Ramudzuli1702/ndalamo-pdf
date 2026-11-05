@@ -424,6 +424,49 @@ final class TestFiles {
     }
 
     /**
+     * A page with a transparent PNG logo at the top right, a title, a paragraph, a JPEG
+     * photo centred under it (200 × 150 points), another paragraph, and an 8-point dot
+     * picture that is too small to count. Returns the PDF; the JPEG's bytes are written
+     * next to it as photo.jpg so tests can compare.
+     */
+    static Path picturesPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        BufferedImage photo = new BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = photo.createGraphics();
+        g.setPaint(new java.awt.GradientPaint(0, 0, Color.ORANGE, 400, 300, Color.BLUE));
+        g.fillRect(0, 0, 400, 300);
+        g.dispose();
+        java.io.ByteArrayOutputStream jpegBytes = new java.io.ByteArrayOutputStream();
+        ImageIO.write(photo, "jpg", jpegBytes);
+        Files.write(folder.resolve("photo.jpg"), jpegBytes.toByteArray());
+
+        BufferedImage logo = new BufferedImage(120, 60, BufferedImage.TYPE_INT_ARGB);   // transparent background
+        Graphics2D l = logo.createGraphics();
+        l.setColor(new Color(47, 91, 234));
+        l.fillOval(10, 5, 100, 50);
+        l.dispose();
+
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            var jpeg = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(doc, jpegBytes.toByteArray());
+            var png = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, logo);
+            try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
+                c.drawImage(png, 523 - 60, 770, 60, 30);                        // logo at the top right
+                writeLine(c, bold, 16, 72, 740, "Site visit report");
+                writeLine(c, regular, 11, 72, 715, "The new classroom block was finished in October.");
+                c.drawImage(jpeg, (595 - 200) / 2f, 540, 200, 150);              // photo, centred
+                writeLine(c, regular, 11, 72, 510, "The roof was checked after the first heavy rain.");
+                c.drawImage(png, 72, 480, 8, 8);                                 // a dot: too small to be a picture
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /**
      * Breaks text into lines no wider than {@code width}, like a word processor does,
      * hyphenating a long word at the end of a line when its first part fits.
      */

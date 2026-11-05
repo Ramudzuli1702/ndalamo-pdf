@@ -11,6 +11,8 @@ import com.ndalamo.utils.PageRanges;
 import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.poi.util.Units;
+import org.apache.poi.xwpf.usermodel.Document;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -32,14 +34,15 @@ import java.util.Map;
 /**
  * PDF to Word: turns a PDF into an editable .docx (SPEC §4.1). Built in steps.
  * So far: paragraphs, alignment, indents, each word's font, size, bold, italic,
- * underline and colour (12a), and headings and lists (12b, see WordStyles).
- * Pictures, tables, columns and scans come in later steps. The goal is a clean document to
+ * underline and colour (12a), headings and lists (12b, see WordStyles), and pictures
+ * in their place between paragraphs (12c). Tables, columns and scans come in later steps. The goal is a clean document to
  * edit, not an exact copy of the page. The PDF is only read.
  */
 public class PdfToWordTool implements PdfTool {
 
     static final String PAGE_BREAKS = "pageBreaks";
     static final String PAGES = "pages";
+    static final String PICTURES = "pictures";
 
     /** Fewer letters than this and the page is probably a scan; OCR for PDF to Word comes in step 12f. */
     private static final int HAS_TEXT = 25;
@@ -57,6 +60,7 @@ public class PdfToWordTool implements PdfTool {
     public List<OptionField> optionFields() {
         return List.of(
                 new OptionField(PAGE_BREAKS, "Start each PDF page on a new page", OptionField.Type.CHECKBOX, true),
+                new OptionField(PICTURES, "Include pictures", OptionField.Type.CHECKBOX, true),
                 new OptionField(PAGES, "Only these pages (empty = all)", OptionField.Type.TEXT, "")
                         .hint("e.g. 1-3, 5").advanced());
     }
@@ -98,6 +102,7 @@ public class PdfToWordTool implements PdfTool {
             throws IOException {
         boolean pageBreaks = !Boolean.FALSE.equals(options.get(PAGE_BREAKS));
         String pageChoice = (String) options.get(PAGES);
+        boolean pictures = !Boolean.FALSE.equals(options.get(PICTURES));
 
         List<FileResult> results = new ArrayList<>();
         for (int i = 0; i < inputs.size(); i++) {
@@ -108,7 +113,7 @@ public class PdfToWordTool implements PdfTool {
                 List<Integer> pages = pageChoice == null || pageChoice.isBlank()
                         ? PageRanges.pages(List.of(new PageRanges.Range(1, doc.getNumberOfPages())))
                         : PageRanges.pages(PageRanges.parse(pageChoice, doc.getNumberOfPages()));
-                FileResult result = convertOne(doc, input, pages, i, inputs.size(), pageBreaks, saveTo, progress);
+                FileResult result = convertOne(doc, input, pages, i, inputs.size(), pageBreaks, pictures, saveTo, progress);
                 if (result == null) break;                // cancelled partway: nothing written for this file
                 results.add(result);
                 progress.file(i, 1, "Done");
@@ -126,9 +131,11 @@ public class PdfToWordTool implements PdfTool {
 
     /** Reads the chosen pages and writes the Word file. Null if cancelled. */
     private FileResult convertOne(PDDocument doc, Path input, List<Integer> pages, int index, int fileCount,
-                                  boolean pageBreaks, SaveTo saveTo, Progress progress) throws IOException {
+                                  boolean pageBreaks, boolean includePictures, SaveTo saveTo, Progress progress)
+            throws IOException {
         // Read every page first: the margins are worked out from all of them together.
         List<List<TextWord>> pageWords = new ArrayList<>();
+        List<List<PageImages.Picture>> pagePictures = new ArrayList<>();
         for (int n = 0; n < pages.size(); n++) {
             if (progress.isCancelled()) return null;
             int page = pages.get(n);
@@ -137,6 +144,7 @@ public class PdfToWordTool implements PdfTool {
             progress.update((index + (double) n / pages.size()) / fileCount, "Reading " + input.getFileName() + " · " + status);
             List<TextWord> words = PageText.words(doc, page - 1);
             pageWords.add(PageText.markUnderlines(words, PageContent.rules(doc.getPage(page - 1))));
+            pagePictures.add(includePictures ? PageImages.pictures(doc.getPage(page - 1)) : List.of());
         }
 
         float left = Float.MAX_VALUE, right = 0, top = Float.MAX_VALUE;
@@ -155,9 +163,18 @@ public class PdfToWordTool implements PdfTool {
             right = pageWidth - 72;
             top = 72;
         }
+        for (List<PageImages.Picture> pictures : pagePictures) {
+            for (PageImages.Picture picture : pictures) {
+                right = Math.max(right, picture.left() + picture.width());
+                top = Math.min(top, picture.top());                  // a logo above the first line
+            }
+        }
+        // If no line gets near the right side (a page of short lines), assume the right margin matches the left,
+        // as it does on nearly every page; otherwise every line would look like it reaches the edge.
+        if (right < pageWidth - left - 36) right = pageWidth - left;
         WordLayout.Margins margins = new WordLayout.Margins(left, right);
 
-        int paragraphCount = 0, scans = 0;
+        int paragraphCount = 0, pictureCount = 0, scans = 0;
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
         List<List<Paragraph>> pageParagraphs = new ArrayList<>();
@@ -183,23 +200,43 @@ public class PdfToWordTool implements PdfTool {
                 if (letters < HAS_TEXT) scans++;
 
                 List<Paragraph> paragraphs = pageParagraphs.get(n);
-                for (int p = 0; p < paragraphs.size(); p++) {
-                    Paragraph paragraph = paragraphs.get(p);
-                    boolean firstOnPage = p == 0 && n > 0;
+                List<PageImages.Picture> waiting = new ArrayList<>(pagePictures.get(n));
+                waiting.sort(java.util.Comparator.comparingDouble(PageImages.Picture::top));
+                boolean pageStarted = false;          // has anything from this page been written yet?
+                float pictureBottom = -1;             // the bottom of a picture just written, for the space under it
+                for (int p = 0; p <= paragraphs.size(); p++) {
+                    Paragraph paragraph = p < paragraphs.size() ? paragraphs.get(p) : null;
+                    // Pictures that start above this paragraph go first, in the order they appear.
+                    while (!waiting.isEmpty() && (paragraph == null || waiting.get(0).top() < paragraph.top())) {
+                        PageImages.Picture picture = waiting.remove(0);
+                        last = writePicture(word, picture, margins, pictureBottom >= 0 ? picture.top() - pictureBottom : 6);
+                        if (!pageStarted && n > 0 && pageBreaks) last.setPageBreak(true);
+                        pageStarted = true;
+                        pictureBottom = picture.bottom();
+                        lastParagraph = null;
+                        pictureCount++;
+                    }
+                    if (paragraph == null) break;
+                    boolean firstOnPage = !pageStarted && n > 0;
                     // Without page breaks, a sentence that runs over onto the next page stays one paragraph.
-                    if (firstOnPage && !pageBreaks && last != null && !lastParagraph.endsSentence()
+                    if (firstOnPage && !pageBreaks && last != null && lastParagraph != null && !lastParagraph.endsSentence()
                             && flowing(lastParagraph) && flowing(paragraph) && paragraph.marker() == null
                             && !headings.containsKey(paragraph) && !headings.containsKey(lastParagraph)) {
                         addRuns(last, paragraph.words(), true);
                         lastParagraph = paragraph;
+                        pageStarted = true;
                         continue;
                     }
-                    last = write(word, paragraph, headings.get(paragraph), lists.get(paragraph));
+                    // Under a picture, measure the space from the picture, not from the text above it.
+                    float spaceBefore = pictureBottom >= 0 ? Math.max(0, paragraph.top() - pictureBottom) : paragraph.spaceBefore();
+                    last = write(word, paragraph, headings.get(paragraph), lists.get(paragraph), spaceBefore);
                     if (firstOnPage && pageBreaks) last.setPageBreak(true);
+                    pageStarted = true;
+                    pictureBottom = -1;
                     lastParagraph = paragraph;
                     paragraphCount++;
                 }
-                if (paragraphs.isEmpty() && n > 0 && pageBreaks) {
+                if (!pageStarted && n > 0 && pageBreaks) {
                     last = word.createParagraph();                   // keep an empty page where the PDF had one
                     last.setPageBreak(true);
                 }
@@ -212,7 +249,8 @@ public class PdfToWordTool implements PdfTool {
             });
         }
 
-        String note = Format.count(pages.size(), "page", "pages") + " · " + Format.count(paragraphCount, "paragraph", "paragraphs");
+        String note = Format.count(pages.size(), "page", "pages") + " · " + Format.count(paragraphCount, "paragraph", "paragraphs")
+                + (pictureCount > 0 ? " · " + Format.count(pictureCount, "picture", "pictures") : "");
         if (scans > 0) {
             note += " · " + Format.count(scans, "page looks", "pages look") + " scanned and came out empty"
                     + " — run OCR PDF on it first";
@@ -227,7 +265,7 @@ public class PdfToWordTool implements PdfTool {
     }
 
     private static XWPFParagraph write(XWPFDocument word, Paragraph paragraph, Integer headingLevel,
-                                       WordStyles.ListPlace listPlace) {
+                                       WordStyles.ListPlace listPlace, float spaceBefore) {
         XWPFParagraph p = word.createParagraph();
         if (headingLevel != null) p.setStyle("Heading" + headingLevel);
         if (listPlace != null) {
@@ -241,7 +279,7 @@ public class PdfToWordTool implements PdfTool {
             case LEFT -> ParagraphAlignment.LEFT;
         });
         p.setSpacingAfter(0);
-        p.setSpacingBefore(twips(Math.min(paragraph.spaceBefore(), 48)));
+        p.setSpacingBefore(twips(Math.min(spaceBefore, 48)));
         if (paragraph.indent() > 2) p.setIndentationLeft(twips(paragraph.indent()));
         if (paragraph.firstLineIndent() > 2) p.setIndentationFirstLine(twips(paragraph.firstLineIndent()));
         else if (paragraph.firstLineIndent() < -2) p.setIndentationHanging(twips(-paragraph.firstLineIndent()));
@@ -252,6 +290,36 @@ public class PdfToWordTool implements PdfTool {
             words.add(0, paragraph.marker().word());
         }
         addRuns(p, words, false);
+        return p;
+    }
+
+    /**
+     * A picture in a paragraph of its own, at its size in the PDF (shrunk to fit between
+     * the margins), aligned the way it sits on the page: centred, right or at its indent.
+     */
+    private static XWPFParagraph writePicture(XWPFDocument word, PageImages.Picture picture, WordLayout.Margins margins,
+                                              float spaceBefore) throws IOException {
+        XWPFParagraph p = word.createParagraph();
+        p.setSpacingAfter(0);
+        p.setSpacingBefore(twips(Math.max(0, Math.min(spaceBefore, 48))));
+        float textWidth = margins.right() - margins.left();
+        float scale = Math.min(1, textWidth / picture.width());
+        float width = picture.width() * scale, height = picture.height() * scale;
+
+        float spaceLeft = picture.left() - margins.left(), spaceRight = margins.right() - (picture.left() + picture.width());
+        if (scale < 1 || Math.abs(spaceLeft - spaceRight) < 12) {
+            p.setAlignment(ParagraphAlignment.CENTER);
+        } else if (spaceRight < 6 && spaceLeft > 12) {
+            p.setAlignment(ParagraphAlignment.RIGHT);
+        } else if (spaceLeft > 2) {
+            p.setIndentationLeft(twips(spaceLeft));
+        }
+        try (java.io.InputStream bytes = new java.io.ByteArrayInputStream(picture.bytes())) {
+            p.createRun().addPicture(bytes, picture.jpeg() ? Document.PICTURE_TYPE_JPEG : Document.PICTURE_TYPE_PNG,
+                    picture.jpeg() ? "picture.jpg" : "picture.png", Units.toEMU(width), Units.toEMU(height));
+        } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException e) {
+            throw new IOException(e);
+        }
         return p;
     }
 
