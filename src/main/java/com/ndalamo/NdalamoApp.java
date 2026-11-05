@@ -196,6 +196,9 @@ public class NdalamoApp extends Application {
     }
 
     public static void main(String[] args) {
+        // Apache POI (PDF to Excel) logs through Log4j, which isn't set up in this app. Without this
+        // it writes "could not find a logging provider" as an error; Log4j's own simple logger is enough.
+        System.setProperty("log4j2.loggerContextFactory", "org.apache.logging.log4j.simple.SimpleLoggerContextFactory");
         launch(args);
     }
 }

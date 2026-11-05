@@ -32,7 +32,7 @@ public final class Tools {
             soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
 
             soon("pdf-to-word", "PDF to Word", "Editable .docx", "Convert"),
-            soon("pdf-to-excel", "PDF to Excel", "Tables to .xlsx", "Convert"),
+            new PdfToExcelTool(),
             new OfficeToPdfTool(),
             new ImageToPdfTool(),
             new PdfToJpgTool(),

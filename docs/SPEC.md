@@ -38,7 +38,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 | Build | Maven, multi-module | — |
 | Core PDF work | Apache PDFBox 3.x | Apache 2.0 |
 | OCR | Tess4J (Tesseract wrapper) + bundled `tessdata` | Apache 2.0 |
-| Table extraction | Tabula-java | MIT |
+| Table extraction | Own table finder on PDFBox (decision 010; Tabula 1.0.5 needs PDFBox 2) | — |
 | Office files (read/write) | Apache POI | Apache 2.0 |
 | Office to PDF | LibreOffice (headless, external process), run directly with `soffice --convert-to pdf` (decision 008; JODConverter not needed) | LibreOffice (MPL) runs as a separate program |
 | JSON (settings, pipelines) | Gson | Apache 2.0 |
@@ -166,7 +166,7 @@ Rules:
 | PDF to JPG | Render each page at chosen DPI (72/150/300); or extract embedded images. Output a folder (or ZIP option). |
 | Office to PDF | Word, Excel, PowerPoint via LibreOffice headless (`soffice --convert-to pdf`, decision 008). Detect LibreOffice automatically; if missing, show the "needs LibreOffice" dialog. Everything else must work without it. |
 | OCR PDF | Tess4J; render each page at 300 DPI, OCR, add an invisible text layer over the original image. Skip pages that already have text (option). Languages from bundled `tessdata` (start with `eng`; add `afr` if available). |
-| PDF to Excel | Tabula-java (lattice for ruled tables, stream for whitespace tables, auto-try both) → Apache POI `.xlsx`, one sheet per table or per page (option). OCR first if the page has no text layer. |
+| PDF to Excel | Own table finder (decision 010: ruled tables from drawn lines, else tables from spacing) → Apache POI `.xlsx`, one sheet per table or per page (option). OCR first if the page has no text layer. |
 | PDF to Word | **Custom engine** (see §4.1). OCR mode for scans. |
 
 ### Edit and sign
@@ -459,6 +459,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | 8 Page workspace | Done 2026-11-04 | Tabs per PDF (opened in the order chosen; + to open more; × to close), real thumbnails, click/Ctrl/Shift selection, drag to reorder or onto a tab to move pages, zoom. Rotate left/right, insert blank page, add pages from file, split after selection (new tab), crop (drag a box on a large view), delete (confirm with "Don't ask again" saved in Settings, then an 8 s Undo toast). Undo for every edit; Delete, Ctrl+Z, Ctrl+S, Ctrl+A. Right panel: extract selected pages to a new PDF, move to another tab, Save as name. "Save changes?" dialog lists the edits when leaving or closing a tab. Edits change a page list only; WorkspaceService writes the new PDF on save, never the original. Quitting the app with unsaved edits is guarded in chunk 17. 111 tests. |
 | 9 OCR | Done 2026-11-04 | OCR PDF: each page drawn at 300 dpi (grey) and read by Tesseract (Tess4J 5.19.0); every word written invisibly over the page at its place, so the page looks the same but text can be searched, selected and copied. Languages: English, Afrikaans, or both (tessdata_fast, bundled, copied to %LOCALAPPDATA%\Ndalamo\tessdata on first use). Skip pages that already have text (on by default). Notes: "N pages read · M words found"; blank or unreadable scans come back as PARTIAL with a hint. If Tesseract can't start (old/missing VC++ runtime), a plain error explains it instead of failing every file. Tess4J 5.20 crashes with JDK 22's older VC++ runtime — decision 007. 117 tests. |
 | 10 Office to PDF | Done 2026-11-04 | Word/Excel/PowerPoint, OpenDocument, RTF and CSV to PDF by running `soffice --headless --convert-to pdf` directly (decision 008; no JODConverter). Each file is copied to a temp folder under a plain name and converted there; LibreOffice uses its own profile folder; one conversion at a time; Cancel stops LibreOffice; 3-minute hang limit. Started with SAL_DISABLE_PRINTERLIST=1: unreachable network printers (e.g. campus PaperCut) otherwise made every file take ~190 s, now 1–3 s. Found via Settings ("Locate it"), Program Files, or the registry. Missing → "Office to PDF needs LibreOffice" dialog (Cancel, check again, Locate it, How to install → bundled help page). Office files show a coloured type label instead of a blank thumbnail. LibreOffice will ship inside the installer (decision 009). 125 tests, all run against a real LibreOffice 26.8. |
+| 11 PDF to Excel | Done 2026-11-05 | One .xlsx per PDF: each table on its own sheet ("Page 2 table 1") or one sheet per page. Own table finder on PDFBox 3 instead of Tabula, which needs PDFBox 2 (decision 010): ruled tables from crossing lines (pieces joined, double borders merged), else tables from aligned gaps. Numbers become real numbers (SA formats, brackets = minus); leading zeros, currency and long ID numbers stay text. Scanned pages read with OCR first (option). Click pages / page list to choose pages. No tables → SKIPPED with a reason, nothing saved. Apache POI 5.5.1; Log4j pointed at its simple logger. Also: "% smaller" only shown when the file kind stays the same; page-pick hint says "use" not "save". Checked on LibreOffice-made PDFs. 140 tests. |
 | … | | |
 
 ---

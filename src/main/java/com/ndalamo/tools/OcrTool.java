@@ -89,7 +89,7 @@ public class OcrTool implements PdfTool {
         try {
             engine = new OcrEngine(languages);
         } catch (Error e) {
-            throw cantRun(e);
+            throw OcrEngine.cantStart(e);
         }
 
         List<FileResult> results = new ArrayList<>();
@@ -107,7 +107,7 @@ public class OcrTool implements PdfTool {
                 progress.file(i, 1, "Couldn't finish");
             } catch (Error e) {
                 // Tesseract runs as native Windows code; if it can't start, every file would fail the same way.
-                throw cantRun(e);
+                throw OcrEngine.cantStart(e);
             }
         }
         progress.update(1, "Done");
@@ -156,17 +156,6 @@ public class OcrTool implements PdfTool {
         return new FileResult(input, output, Files.size(input), Files.size(output),
                 nothingFound ? FileResult.Status.PARTIAL : FileResult.Status.SUCCESS,
                 nothingFound ? "No text could be read. Is the scan blank, upside down or very faint?" : note);
-    }
-
-    /**
-     * Tesseract is native Windows code and needs Microsoft's Visual C++ runtime. If that's
-     * missing or too old, it fails as a low-level Error ("Invalid memory access",
-     * UnsatisfiedLinkError) — explain that instead of showing a stack trace.
-     */
-    private static ToolProblem cantRun(Error e) {
-        return new ToolProblem("OCR couldn't start on this PC. It needs a Windows component, the Microsoft "
-                + "Visual C++ runtime, which seems to be missing or out of date. Your files were not changed. "
-                + "Installing the latest “Microsoft Visual C++ Redistributable” usually fixes this.", e);
     }
 
     private static boolean hasText(PDFTextStripper stripper, PDDocument doc, int page) throws IOException {

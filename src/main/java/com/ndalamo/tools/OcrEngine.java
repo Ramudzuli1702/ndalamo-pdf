@@ -37,6 +37,17 @@ final class OcrEngine {
         tesseract.setVariable("user_defined_dpi", "300");                // pages are drawn at 300 dpi
     }
 
+    /**
+     * Tesseract is native Windows code and needs Microsoft's Visual C++ runtime. If that's
+     * missing or too old, it fails as a low-level Error ("Invalid memory access",
+     * UnsatisfiedLinkError) — this explains it instead of showing a stack trace.
+     */
+    static ToolProblem cantStart(Error e) {
+        return new ToolProblem("OCR couldn't start on this PC. It needs a Windows component, the Microsoft "
+                + "Visual C++ runtime, which seems to be missing or out of date. Your files were not changed. "
+                + "Installing the latest “Microsoft Visual C++ Redistributable” usually fixes this.", e);
+    }
+
     /** The words Tesseract found, with their boxes in the picture's pixels. */
     List<Word> words(BufferedImage page) {
         return tesseract.getWords(page, ITessAPI.TessPageIteratorLevel.RIL_WORD);

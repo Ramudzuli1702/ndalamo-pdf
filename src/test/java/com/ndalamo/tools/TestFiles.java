@@ -231,6 +231,104 @@ final class TestFiles {
         zip.closeEntry();
     }
 
+    /**
+     * A page with a title, then a table with a border around every cell (drawn as
+     * separate lines, the way many PDF makers do), then a closing sentence.
+     */
+    static Path ruledTablePdf(Path folder, String name, String[][] rows) throws IOException {
+        Path file = folder.resolve(name);
+        float left = 72, top = 640, rowHeight = 22, columnWidth = 130;
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage();
+            doc.addPage(page);
+            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+                writeLine(content, font, 16, left, 700, "Stock report for November");
+                for (int r = 0; r < rows.length; r++) {
+                    for (int c = 0; c < rows[r].length; c++) {
+                        writeLine(content, font, 11, left + c * columnWidth + 5, top - r * rowHeight - 15, rows[r][c]);
+                    }
+                }
+                content.setLineWidth(0.8f);
+                int columns = rows[0].length;
+                for (int r = 0; r <= rows.length; r++) {             // one short line per cell edge
+                    for (int c = 0; c < columns; c++) {
+                        content.moveTo(left + c * columnWidth, top - r * rowHeight);
+                        content.lineTo(left + (c + 1) * columnWidth, top - r * rowHeight);
+                    }
+                }
+                for (int c = 0; c <= columns; c++) {
+                    content.moveTo(left + c * columnWidth, top);
+                    content.lineTo(left + c * columnWidth, top - rows.length * rowHeight);
+                }
+                content.stroke();
+                writeLine(content, font, 11, left, top - rows.length * rowHeight - 40, "Counted by the night shift.");
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /** A page with a paragraph, then a table laid out with spaces only (no lines), like a bank statement. */
+    static Path spacedTablePdf(Path folder, String name, String[][] rows, float[] columnX) throws IOException {
+        Path file = folder.resolve(name);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage();
+            doc.addPage(page);
+            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+                writeLine(content, font, 11, 72, 720, "Dear customer, here is your statement for the month of October.");
+                writeLine(content, font, 11, 72, 706, "Please check every line and tell us about anything you don't recognise.");
+                for (int r = 0; r < rows.length; r++) {
+                    for (int c = 0; c < rows[r].length; c++) {
+                        if (!rows[r][c].isEmpty()) writeLine(content, font, 10, columnX[c], 660 - r * 16, rows[r][c]);
+                    }
+                }
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /** A scanned page (a 300 dpi picture, no text) showing a ruled table. */
+    static Path scannedTablePdf(Path folder, String name, String[][] rows) throws IOException {
+        BufferedImage scan = new BufferedImage(2480, 3508, BufferedImage.TYPE_BYTE_GRAY);
+        Graphics2D g = scan.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, scan.getWidth(), scan.getHeight());
+        g.setColor(Color.BLACK);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 50));
+        int left = 250, top = 500, rowHeight = 100, columnWidth = 600;
+        for (int r = 0; r < rows.length; r++) {
+            for (int c = 0; c < rows[r].length; c++) g.drawString(rows[r][c], left + c * columnWidth + 25, top + r * rowHeight + 68);
+        }
+        g.setStroke(new java.awt.BasicStroke(3));
+        for (int r = 0; r <= rows.length; r++) g.drawLine(left, top + r * rowHeight, left + rows[0].length * columnWidth, top + r * rowHeight);
+        for (int c = 0; c <= rows[0].length; c++) g.drawLine(left + c * columnWidth, top, left + c * columnWidth, top + rows.length * rowHeight);
+        g.dispose();
+        Path file = folder.resolve(name);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            var image = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, scan);
+            try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+                content.drawImage(image, 0, 0, page.getMediaBox().getWidth(), page.getMediaBox().getHeight());
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    private static void writeLine(PDPageContentStream content, PDType1Font font, float size, float x, float y, String text)
+            throws IOException {
+        content.beginText();
+        content.setFont(font, size);
+        content.newLineAtOffset(x, y);
+        content.showText(text);
+        content.endText();
+    }
+
     static int pageCount(Path pdf) throws IOException {
         try (PDDocument doc = Loader.loadPDF(pdf.toFile())) {
             return doc.getNumberOfPages();

@@ -122,7 +122,7 @@ public class PagePreview extends VBox {
         return switch (tool.preview()) {
             case MERGE -> "The finished PDF, page by page. Drag pages to change their order.";
             case ROTATE -> "Click pages to choose which ones to turn." + forEvery;
-            case PICK -> "Click pages to choose which to save. None chosen means every page." + forEvery;
+            case PICK -> "Click pages to choose which to use. None chosen means every page." + forEvery;
             case REMOVE -> "Click pages to mark them for removal." + forEvery;
             case SPLIT -> "Each colour is a new file. Click a page to start a new file there." + forEvery;
             case STAMP -> "Shows where it will go. Change the options on the right to move it.";

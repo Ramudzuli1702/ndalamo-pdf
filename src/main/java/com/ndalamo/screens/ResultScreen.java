@@ -87,7 +87,10 @@ public class ResultScreen extends BorderPane {
             subtitle = Format.count(inputCount, "file", "files") + " → " + Format.count(outputs.size(), kind, kind + "s")
                     + " · " + Format.size(after);
         } else {
-            String saving = Format.saving(before, after);
+            // "56% smaller" only means something when the file kind stays the same (Compress), not PDF → Excel.
+            boolean sameKind = results.stream().filter(r -> r.getOutput() != null).allMatch(r ->
+                    FileInspector.extension(r.getInput()).equals(FileInspector.extension(r.getOutput())));
+            String saving = sameKind ? Format.saving(before, after) : "";
             subtitle = Format.size(before) + " → " + Format.size(after) + (saving.isEmpty() ? "" : " · " + saving);
         }
 
