@@ -29,7 +29,7 @@ public final class Tools {
             new CompressTool(),
             new CompressTool(true),    // same tool, starting with "Target size" chosen
             new RepairTool(),
-            soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
+            new PdfaTool(),
 
             new PdfToWordTool(),
             new PdfToMarkdownTool(),
