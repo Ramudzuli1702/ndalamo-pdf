@@ -49,7 +49,7 @@ public final class Tools {
 
             new ProtectTool(),
             new UnlockTool(),
-            soon("compare", "Compare PDF", "Spot differences", "Security & compare"));
+            new CompareTool());
 
     private Tools() {}
 
