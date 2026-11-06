@@ -11,6 +11,7 @@ import com.ndalamo.utils.PageRanges;
 import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.poi.util.Units;
 import org.apache.poi.wp.usermodel.HeaderFooterType;
 import org.apache.poi.xwpf.usermodel.Document;
@@ -38,8 +39,9 @@ import java.util.Map;
  * PDF to Word: turns a PDF into an editable .docx (SPEC §4.1). Built in steps.
  * So far: paragraphs, alignment, indents, each word's font, size, bold, italic,
  * underline and colour (12a), headings and lists (12b, see WordStyles), pictures in
- * their place between paragraphs (12c), and tables as real Word tables (12d). Columns
- * and scans come in later steps. The goal is a clean document to
+ * their place between paragraphs (12c), tables as real Word tables (12d), two-column
+ * pages in column order with headers, footers and page numbers moved into Word's own
+ * (12e), and scanned pages read with OCR first (12f, see ScanText). The goal is a clean document to
  * edit, not an exact copy of the page. The PDF is only read.
  */
 public class PdfToWordTool implements PdfTool {
@@ -47,8 +49,10 @@ public class PdfToWordTool implements PdfTool {
     static final String PAGE_BREAKS = "pageBreaks";
     static final String PAGES = "pages";
     static final String PICTURES = "pictures";
+    static final String OCR = "ocr";
+    static final String LANGUAGE = "language";
 
-    /** Fewer letters than this and the page is probably a scan; OCR for PDF to Word comes in step 12f. */
+    /** Fewer letters than this and the page is probably a scan, read with OCR (step 12f). */
     private static final int HAS_TEXT = 25;
 
     @Override public String id() { return "pdf-to-word"; }
@@ -65,6 +69,10 @@ public class PdfToWordTool implements PdfTool {
         return List.of(
                 new OptionField(PAGE_BREAKS, "Start each PDF page on a new page", OptionField.Type.CHECKBOX, true),
                 new OptionField(PICTURES, "Include pictures", OptionField.Type.CHECKBOX, true),
+                new OptionField(OCR, "Read scanned pages with OCR (slower)", OptionField.Type.CHECKBOX, true),
+                new OptionField(LANGUAGE, "Language of scanned pages", OptionField.Type.CHOICE,
+                        List.of(OcrTool.ENGLISH, OcrTool.AFRIKAANS, OcrTool.BOTH), OcrTool.ENGLISH)
+                        .describe("", "", "Slower; for documents that mix both").advanced(),
                 new OptionField(PAGES, "Only these pages (empty = all)", OptionField.Type.TEXT, "")
                         .hint("e.g. 1-3, 5").advanced());
     }
@@ -107,6 +115,10 @@ public class PdfToWordTool implements PdfTool {
         boolean pageBreaks = !Boolean.FALSE.equals(options.get(PAGE_BREAKS));
         String pageChoice = (String) options.get(PAGES);
         boolean pictures = !Boolean.FALSE.equals(options.get(PICTURES));
+        boolean ocr = !Boolean.FALSE.equals(options.get(OCR));
+        Object language = options.get(LANGUAGE);
+        String languages = OcrTool.AFRIKAANS.equals(language) ? "afr" : OcrTool.BOTH.equals(language) ? "eng+afr" : "eng";
+        OcrEngine[] engine = new OcrEngine[1];          // started only when a scanned page turns up, shared by all files
 
         List<FileResult> results = new ArrayList<>();
         for (int i = 0; i < inputs.size(); i++) {
@@ -117,7 +129,8 @@ public class PdfToWordTool implements PdfTool {
                 List<Integer> pages = pageChoice == null || pageChoice.isBlank()
                         ? PageRanges.pages(List.of(new PageRanges.Range(1, doc.getNumberOfPages())))
                         : PageRanges.pages(PageRanges.parse(pageChoice, doc.getNumberOfPages()));
-                FileResult result = convertOne(doc, input, pages, i, inputs.size(), pageBreaks, pictures, saveTo, progress);
+                FileResult result = convertOne(doc, input, pages, i, inputs.size(), pageBreaks, pictures,
+                        ocr ? languages : null, engine, saveTo, progress);
                 if (result == null) break;                // cancelled partway: nothing written for this file
                 results.add(result);
                 progress.file(i, 1, "Done");
@@ -135,12 +148,14 @@ public class PdfToWordTool implements PdfTool {
 
     /** Reads the chosen pages and writes the Word file. Null if cancelled. */
     private FileResult convertOne(PDDocument doc, Path input, List<Integer> pages, int index, int fileCount,
-                                  boolean pageBreaks, boolean includePictures, SaveTo saveTo, Progress progress)
-            throws IOException {
+                                  boolean pageBreaks, boolean includePictures, String ocrLanguages, OcrEngine[] engine,
+                                  SaveTo saveTo, Progress progress) throws IOException {
         // Read every page first: the margins are worked out from all of them together.
         List<List<TextWord>> pageWords = new ArrayList<>();
         List<List<PageImages.Picture>> pagePictures = new ArrayList<>();
         List<List<PageContent.Rule>> pageRules = new ArrayList<>();
+        PDFRenderer renderer = new PDFRenderer(doc);
+        int scans = 0, scansRead = 0;
         for (int n = 0; n < pages.size(); n++) {
             if (progress.isCancelled()) return null;
             int page = pages.get(n);
@@ -148,6 +163,21 @@ public class PdfToWordTool implements PdfTool {
             progress.file(index, (n + 0.1) / pages.size() * 0.8, status);
             progress.update((index + (double) n / pages.size()) / fileCount, "Reading " + input.getFileName() + " · " + status);
             List<TextWord> words = PageText.words(doc, page - 1);
+            if (words.stream().mapToInt(w -> w.text().length()).sum() < HAS_TEXT) {
+                // Probably a scan: read it with OCR, then lay it out like any other page.
+                if (ocrLanguages == null) {
+                    scans++;
+                } else {
+                    progress.file(index, (n + 0.3) / pages.size() * 0.8, status + " · reading the scan");
+                    try {
+                        if (engine[0] == null) engine[0] = new OcrEngine(ocrLanguages);
+                        words = ScanText.words(engine[0], renderer, page - 1);
+                    } catch (Error e) {
+                        throw OcrEngine.cantStart(e);
+                    }
+                    scansRead++;
+                }
+            }
             List<PageContent.Rule> rules = PageContent.rules(doc.getPage(page - 1));
             pageRules.add(rules);
             pageWords.add(PageText.markUnderlines(words, rules));
@@ -163,8 +193,6 @@ public class PdfToWordTool implements PdfTool {
             widths.add(sideways ? box.getHeight() : box.getWidth());
             heights.add(sideways ? box.getWidth() : box.getHeight());
         }
-        List<Integer> pageLetters = new ArrayList<>();          // counted before headers and footers come out
-        for (List<TextWord> words : pageWords) pageLetters.add(words.stream().mapToInt(w -> w.text().length()).sum());
         PageFurniture.Result furniture = PageFurniture.strip(pageWords, widths, heights);
         for (int n = 0; n < pageWords.size(); n++) pageWords.set(n, furniture.pages().get(n));
 
@@ -195,7 +223,7 @@ public class PdfToWordTool implements PdfTool {
         if (right < pageWidth - left - 36) right = pageWidth - left;
         WordLayout.Margins margins = new WordLayout.Margins(left, right);
 
-        int paragraphCount = 0, pictureCount = 0, scans = 0;
+        int paragraphCount = 0, pictureCount = 0;
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
         List<List<Paragraph>> pageParagraphs = new ArrayList<>();
@@ -229,7 +257,6 @@ public class PdfToWordTool implements PdfTool {
             for (int n = 0; n < pageWords.size(); n++) {
                 if (progress.isCancelled()) return null;
                 List<TextWord> words = pageWords.get(n);
-                if (pageLetters.get(n) < HAS_TEXT) scans++;
 
                 List<Paragraph> paragraphs = pageParagraphs.get(n);
                 List<Block> waiting = new ArrayList<>();
@@ -295,9 +322,10 @@ public class PdfToWordTool implements PdfTool {
         String note = Format.count(pages.size(), "page", "pages") + " · " + Format.count(paragraphCount, "paragraph", "paragraphs")
                 + (pictureCount > 0 ? " · " + Format.count(pictureCount, "picture", "pictures") : "")
                 + (tableCount > 0 ? " · " + Format.count(tableCount, "table", "tables") : "");
+        if (scansRead > 0) note += " · " + Format.count(scansRead, "scanned page", "scanned pages") + " read with OCR";
         if (scans > 0) {
             note += " · " + Format.count(scans, "page looks", "pages look") + " scanned and came out empty"
-                    + " — run OCR PDF on it first";
+                    + " — tick “Read scanned pages with OCR” to read them";
         }
         return new FileResult(input, output, sizeBefore, Files.size(output),
                 scans == pages.size() ? FileResult.Status.PARTIAL : FileResult.Status.SUCCESS, note);

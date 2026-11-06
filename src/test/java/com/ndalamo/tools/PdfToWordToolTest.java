@@ -133,13 +133,34 @@ class PdfToWordToolTest {
     }
 
     @Test
-    void aScanSaysItNeedsOcrFirst() throws Exception {
-        Path scan = TestFiles.scannedPdf(dir, "Scan.pdf", "Hello there");
+    void aScanIsReadWithOcr() throws Exception {
+        Path scan = TestFiles.scannedPdf(dir, "Scan.pdf",
+                "Invoice number 4821", "Total due: R 1250.00", "Thank you for your business");
 
         FileResult result = new PdfToWordTool().run(List.of(scan), options(true), sameFolder, new Progress()).get(0);
 
+        assertEquals(FileResult.Status.SUCCESS, result.getStatus(), result.getNote());
+        assertTrue(result.getNote().contains("1 scanned page read with OCR"), result.getNote());
+        try (XWPFDocument word = open(result.getOutput())) {
+            // Evenly spaced short lines with no gap between them look like one wrapped paragraph, so how they
+            // split into paragraphs is the layout rules' call (tested elsewhere); here: all the text, in order.
+            assertEquals("Invoice number 4821 Total due: R 1250.00 Thank you for your business", String.join(" ", texts(word)));
+            assertTrue(word.getAllPictures().isEmpty(), "the scan itself isn't pasted in as a picture");
+            double size = word.getParagraphs().get(0).getRuns().get(0).getFontSizeAsDouble();
+            assertEquals(14.4, size, 2.5, "about the size of the scanned text (60 px at 300 dpi)");
+        }
+    }
+
+    @Test
+    void withoutOcrAScanSaysHowToReadIt() throws Exception {
+        Path scan = TestFiles.scannedPdf(dir, "Scan.pdf", "Hello there");
+        Map<String, Object> options = options(true);
+        options.put(PdfToWordTool.OCR, false);
+
+        FileResult result = new PdfToWordTool().run(List.of(scan), options, sameFolder, new Progress()).get(0);
+
         assertEquals(FileResult.Status.PARTIAL, result.getStatus());
-        assertTrue(result.getNote().contains("run OCR PDF on it first"), result.getNote());
+        assertTrue(result.getNote().contains("Read scanned pages with OCR"), result.getNote());
     }
 
     @Test
