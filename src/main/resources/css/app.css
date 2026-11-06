@@ -621,3 +621,14 @@
 .status-good { -fx-text-fill: -nd-success; }
 .status-warning { -fx-text-fill: -nd-warning; }
 .licence-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12px; }
+
+
+/* Keyboard focus: a ring around whatever has focus, shown only when moving with the keyboard. */
+.button:focus-visible, .toggle-button:focus-visible, .tool-card:focus-visible, .ws-tab:focus-visible,
+.ws-tab-active:focus-visible, .check-box:focus-visible > .box, .radio-button:focus-visible > .radio,
+.combo-box:focus-visible, .hyperlink:focus-visible {
+    -fx-effect: dropshadow(gaussian, -nd-accent, 3, 1, 0, 0);
+}
+/* Page cards move focus with the arrow keys themselves, which :focus-visible doesn't notice, so these use :focused. */
+/* A glow outside the page, so the page with focus stands out even among selected (blue-bordered) pages. */
+.ws-page-card:focused .ws-page, .preview-card:focused { -fx-effect: dropshadow(gaussian, -nd-accent, 10, 0.55, 0, 0); }

@@ -82,6 +82,7 @@ public class SettingsScreen extends BorderPane {
         add("Office conversion", office());
         add("Performance", performance());
         add("Appearance", appearance(onAppearance));
+        add("Keyboard shortcuts", shortcuts());
         add("Privacy", privacy());
         add("Word add-in", wordAddIn);
         add("About", about(version));
@@ -348,6 +349,37 @@ public class SettingsScreen extends BorderPane {
         });
         HBox row = new HBox(24, light, dark, system);
         return new VBox(row);
+    }
+
+    // ── Keyboard shortcuts ───────────────────────────────────────────────
+
+    /** Every shortcut, so nobody has to discover them by accident (SPEC §6.3). */
+    private VBox shortcuts() {
+        String[][] keys = {
+                {"Ctrl+K", "Search tools, from any screen"},
+                {"Ctrl+O", "Open files"},
+                {"Esc", "Close a dialog, or the newest message"},
+                {"Tab / Shift+Tab", "Move between buttons, fields and pages"},
+                {"Enter or Space", "Press the button, or choose the page, that has the focus ring"},
+                {"Ctrl+S", "Page workspace: save as a new PDF"},
+                {"Ctrl+Z", "Page workspace: undo"},
+                {"Delete", "Page workspace: delete the selected pages"},
+                {"Ctrl+A", "Page workspace: select every page"},
+                {"Arrow keys", "Page workspace: move between pages (Ctrl+Space adds one, Shift+Space a range)"},
+                {"Ctrl+Tab", "Page workspace: the next open file"}};
+        VBox rows = new VBox(8);
+        for (String[] key : keys) {
+            Label shortcut = new Label(key[0]);
+            shortcut.getStyleClass().add("key-hint");
+            shortcut.setMinWidth(Region.USE_PREF_SIZE);
+            Label what = new Label(key[1]);
+            what.setWrapText(true);
+            HBox row = new HBox(12, shortcut, what);
+            row.setAlignment(Pos.CENTER_LEFT);
+            shortcut.setPrefWidth(130);
+            rows.getChildren().add(row);
+        }
+        return rows;
     }
 
     // ── Privacy ──────────────────────────────────────────────────────────

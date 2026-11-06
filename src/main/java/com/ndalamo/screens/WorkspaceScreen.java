@@ -85,6 +85,7 @@ public class WorkspaceScreen extends BorderPane {
     private WorkspaceDocument current;
     private final Set<Long> selected = new LinkedHashSet<>();
     private long anchor = -1;                 // where a Shift+click range starts
+    private long focusedPage = -1;            // the page with keyboard focus, kept when the grid is rebuilt
     private double pageWidth = ZOOM_WIDTHS[2];
 
     private static int sharpEnoughForBiggestZoom() {
@@ -223,12 +224,23 @@ public class WorkspaceScreen extends BorderPane {
             close.setGraphic(Icons.close(12, Theme.TEXT_MUTED));
             close.getStyleClass().add("tab-close");
             close.setAccessibleText("Close " + doc.getName());
+            close.setTooltip(new javafx.scene.control.Tooltip("Close " + doc.getName()));
             close.setOnAction(e -> closeTab(doc));
             HBox tab = new HBox(8, name, close);
             tab.getStyleClass().add(doc == current ? "ws-tab-active" : "ws-tab");
             tab.setAlignment(Pos.CENTER_LEFT);
             tab.setOnMouseClicked(e -> {
                 if (doc != current) show(doc);
+            });
+            // From the keyboard: Tab to it, Enter or Space to open it.
+            tab.setFocusTraversable(true);
+            tab.setAccessibleRole(javafx.scene.AccessibleRole.TAB_ITEM);
+            tab.setAccessibleText(doc.getName() + (doc == current ? ", open" : ""));
+            tab.setOnKeyPressed(e -> {
+                if ((e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.SPACE) && doc != current) {
+                    show(doc);
+                    e.consume();
+                }
             });
             // Drop pages on a tab to move them into that file.
             tab.setOnDragOver(e -> {
@@ -251,7 +263,8 @@ public class WorkspaceScreen extends BorderPane {
         tabs.getChildren().add(add);
     }
 
-    private void chooseFilesToOpen() {
+    /** The file chooser for opening PDFs (the + tab, or Ctrl+O). */
+    public void chooseFilesToOpen() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Open PDFs in the page workspace");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF files", "*.pdf"));
@@ -308,10 +321,22 @@ public class WorkspaceScreen extends BorderPane {
     // ── The page grid ────────────────────────────────────────────────────
 
     private void redrawGrid() {
+        // Did a page card have keyboard focus? Asked before the old cards go.
+        boolean pageHadFocus = getScene() != null && getScene().getFocusOwner() != null
+                && getScene().getFocusOwner().getStyleClass().contains("ws-page-card");
         grid.getChildren().clear();
         if (current == null) return;
         List<WorkspacePage> pages = current.getPages();
         for (int i = 0; i < pages.size(); i++) grid.getChildren().add(pageCard(pages.get(i), i + 1));
+        // The grid is rebuilt after every change; give keyboard focus back to the page that had it. Later, not
+        // now: when the focused card is removed, JavaFX moves focus to the next button once this change is done,
+        // which would undo a focus given back straight away.
+        if (focusedPage >= 0 && pageHadFocus) {
+            long page = focusedPage;
+            javafx.application.Platform.runLater(() -> grid.getChildren().stream()
+                    .filter(n -> Long.valueOf(page).equals(n.getUserData())).findFirst()
+                    .ifPresent(javafx.scene.Node::requestFocus));
+        }
     }
 
     private VBox pageCard(WorkspacePage page, int number) {
@@ -358,7 +383,29 @@ public class WorkspaceScreen extends BorderPane {
         VBox card = new VBox(8, frame, caption);
         card.setAlignment(Pos.TOP_CENTER);
         card.setAccessibleText("Page " + number + (isSelected ? ", selected" : ""));
-        card.setOnMouseClicked(e -> clickPage(page, e));
+        card.setOnMouseClicked(e -> selectPage(page, e.isShiftDown(), e.isShortcutDown()));
+        // From the keyboard: arrows move between pages, Space selects (Ctrl+Space adds, Shift+Space a range).
+        card.setFocusTraversable(true);
+        card.setUserData(page.id());
+        card.getStyleClass().add("ws-page-card");
+        card.focusedProperty().addListener((obs, was, now) -> {
+            if (now) focusedPage = page.id();
+        });
+        card.setOnKeyPressed(e -> {
+            // By page, not by card: the grid is rebuilt after each change, so this card may be an old copy.
+            int index = current.indexOf(page.id());
+            switch (e.getCode()) {
+                case SPACE, ENTER -> selectPage(page, e.isShiftDown(), e.isShortcutDown());
+                case RIGHT, DOWN -> focusCard(index + 1);
+                case LEFT, UP -> focusCard(index - 1);
+                case HOME -> focusCard(0);
+                case END -> focusCard(grid.getChildren().size() - 1);
+                default -> {
+                    return;
+                }
+            }
+            e.consume();
+        });
         makeDraggable(card, page);
         return card;
     }
@@ -372,14 +419,19 @@ public class WorkspaceScreen extends BorderPane {
         return new Rectangle2D(c[0] * w, c[1] * h, (c[2] - c[0]) * w, (c[3] - c[1]) * h);
     }
 
-    private void clickPage(WorkspacePage page, MouseEvent e) {
+    private void focusCard(int index) {
+        if (index >= 0 && index < grid.getChildren().size()) grid.getChildren().get(index).requestFocus();
+    }
+
+    /** Click or Space: select this page; with Ctrl add or remove it; with Shift select everything from the last one. */
+    private void selectPage(WorkspacePage page, boolean range, boolean add) {
         long id = page.id();
-        if (e.isShiftDown() && anchor >= 0 && current.indexOf(anchor) >= 0) {
+        if (range && anchor >= 0 && current.indexOf(anchor) >= 0) {
             int a = current.indexOf(anchor), b = current.indexOf(id);
             selected.clear();
             List<WorkspacePage> pages = current.getPages();
             for (int i = Math.min(a, b); i <= Math.max(a, b); i++) selected.add(pages.get(i).id());
-        } else if (e.isShortcutDown()) {
+        } else if (add) {
             if (!selected.remove(id)) selected.add(id);
             anchor = id;
         } else {
@@ -831,6 +883,10 @@ public class WorkspaceScreen extends BorderPane {
             selected.clear();
             current.getPages().forEach(p -> selected.add(p.id()));
             redraw();
+        } else if (e.isShortcutDown() && e.getCode() == KeyCode.TAB && docs.size() > 1) {
+            // Ctrl+Tab: the next open file (Ctrl+Shift+Tab: the one before).
+            int i = docs.indexOf(current) + (e.isShiftDown() ? -1 : 1);
+            show(docs.get(Math.floorMod(i, docs.size())));
         } else {
             return;
         }

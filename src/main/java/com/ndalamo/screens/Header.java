@@ -67,6 +67,7 @@ public class Header extends HBox {
         settings.setGraphic(Icons.settings(18, Theme.TEXT));
         settings.getStyleClass().addAll("button-secondary", "icon-button");
         settings.setAccessibleText("Settings");
+        settings.setTooltip(new javafx.scene.control.Tooltip("Settings"));
         settings.setOnAction(e -> onSettings.run());
 
         Region spacer = new Region();

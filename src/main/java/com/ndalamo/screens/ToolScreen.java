@@ -165,7 +165,8 @@ public class ToolScreen extends BorderPane {
         return scroll;
     }
 
-    private void chooseFiles() {
+    /** The file chooser for adding files (the Add files button, or Ctrl+O). */
+    public void chooseFiles() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Add files to " + tool.name());
         List<String> patterns = tool.fileTypes().stream().sorted().map(ext -> "*." + ext).toList();
@@ -293,6 +294,7 @@ public class ToolScreen extends BorderPane {
         remove.setGraphic(Icons.close(18, Theme.TEXT_MUTED));
         remove.getStyleClass().add("icon-only");
         remove.setAccessibleText("Remove " + file.getFileName());
+        remove.setTooltip(new javafx.scene.control.Tooltip("Remove from the list (the file itself stays)"));
         remove.setOnAction(e -> {
             files.remove(file);
             refresh();

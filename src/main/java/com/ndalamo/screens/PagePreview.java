@@ -221,6 +221,16 @@ public class PagePreview extends VBox {
             if (tool.preview() != Preview.STAMP) {
                 card.setOnMouseClicked(e -> clicked(page, pageCount, chosen, parts));
                 card.setStyle("-fx-cursor: hand;");
+                card.setFocusTraversable(true);
+                card.getStyleClass().add("preview-card");
+                card.setAccessibleRole(javafx.scene.AccessibleRole.CHECK_BOX);
+                card.setAccessibleText("Page " + page + (chosen.contains(page) ? ", chosen" : ""));
+                card.setOnKeyPressed(e -> {
+                    if (e.getCode() == javafx.scene.input.KeyCode.SPACE || e.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                        clicked(page, pageCount, chosen, parts);
+                        e.consume();
+                    }
+                });
             }
             grid.getChildren().add(card);
         }

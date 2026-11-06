@@ -65,4 +65,16 @@ public class MainWindow extends StackPane {
         dialogLayer.getChildren().clear();
         dialogLayer.setVisible(false);
     }
+
+    public boolean hasDialog() {
+        return dialogLayer.isVisible();
+    }
+
+    /** Closes the newest toast (Esc with no dialog open, SPEC §6.3). False if there are none. */
+    public boolean dismissNewestToast() {
+        if (toastLayer.getChildren().isEmpty()) return false;
+        if (toastLayer.getChildren().get(0) instanceof Toast toast) toast.dismiss();
+        else toastLayer.getChildren().remove(0);
+        return true;
+    }
 }

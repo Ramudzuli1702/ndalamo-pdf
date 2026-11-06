@@ -89,6 +89,18 @@ public class NdalamoApp extends Application {
             else goSearch.run();
         });
 
+        // Ctrl+O: open files, for whichever screen is showing (SPEC §6.3)
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN), () -> {
+            if (window.hasDialog()) return;
+            if (window.current() instanceof ToolScreen toolScreen) toolScreen.chooseFiles();
+            else if (window.current() == workspace) workspace.chooseFilesToOpen();
+            else chooseFiles();
+        });
+        // Esc: closes a dialog (MainWindow does that), otherwise the newest toast.
+        scene.addEventHandler(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.ESCAPE && !window.hasDialog() && window.dismissNewestToast()) e.consume();
+        });
+
         // Dropping files anywhere on the window (SPEC §6.2, screen 1)
         scene.setOnDragOver(e -> {
             if (e.getDragboard().hasFiles()) e.acceptTransferModes(TransferMode.COPY);
