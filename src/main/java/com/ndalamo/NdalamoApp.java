@@ -10,6 +10,7 @@ import com.ndalamo.screens.LogoMark;
 import com.ndalamo.screens.MainWindow;
 import com.ndalamo.screens.ToolFlow;
 import com.ndalamo.screens.ToolScreen;
+import com.ndalamo.screens.WordAddInCard;
 import com.ndalamo.screens.WorkspaceScreen;
 import com.ndalamo.tools.WorkspaceTool;
 import com.ndalamo.services.JobService;
@@ -146,7 +147,7 @@ public class NdalamoApp extends Application {
     }
 
     private void showSettings() {
-        window.show(new SettingsScreen(window, settings, this::saveSettings, this::applyAppearance, wordAddInCard(),
+        window.show(new SettingsScreen(window, settings, this::saveSettings, this::applyAppearance, new WordAddInCard(window),
                 version(), this::showHome));
     }
 
@@ -168,15 +169,6 @@ public class NdalamoApp extends Application {
         boolean showing = window.current() == home;
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
         if (showing) window.show(home);
-    }
-
-    /** The Settings card for the Word add-in; installing it from here comes with the add-in (chunk 19). */
-    private Node wordAddInCard() {
-        Label about = new Label("Adds a \u201cDelete Page\u201d button to the Microsoft Word ribbon. Requires Word for Windows.");
-        about.setWrapText(true);
-        Label status = new Label("Status: not installed · the add-in arrives in the next update");
-        status.getStyleClass().add("small-muted");
-        return new VBox(8, about, status);
     }
 
     /** The version from the app's files, or the one in the pom while running from the build. */

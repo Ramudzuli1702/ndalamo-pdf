@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Ndalamo add-in for Microsoft Word: a "Delete Page" button (SPEC section 7).
+    A plain COM add-in on .NET Framework 4.8, which Word loads through mscoree.
+    Build: dotnet build -c Release   (no NuGet packages; works offline)
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>NdalamoWord</AssemblyName>
+    <RootNamespace>Ndalamo.WordAddIn</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Ndalamo PDF</Product>
+    <Description>Delete Page for Microsoft Word</Description>
+    <Copyright></Copyright>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Office's own interop assemblies, from the GAC; their types are embedded, so nothing extra ships. -->
+    <Reference Include="office">
+      <HintPath>$(WINDIR)\assembly\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c\office.dll</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.Office.Interop.Word">
+      <HintPath>$(WINDIR)\assembly\GAC_MSIL\Microsoft.Office.Interop.Word\15.0.0.0__71e9bce111e9429c\Microsoft.Office.Interop.Word.dll</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <EmbeddedResource Include="Ribbon.xml" LogicalName="Ndalamo.WordAddIn.Ribbon.xml" />
+  </ItemGroup>
+</Project>

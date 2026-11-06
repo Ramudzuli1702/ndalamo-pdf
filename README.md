@@ -11,7 +11,7 @@ A free, fully offline Windows desktop app for working with PDFs: merge, split, c
 - **Plain-language errors** that say what happened, confirm the original is safe, and suggest a next step.
 
 ## Tech stack
-Java 22 · JavaFX 22 · Maven · Apache PDFBox · Tess4J (OCR) · Tabula-java · Apache POI · Gson · JUnit 5. The Word add-in is a separate C# VSTO project.
+Java 22 · JavaFX 22 · Maven · Apache PDFBox · Tess4J (OCR) · Tabula-java · Apache POI · Gson · JUnit 5. The Word add-in is a separate C# project (a COM add-in, built with dotnet).
 
 ## Project layout
 | Folder | What it holds |

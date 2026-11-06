@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The add-in's buttons: a group on the Home tab, and an entry on the right-click menus. -->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
+  <ribbon>
+    <tabs>
+      <tab idMso="TabHome">
+        <group id="NdalamoGroup" label="Ndalamo">
+          <button id="NdalamoDeletePage" label="Delete Page" size="large" getImage="GetImage"
+                  screentip="Delete Page" supertip="Deletes the page the cursor is on. Ctrl+Z brings it back."
+                  onAction="OnDeletePage" />
+          <button id="NdalamoDeletePages" label="Delete Pages..." size="normal" getImage="GetImage"
+                  screentip="Delete Pages" supertip="Deletes the pages you list, for example 3, 5-7."
+                  onAction="OnDeletePages" />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+  <contextMenus>
+    <contextMenu idMso="ContextMenuText">
+      <button id="NdalamoDeletePageText" label="Delete This Page" getImage="GetImage" onAction="OnDeletePage" />
+    </contextMenu>
+    <contextMenu idMso="ContextMenuTable">
+      <button id="NdalamoDeletePageTable" label="Delete This Page" getImage="GetImage" onAction="OnDeletePage" />
+    </contextMenu>
+    <contextMenu idMso="ContextMenuHeading">
+      <button id="NdalamoDeletePageHeading" label="Delete This Page" getImage="GetImage" onAction="OnDeletePage" />
+    </contextMenu>
+    <contextMenu idMso="ContextMenuList">
+      <button id="NdalamoDeletePageList" label="Delete This Page" getImage="GetImage" onAction="OnDeletePage" />
+    </contextMenu>
+  </contextMenus>
+</customUI>

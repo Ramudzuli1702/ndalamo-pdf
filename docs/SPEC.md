@@ -46,7 +46,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 | Logging | SLF4J + Logback (local log file only) | MIT / EPL-LGPL dual |
 | Testing | JUnit 5, AssertJ, TestFX (UI smoke tests) | EPL / Apache |
 | Packaging | jpackage (bundled JRE, Windows installer first) | — |
-| Word add-in | C# VSTO add-in (separate project) | — |
+| Word add-in | C# COM add-in on .NET Framework 4.8 (separate project; decision 015) | — |
 
 Use the latest stable release of each library that is **at least two weeks old**. Pin exact versions in the parent `pom.xml` `<dependencyManagement>`.
 
@@ -72,7 +72,7 @@ ndalamo-pdf/
 │   └── utils/              small helpers: Theme, OutputNames, Icons
 ├── src/main/resources/     brand/, css/app.css, fonts/, logback.xml
 ├── src/test/java/com/ndalamo/   tests, same folders
-├── word-addin/             C# VSTO project, built separately (Phase 6)
+├── word-addin/             C# COM add-in project, built separately with dotnet (decision 015)
 └── docs/                   SPEC.md, decisions/, ui/
 ```
 
@@ -385,7 +385,7 @@ Toasts: white card, 12 px radius, shadow, round tinted status icon, title (semib
 
 A .docx has no fixed pages; Word computes pagination when rendering. So this feature lives **inside Word**, not in the Java app.
 
-- **Technology:** C# VSTO add-in for Word on Windows (ribbon button + right-click menu entry).
+- **Technology:** C# COM add-in for Word on Windows (ribbon button + right-click menu entry); planned as VSTO, changed in decision 015.
 - **Core logic:** delete the page the cursor is on:
   `ActiveDocument.Bookmarks("\Page").Range.Delete()`
   - Handle edge cases: last page (remove the trailing paragraph mark or page break that creates an empty page), pages that only contain a page/section break, tables spanning pages (warn), the only page in the document (refuse).
@@ -481,6 +481,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | 18a Settings screen | Done 2026-11-06 | `SettingsScreen` per the mockup: section list (scrolls to each card) and cards; every change saved at once. Output: save location (same / fixed folder with Browse / ask every time), file-name pattern with live preview, if-exists (add a number / ask me / replace), "never overwrite the original" shown locked on. "Ask every time" and "Ask me" now work (they used to fall back silently): the tool screen picks the folder before running, and asks Replace / Add a number / Cancel when results with those names already exist (predicted names; unpredictable names such as Split's parts fall back to adding a number). Tool defaults (compression, OCR language, JPG quality, page number position and style) stored as "tool.option" and used by the tool screen; choices read from the tools themselves. Office conversion: LibreOffice status (found off the JavaFX thread), Change location. Performance (takes effect at next start), Appearance (saved; dark colours in 18b), Privacy (offline statement, remember/clear recent files and tools), Word add-in (status; install in chunk 19), About (version, "Ndalamo means prosperity", every bundled library and font with its licence and full text, checked against the build with license-maven-plugin; all on the allowed list). 221 tests. |
 | 18b Dark theme | Done 2026-11-07 | Every colour in app.css is now a named role defined once in `.root` (`-nd-bg`, `-nd-surface`, `-nd-text`, `-nd-accent`, category tints…); white split into `-nd-surface` (backgrounds) and `-nd-on-accent` (text on blue/red buttons); JavaFX's own controls (-fx-base etc.) set from the same roles. `dark.css` only redefines the roles (dark surfaces, lighter accent #5B7FF2, softer status colours, darker category tints). `Theme` constants are role names, so inline styles follow; icons set their stroke by style; the logo picks its outline colour by theme (brand blue and green fixed). Applied at start, on change in Settings (Home and Settings rebuilt for the logo), and live when Windows switches if "Follow system" (JavaFX 22 Platform preferences). Light theme unchanged (compared against a render); dark checked on Home, a tool screen, Settings and a dialog. 221 tests. |
 | 18c Shortcuts and accessibility | Done 2026-11-07 | Ctrl+O opens files on whichever screen is showing (Home, a tool, the workspace); Esc closes a dialog, otherwise the newest toast. Workspace: tabs reachable with Tab and opened with Enter/Space; page cards focusable, arrows/Home/End move between pages, Space or Enter selects (Ctrl adds, Shift selects a range), Ctrl+Tab / Ctrl+Shift+Tab switch files; focus returns to the same page after the grid is rebuilt. Page previews on tool screens toggle with Space/Enter and are announced as check boxes. Keyboard-only focus ring (`:focus-visible`) on buttons and controls; the focused page gets a glow so it stands out from selected pages. Tooltips on icon-only buttons (Settings, remove file, close tab). Settings lists every shortcut. Checked by driving the keys in a real window. 221 tests. |
+| 19 Word add-in | Done 2026-11-07 | `word-addin/`: C# COM add-in (.NET Framework 4.8, `dotnet build`, no packages) instead of VSTO, which needs Visual Studio's Office workload and ClickOnce (decision 015). Home tab › Ndalamo: Delete Page (the page the cursor is on) and Delete Pages… (list like 3, 5-7, checked in the dialog, deleted highest first); Delete This Page on the right-click menus. One undo step per action. Edge cases: the only page is refused; a last page takes the page break or empty paragraph before it so no blank page stays (the paragraph before keeps its style), and a dangling page break at the end goes too; a section break ending a page is kept unless the page is the whole section (else earlier pages would take the next section's layout); a last page that is its own section (e.g. landscape) first gets the previous section's layout and headers, then its break is removed; a table carrying on to another page asks first, then loses only its rows on the page; protected documents and Track Changes explained. Settings › Word add-in: status (not available with the reason / not installed / installed / turned off by Word), Install and Remove: copies the DLL to %LOCALAPPDATA%\Ndalamo\word-addin and writes per-user registry entries with `reg` (no admin). Checked in real Word through a scratch harness (23 checks: pages by cursor and list, undo, flowing text, shared table, both section cases, blank page, heading style, protection, list errors). Not yet checked: the ribbon loading in Word, because registering the add-in was left for the owner to do from Settings. 224 tests. |
 | … | | |
 
 ---
