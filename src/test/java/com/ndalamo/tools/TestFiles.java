@@ -466,6 +466,48 @@ final class TestFiles {
         return file;
     }
 
+    /** The four paragraphs of {@link #twoColumnPdf}, in reading order: left column, then right. */
+    static final String[] COLUMN_PARAGRAPHS = {
+            "Stokvels are savings clubs in which members pay in a fixed amount every month and take turns to receive "
+                    + "the money, or share it out at the end of the year.",
+            "They are run by the members themselves, with a chairperson, a treasurer and a secretary chosen at the "
+                    + "first meeting of the year.",
+            "Many groups now keep their money in a bank account, which is safer than cash and leaves a clear record "
+                    + "of every payment in and out.",
+            "Some groups also buy groceries in bulk before December, which saves every member money on food for "
+                    + "the holidays."};
+
+    /**
+     * A two-column article: a full-width title, the four paragraphs above in two columns
+     * (two per column, side by side), and a full-width line at the bottom.
+     */
+    static Path twoColumnPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        float columnWidth = 215, leftX = 72, rightX = 72 + columnWidth + 21;      // a 21-point gutter
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
+                writeLine(c, bold, 18, 72, 770, "How stokvels work");
+                for (int column = 0; column < 2; column++) {
+                    float x = column == 0 ? leftX : rightX, y = 735;
+                    for (int p = 0; p < 2; p++) {
+                        for (String line : wrap(regular, 10, COLUMN_PARAGRAPHS[column * 2 + p], columnWidth)) {
+                            writeLine(c, regular, 10, x, y, line);
+                            y -= 12;
+                        }
+                        y -= 10;                                                 // space between paragraphs
+                    }
+                }
+                writeLine(c, regular, 9, 72, 560, "Ndalamo Community Newsletter, November 2026, written for members of local savings groups.");
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
     /**
      * Breaks text into lines no wider than {@code width}, like a word processor does,
      * hyphenating a long word at the end of a line when its first part fits.

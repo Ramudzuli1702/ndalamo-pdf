@@ -195,7 +195,7 @@ public class PdfToWordTool implements PdfTool {
             java.util.Set<TextWord> inTables = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             for (TableFinder.Table<TextWord> table : tables) table.cells().forEach(row -> row.forEach(inTables::addAll));
             List<TextWord> words = pageWords.get(n).stream().filter(w -> !inTables.contains(w)).toList();
-            List<Paragraph> paragraphs = WordLayout.paragraphs(words, margins);
+            List<Paragraph> paragraphs = Columns.paragraphs(words, margins);       // two-column pages in column order
             pageParagraphs.add(paragraphs);
             allParagraphs.addAll(paragraphs);
         }

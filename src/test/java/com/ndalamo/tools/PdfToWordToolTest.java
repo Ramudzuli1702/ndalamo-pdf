@@ -312,6 +312,54 @@ class PdfToWordToolTest {
     }
 
     @Test
+    void twoColumnsAreReadLeftColumnFirst() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.twoColumnPdf(dir, "Newsletter.pdf"), true))) {
+            List<String> expected = new java.util.ArrayList<>();
+            expected.add("How stokvels work");
+            expected.addAll(List.of(TestFiles.COLUMN_PARAGRAPHS));
+            expected.add("Ndalamo Community Newsletter, November 2026, written for members of local savings groups.");
+            assertEquals(expected, texts(word), "no mixing of the two columns' lines");
+        }
+    }
+
+    @Test
+    void aLetterIsNotMistakenForTwoColumns() throws Exception {
+        // The letter has a date on the right and short address lines on the left.
+        try (XWPFDocument word = open(convert(TestFiles.letterPdf(dir, "Letter.pdf"), true))) {
+            assertEquals("Application for a bursary", texts(word).get(0));
+            assertEquals("4 November 2026", texts(word).get(1));
+        }
+    }
+
+    @Test
+    void aFormWithLabelsAndAnswersIsNotTwoColumns() throws Exception {
+        // Short labels on the left, answers on the right: must stay "label answer" per line.
+        Path form = dir.resolve("Form.pdf");
+        var font = new org.apache.pdfbox.pdmodel.font.PDType1Font(org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA);
+        String[][] rows = {{"Name:", "Thabo Nkosi"}, {"Student number:", "220145678"}, {"Faculty:", "Science"},
+                {"Year of study:", "Second"}, {"Email:", "thabo@example.org"}, {"Cell:", "082 555 0101"}};
+        try (var doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            var page = new org.apache.pdfbox.pdmodel.PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            try (var c = new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                for (int i = 0; i < rows.length; i++) {
+                    for (int col = 0; col < 2; col++) {
+                        c.beginText();
+                        c.setFont(font, 11);
+                        c.newLineAtOffset(col == 0 ? 72 : 330, 700 - i * 20);
+                        c.showText(rows[i][col]);
+                        c.endText();
+                    }
+                }
+            }
+            doc.save(form.toFile());
+        }
+        try (XWPFDocument word = open(convert(form, true))) {
+            assertEquals("Name: Thabo Nkosi", texts(word).get(0));
+        }
+    }
+
+    @Test
     void listMarkersAreRecognised() {
         assertEquals("bullet", marker("•").format());
         assertEquals("bullet", marker("").format(), "Word's Symbol-font bullet");

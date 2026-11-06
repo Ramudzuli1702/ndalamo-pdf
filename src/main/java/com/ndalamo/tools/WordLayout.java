@@ -16,7 +16,8 @@ import java.util.List;
  * - the line before ended well short of the right edge (the end of a paragraph,
  *   or a line on its own such as an address line);
  * - the line starts further right than the paragraph so far (an indented first line);
- * - the line starts with a bullet or a list number ("•", "3.", "b)", "(iv)").
+ * - the line starts with a bullet or a list number ("•", "3.", "b)", "(iv)");
+ * - the line, or the one before, has a tab-like gap in it (a form: "Name:   Thabo").
  * Words hyphenated across a line break are joined again ("docu- ment" → "document").
  */
 final class WordLayout {
@@ -70,6 +71,7 @@ final class WordLayout {
         List<Line> lines = lines(words);
         if (lines.isEmpty()) return List.of();
         float usualGap = usualLineGap(lines);
+        float edge = lineEdge(lines, margins);
 
         List<Paragraph> paragraphs = new ArrayList<>();
         List<Line> current = new ArrayList<>();
@@ -84,21 +86,45 @@ final class WordLayout {
                 // The classic test: if this line's first word would have fitted at the end of the line
                 // before, the writer pressed Enter there. A line that's full simply wrapped.
                 TextWord firstWord = line.words().get(0);
-                float roomLeft = margins.right() - previous.right();
+                float roomLeft = edge - previous.right();
                 boolean previousEndedShort = roomLeft > (firstWord.right() - firstWord.left()) + previous.size() * 0.6f;
                 // Compared with the paragraph's second line onwards, since its first line may itself be indented.
                 boolean indented = current.size() > 1 && line.left() > bodyLeft(current) + line.size() * 0.8f;
                 boolean listItem = marker(line.words()) != null;
-                if (biggerGap || sizeChanged || previousEndedShort || indented || listItem) {
-                    paragraphs.add(paragraph(current, margins, spaceBefore));
+                // A line with a tab-like gap inside it ("Name:      Thabo") is a form or tabbed line, not prose.
+                boolean tabbed = hasTabGap(previous) || hasTabGap(line);
+                if (biggerGap || sizeChanged || previousEndedShort || indented || listItem || tabbed) {
+                    paragraphs.add(paragraph(current, margins, edge, spaceBefore));
                     spaceBefore = Math.max(0, gap - line.size() * 1.25f);
                     current = new ArrayList<>();
                 }
             }
             current.add(line);
         }
-        paragraphs.add(paragraph(current, margins, spaceBefore));
+        paragraphs.add(paragraph(current, margins, edge, spaceBefore));
         return paragraphs;
+    }
+
+    /**
+     * Where full lines of text end here: the right edge that 80% of lines stay within.
+     * Usually that's the page margin, but a narrow column ends well before it, and one
+     * wide title shouldn't count. Never past the margin.
+     */
+    private static float lineEdge(List<Line> lines, Margins margins) {
+        float[] rights = new float[lines.size()];
+        for (int i = 0; i < rights.length; i++) rights[i] = lines.get(i).right();
+        Arrays.sort(rights);
+        float edge = rights[Math.min(rights.length - 1, (int) Math.ceil(rights.length * 0.8) - 1)];
+        return Math.min(margins.right(), edge + 1);
+    }
+
+    /** A gap between two words wider than two letter-heights: far more than any space in running text. */
+    private static boolean hasTabGap(Line line) {
+        List<TextWord> words = line.words();
+        for (int i = 1; i < words.size(); i++) {
+            if (words.get(i).left() - words.get(i - 1).right() > line.size() * 2) return true;
+        }
+        return false;
     }
 
     /** Where the paragraph's lines after the first start. */
@@ -108,7 +134,7 @@ final class WordLayout {
         return left;
     }
 
-    private static Paragraph paragraph(List<Line> lines, Margins margins, float spaceBefore) {
+    private static Paragraph paragraph(List<Line> lines, Margins margins, float edge, float spaceBefore) {
         List<TextWord> words = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             List<TextWord> lineWords = lines.get(i).words();
@@ -140,7 +166,7 @@ final class WordLayout {
         // Justified: every line but the last reaches the right edge. Uneven text never lines up that exactly.
         boolean fullLines = lines.size() >= 2;
         for (int i = 0; i < lines.size() - 1; i++) {
-            if (margins.right() - lines.get(i).right() > 1.5f) fullLines = false;
+            if (edge - lines.get(i).right() > 1.5f) fullLines = false;
         }
         if (fullLines) {
             alignment = Alignment.JUSTIFIED;
