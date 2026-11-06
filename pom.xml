@@ -18,6 +18,7 @@
         <pdfbox.version>3.0.8</pdfbox.version>
         <tess4j.version>5.19.0</tess4j.version>   <!-- not 5.20+: see docs/decisions/007-ocr.md -->
         <poi.version>5.5.1</poi.version>   <!-- 6.0.0 is under two weeks old (SPEC §2) -->
+        <commonmark.version>0.31.0</commonmark.version>   <!-- 0.32.0 is under two weeks old (SPEC §2) -->
         <gson.version>2.14.0</gson.version>
         <slf4j.version>2.0.20</slf4j.version>
         <logback.version>1.6.5</logback.version>
@@ -51,6 +52,28 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+
+        <!-- Reading Markdown for Markdown to PDF (BSD-2; approved by the owner 2026-11-06, decision 011) -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-task-list-items</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <!-- Settings and pipelines are saved as JSON -->

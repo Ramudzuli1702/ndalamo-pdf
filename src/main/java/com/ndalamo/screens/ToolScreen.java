@@ -240,6 +240,7 @@ public class ToolScreen extends BorderPane {
             case "doc", "docx", "odt", "rtf" -> "#2B579A";      // Word blue
             case "xls", "xlsx", "ods", "csv" -> "#217346";      // Excel green
             case "ppt", "pptx", "odp" -> "#C2410C";             // PowerPoint orange
+            case "md", "markdown" -> "#5B616E";                 // Markdown: plain text, grey
             default -> null;
         };
         if (colour == null) return null;

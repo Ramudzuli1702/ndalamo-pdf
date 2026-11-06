@@ -58,7 +58,8 @@ final class PageCanvas {
         return load(doc, bold ? "/fonts/NotoSans-Bold.ttf" : "/fonts/NotoSans-Regular.ttf");
     }
 
-    private static PDFont load(PDDocument doc, String file) throws IOException {
+    /** Embeds one of the bundled fonts (only the letters used end up in the file). */
+    static PDFont load(PDDocument doc, String file) throws IOException {
         try (InputStream in = PageCanvas.class.getResourceAsStream(file)) {
             if (in == null) throw new IOException("Missing bundled font " + file);
             return PDType0Font.load(doc, in);

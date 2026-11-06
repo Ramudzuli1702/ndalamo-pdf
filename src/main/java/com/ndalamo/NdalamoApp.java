@@ -169,9 +169,9 @@ public class NdalamoApp extends Application {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose files");
         chooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("PDF, Office and image files",
+                new FileChooser.ExtensionFilter("PDF, Office, image and Markdown files",
                         "*.pdf", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx",
-                        "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff"),
+                        "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff", "*.md"),
                 new FileChooser.ExtensionFilter("All files", "*.*"));
         List<File> files = chooser.showOpenMultipleDialog(stage);
         if (files != null && !files.isEmpty()) filesChosen(files);

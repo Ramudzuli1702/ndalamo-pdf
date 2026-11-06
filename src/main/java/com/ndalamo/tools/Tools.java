@@ -32,6 +32,8 @@ public final class Tools {
             soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
 
             new PdfToWordTool(),
+            new PdfToMarkdownTool(),
+            new MarkdownToPdfTool(),
             new PdfToExcelTool(),
             new OfficeToPdfTool(),
             new ImageToPdfTool(),

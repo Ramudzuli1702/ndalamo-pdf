@@ -41,6 +41,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 | Table extraction | Own table finder on PDFBox (decision 010; Tabula 1.0.5 needs PDFBox 2) | — |
 | Office files (read/write) | Apache POI | Apache 2.0 |
 | Office to PDF | LibreOffice (headless, external process), run directly with `soffice --convert-to pdf` (decision 008; JODConverter not needed) | LibreOffice (MPL) runs as a separate program |
+| Markdown (read) | commonmark-java + tables, strikethrough, task-list add-ons (approved 2026-11-06, decision 011) | BSD-2 |
 | JSON (settings, pipelines) | Gson | Apache 2.0 |
 | Logging | SLF4J + Logback (local log file only) | MIT / EPL-LGPL dual |
 | Testing | JUnit 5, AssertJ, TestFX (UI smoke tests) | EPL / Apache |
@@ -168,6 +169,8 @@ Rules:
 | OCR PDF | Tess4J; render each page at 300 DPI, OCR, add an invisible text layer over the original image. Skip pages that already have text (option). Languages from bundled `tessdata` (start with `eng`; add `afr` if available). |
 | PDF to Excel | Own table finder (decision 010: ruled tables from drawn lines, else tables from spacing) → Apache POI `.xlsx`, one sheet per table or per page (option). OCR first if the page has no text layer. |
 | PDF to Word | **Custom engine** (see §4.1). OCR mode for scans. |
+| PDF to Markdown | Same reading as PDF to Word (`DocumentReader`), written as Markdown: #, lists, **bold**/*italic*, pipe tables; pictures in a folder beside the .md (decision 011). |
+| Markdown to PDF | commonmark-java reads it; our own renderer draws it with PDFBox (no LibreOffice). Local pictures only; web pictures shown as their description (decision 011). |
 
 ### Edit and sign
 | Tool | Notes |
@@ -412,7 +415,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 9. **OCR** (Tess4J, bundled tessdata, invisible text layer).
 10. **Office to PDF** (LibreOffice detection, JODConverter, missing-LibreOffice dialog).
 11. **PDF to Excel** (Tabula + POI, OCR fallback).
-12. **PDF to Word** — split into 12a text runs & paragraphs · 12b headings, styles, lists · 12c images · 12d tables · 12e columns · 12f OCR mode.
+12. **PDF to Word** — split into 12a text runs & paragraphs · 12b headings, styles, lists · 12c images · 12d tables · 12e columns · 12f OCR mode · 12g Markdown to PDF and PDF to Markdown (added at the owner's request).
 
 ### Phase 4 — Remaining tools
 13. **Sign, Redact, Crop, Fill forms**
@@ -467,6 +470,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | 12e PDF to Word: columns | Done 2026-11-06 | Two-column pages read in column order (`Columns`). Gutter = the widest empty strip in the middle half of the text with at least 4 lines on each side, crossed by at most one line in six (titles, footers), and with real text on both sides (each side's typical line fills at least half its width, so a form with short labels and answers isn't split). The right column may be much shorter than the left (last page of an article). Lines whose words span the gutter's middle are read full width; each two-column stretch is read left column then right, each with its own edges; a paragraph cut off at the foot of the left column and continuing in lowercase at the top of the right is joined. Paragraph rules now measure "stopped short" and "justified" against where full lines actually end on the page (80th-percentile right edge), so a narrow single column isn't one paragraph per line. A line with a tab-like gap (form: "Name:   Thabo") is its own paragraph. Word output stays one column in reading order. Round trip of a Word article in two columns (LibreOffice fills the left column first): title and all 10 paragraphs whole and in order. 163 tests. |
 | 12e+ PDF to Word: headers, footers, column placement | Done 2026-11-06 | Page furniture (`PageFurniture`): lines in the top or bottom 10% of a page that are a page number ("3", "Page 3", "3 of 10", "– 3 –", also "bladsy"/"siaṱari") or repeat on at least two pages and half of them (numbers ignored) come out of the body; repeated lines become Word's header/footer text, page numbers Word's own PAGE field (left/centre/right as in the PDF; header if they were at the top). Scan check counts letters before they're removed. Pictures and tables now go in by reading order (`Columns.Page`: which stretch of the page, then which column, then height), so a picture in the right column comes after the left column. 166 tests. |
 | 12f PDF to Word: OCR mode | Done 2026-11-06 | Pages with almost no text (< 25 letters) are drawn at 300 dpi and read by the bundled Tesseract (`ScanText`), then go through the same layout as real text: paragraphs, headings, lists, columns, tables, headers/footers. Option "Read scanned pages with OCR" (on) with the OCR PDF language choice (Advanced). Tesseract gives only word boxes, so: size estimated per word from its height and letters (dipping letters like g/y, tall letters and capitals, or only small letters), the middle estimate per line, lines within −25%/+30% of the page's usual size snapped to it so body text is one size and headings stand out; baseline = middle word bottom on the line; font Arial. The scan image itself isn't pasted in (pictures covering most of the page are skipped). OCR engine started once per run, only if a scan turns up. Note: "N scanned pages read with OCR"; with OCR off, scans come out empty with a hint. Known limit: evenly spaced short lines with no gap read like one wrapped paragraph. 167 tests. PDF to Word (chunk 12) complete. |
+| 12g Markdown to PDF, PDF to Markdown | Done 2026-11-06 | Added at the owner's request. commonmark-java 0.31.0 approved (decision 011). PDF to Word's reading moved into `DocumentReader` (no change to its output); PDF to Markdown writes from it: # headings (bold not repeated), - and 1. lists (4 spaces per level, PDF's start number kept; letters/Roman as text after -), ** and *, pipe tables, pictures saved byte for byte in "<name>_pictures" and linked, Markdown characters escaped. Markdown to PDF: own renderer on PDFBox (`MarkdownRenderer`): headings kept with the next text, wrapped paragraphs, bold, slanted italics, Courier code on grey, strikethrough, clickable links (one underline per link), bullet/numbered/task lists (drawn tick boxes), quote bars, code blocks across pages, tables with shaded header repeated on new pages and per-column alignment, local pictures (96 dpi, fitted), web pictures shown as their description (PARTIAL), page numbers (option), A4/Letter, title from the first heading, non-UTF-8 files fail plainly. Round trip PDF → Markdown → PDF keeps the words. 177 tests. |
 | … | | |
 
 ---
