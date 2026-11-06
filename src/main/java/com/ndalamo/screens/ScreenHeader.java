@@ -8,8 +8,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 
 /**
- * The header on every screen except Home (SPEC §6.0): the small colour logo,
- * a "Home" back button, then the screen's title. Screens can add their own
+ * The header on every screen except Home (SPEC §6.0): the same logo and name as
+ * Home's header, a "Home" back button, then the screen's title. Screens can add their own
  * buttons to the right with {@code getChildren().add(...)}.
  */
 public class ScreenHeader extends HBox {
@@ -26,6 +26,6 @@ public class ScreenHeader extends HBox {
         Label titleLabel = new Label(title);
         titleLabel.getStyleClass().add("screen-title");
 
-        getChildren().addAll(LogoMark.color(28), home, titleLabel);
+        getChildren().addAll(Header.brand(), home, titleLabel);
     }
 }

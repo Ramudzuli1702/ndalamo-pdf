@@ -63,6 +63,9 @@ public class SettingsScreen extends BorderPane {
     private final VBox cards = new VBox(20);
     private final ScrollPane scroll = new ScrollPane();
     private final Map<String, Node> sections = new LinkedHashMap<>();
+    private final Map<Node, Button> navItems = new LinkedHashMap<>();
+    /** The section last picked in the list, so it stays highlighted when it can't scroll to the top. */
+    private Node picked;
 
     /**
      * @param save         writes the settings to disk
@@ -89,13 +92,17 @@ public class SettingsScreen extends BorderPane {
 
         cards.setPadding(new Insets(28, 32, 40, 32));
         cards.setMaxWidth(860);
+        // The cards sit in the middle of the space beside the section list, however wide the window.
         VBox centred = new VBox(cards);
-        centred.setAlignment(Pos.TOP_LEFT);
+        centred.setAlignment(Pos.TOP_CENTER);
         scroll.setContent(centred);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("plain-scroll");
         setCenter(scroll);
         setLeft(nav());
+        // Highlight the section being read as the cards scroll past.
+        scroll.vvalueProperty().addListener((obs, was, now) -> highlightSectionInView());
+        scroll.viewportBoundsProperty().addListener((obs, was, now) -> highlightSectionInView());
     }
 
     /** The section list on the left; clicking a section scrolls to its card. */
@@ -104,28 +111,68 @@ public class SettingsScreen extends BorderPane {
         nav.getStyleClass().add("settings-nav");
         nav.setPrefWidth(230);
         nav.setPadding(new Insets(24, 12, 24, 16));
-        List<Button> buttons = new ArrayList<>();
         sections.forEach((title, card) -> {
             Button item = new Button(title);
             item.getStyleClass().add("settings-nav-item");
             item.setMaxWidth(Double.MAX_VALUE);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setOnAction(e -> {
-                buttons.forEach(b -> b.getStyleClass().remove("settings-nav-selected"));
-                item.getStyleClass().add("settings-nav-selected");
+                picked = card;
                 scrollTo(card);
+                highlight(card);
             });
-            buttons.add(item);
+            navItems.put(card, item);
             nav.getChildren().add(item);
         });
-        if (!buttons.isEmpty()) buttons.get(0).getStyleClass().add("settings-nav-selected");
+        if (!navItems.isEmpty()) highlight(navItems.keySet().iterator().next());
         return nav;
+    }
+
+    private void highlight(Node card) {
+        navItems.forEach((c, item) -> {
+            item.getStyleClass().remove("settings-nav-selected");
+            if (c == card) item.getStyleClass().add("settings-nav-selected");
+        });
+    }
+
+    /**
+     * The section being read is the last card whose top has come into the top third of the view.
+     * At the very bottom the last few cards can't reach the top, so a section picked in the list
+     * stays highlighted there, and otherwise the last card is.
+     */
+    private void highlightSectionInView() {
+        double content = scroll.getContent().getBoundsInLocal().getHeight();
+        double viewport = scroll.getViewportBounds().getHeight();
+        // Nothing to follow until the cards are laid out and taller than the view.
+        if (content <= viewport || viewport <= 0) return;
+        double top = (content - viewport) * scroll.getVvalue();
+        boolean atBottom = scroll.getVvalue() >= 0.999;
+        // A section picked in the list stays highlighted while it's where the click put it.
+        if (picked != null) {
+            boolean stillThere = Math.abs(cardTop(picked) - top) <= 2 || (atBottom && cardTop(picked) >= top - 1);
+            if (stillThere) {
+                highlight(picked);
+                return;
+            }
+            picked = null;
+        }
+        Node current = null;
+        for (Node card : navItems.keySet()) {
+            if (cardTop(card) <= top + viewport / 3) current = card;
+        }
+        if (atBottom) current = cards.getChildren().get(cards.getChildren().size() - 1);
+        if (current != null) highlight(current);
+    }
+
+    /** A card's top within the scrolling content. */
+    private double cardTop(Node card) {
+        return cards.getBoundsInParent().getMinY() + card.getBoundsInParent().getMinY();
     }
 
     private void scrollTo(Node card) {
         double content = scroll.getContent().getBoundsInLocal().getHeight();
         double viewport = scroll.getViewportBounds().getHeight();
-        double y = card.getBoundsInParent().getMinY();
+        double y = cardTop(card);
         scroll.setVvalue(content > viewport ? Math.min(1, y / (content - viewport)) : 0);
     }
 

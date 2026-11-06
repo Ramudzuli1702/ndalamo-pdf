@@ -28,15 +28,7 @@ public class Header extends HBox {
         getStyleClass().add("app-header");
         setAlignment(Pos.CENTER_LEFT);
 
-        // Logo on a blue tile + name
-        StackPane tile = new StackPane(LogoMark.white(22));
-        tile.setMinSize(32, 32);
-        tile.setMaxSize(32, 32);
-        tile.setStyle("-fx-background-color: " + Theme.ACCENT + "; -fx-background-radius: " + Theme.RADIUS_SM + ";");
-        Label name = new Label("Ndalamo");
-        name.getStyleClass().add("brand-name");
-        HBox brand = new HBox(10, tile, name);
-        brand.setAlignment(Pos.CENTER_LEFT);
+        HBox brand = brand();
         // Wide enough that the search box starts where the tool cards start below it
         brand.setMinWidth(BRAND_WIDTH);
         brand.setPrefWidth(BRAND_WIDTH);
@@ -74,6 +66,23 @@ public class Header extends HBox {
         HBox.setHgrow(spacer, Priority.SOMETIMES);
 
         getChildren().addAll(brand, searchBox, spacer, new HBox(8, pipelines, settings));
+    }
+
+    /**
+     * The logo on a blue tile with "Ndalamo": the same at the top left of every screen, so the
+     * brand doesn't change as you move between Home, tools, the workspace and Settings.
+     */
+    public static HBox brand() {
+        StackPane tile = new StackPane(LogoMark.white(22));
+        tile.setMinSize(32, 32);
+        tile.setMaxSize(32, 32);
+        tile.setStyle("-fx-background-color: " + Theme.ACCENT + "; -fx-background-radius: " + Theme.RADIUS_SM + ";");
+        Label name = new Label("Ndalamo");
+        name.getStyleClass().add("brand-name");
+        HBox brand = new HBox(10, tile, name);
+        brand.setAlignment(Pos.CENTER_LEFT);
+        brand.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
+        return brand;
     }
 
     /** The search box, so the home screen can filter tools as the user types. */

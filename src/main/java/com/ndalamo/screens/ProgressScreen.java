@@ -42,7 +42,7 @@ public class ProgressScreen extends BorderPane {
         title.getStyleClass().add("screen-title");
         Label step = new Label("Step 2 of 2 · Working");
         step.getStyleClass().add("step-label");
-        HBox header = new HBox(12, LogoMark.color(28), title, step);
+        HBox header = new HBox(12, Header.brand(), title, step);
         header.getStyleClass().add("screen-header");
         header.setAlignment(Pos.CENTER_LEFT);
         setTop(header);

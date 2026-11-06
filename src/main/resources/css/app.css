@@ -107,20 +107,17 @@
 
 /* ── Headers ────────────────────────────────────────────────────────── */
 
-.app-header {
+/* Home's bar and every other screen's bar match: same height, padding and logo (Header.brand()),
+   so nothing at the top jumps when you move between screens. */
+.app-header, .screen-header {
     -fx-background-color: -nd-surface;
     -fx-border-color: -nd-border;
     -fx-border-width: 0 0 1 0;
-    -fx-padding: 14 24;
+    -fx-padding: 0 24;
     -fx-spacing: 16;
-}
-
-.screen-header {
-    -fx-background-color: -nd-surface;
-    -fx-border-color: -nd-border;
-    -fx-border-width: 0 0 1 0;
-    -fx-padding: 12 20;
-    -fx-spacing: 12;
+    -fx-min-height: 68;
+    -fx-pref-height: 68;
+    -fx-fill-height: false;   /* keep the search box and buttons their own height */
 }
 
 .brand-name { -fx-font-weight: bold; -fx-font-size: 17px; }

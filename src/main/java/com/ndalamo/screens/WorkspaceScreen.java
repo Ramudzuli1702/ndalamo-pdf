@@ -209,7 +209,7 @@ public class WorkspaceScreen extends BorderPane {
 
         Region push = new Region();
         HBox.setHgrow(push, Priority.ALWAYS);
-        HBox header = new HBox(12, LogoMark.color(28), home, tabs, push, undo, save);
+        HBox header = new HBox(12, Header.brand(), home, tabs, push, undo, save);
         header.getStyleClass().add("screen-header");
         header.setAlignment(Pos.CENTER_LEFT);
         tabs.setAlignment(Pos.BOTTOM_LEFT);
