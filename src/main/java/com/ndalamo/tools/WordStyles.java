@@ -114,22 +114,9 @@ final class WordStyles {
             List<Paragraph> list = new ArrayList<>();
             while (i < paragraphs.size() && isListItem(paragraphs.get(i), headings)) list.add(paragraphs.get(i++));
 
-            // Levels from where the markers start, left to right; markers within 4 points share a level.
-            List<Float> edges = new ArrayList<>();
-            for (Paragraph p : list) {
-                float x = p.marker().markerLeft();
-                if (edges.stream().noneMatch(e -> Math.abs(e - x) < 4)) edges.add(x);
-            }
-            edges.sort(null);
+            Map<Paragraph, Integer> levelOf = levelsOf(list);
             Map<Integer, ListMarker> firstAtLevel = new HashMap<>();
-            Map<Paragraph, Integer> levelOf = new IdentityHashMap<>();
-            for (Paragraph p : list) {
-                int level = 0;
-                for (int e = 0; e < edges.size(); e++) if (Math.abs(edges.get(e) - p.marker().markerLeft()) < 4) level = e;
-                level = Math.min(level, 8);
-                levelOf.put(p, level);
-                firstAtLevel.putIfAbsent(level, p.marker());
-            }
+            for (Paragraph p : list) firstAtLevel.putIfAbsent(levelOf.get(p), p.marker());
 
             if (numbering == null) numbering = word.createNumbering();
             BigInteger abstractId = numbering.addAbstractNum(new XWPFAbstractNum(abstractNum(firstAtLevel, numbering)));
@@ -144,6 +131,39 @@ final class WordStyles {
             for (Paragraph p : list) places.put(p, new ListPlace(numId, levelOf.get(p)));
         }
         return places;
+    }
+
+    /** How deep each list item is (0 = top level), for writers that do their own numbering, like Markdown. */
+    static Map<Paragraph, Integer> listLevels(List<Paragraph> paragraphs, Map<Paragraph, Integer> headings) {
+        Map<Paragraph, Integer> levels = new IdentityHashMap<>();
+        int i = 0;
+        while (i < paragraphs.size()) {
+            if (!isListItem(paragraphs.get(i), headings)) {
+                i++;
+                continue;
+            }
+            List<Paragraph> list = new ArrayList<>();
+            while (i < paragraphs.size() && isListItem(paragraphs.get(i), headings)) list.add(paragraphs.get(i++));
+            levels.putAll(levelsOf(list));
+        }
+        return levels;
+    }
+
+    /** Levels within one list, from where the markers start, left to right; markers within 4 points share a level. */
+    private static Map<Paragraph, Integer> levelsOf(List<Paragraph> list) {
+        List<Float> edges = new ArrayList<>();
+        for (Paragraph p : list) {
+            float x = p.marker().markerLeft();
+            if (edges.stream().noneMatch(e -> Math.abs(e - x) < 4)) edges.add(x);
+        }
+        edges.sort(null);
+        Map<Paragraph, Integer> levelOf = new IdentityHashMap<>();
+        for (Paragraph p : list) {
+            int level = 0;
+            for (int e = 0; e < edges.size(); e++) if (Math.abs(edges.get(e) - p.marker().markerLeft()) < 4) level = e;
+            levelOf.put(p, Math.min(level, 8));
+        }
+        return levelOf;
     }
 
     private static boolean isListItem(Paragraph p, Map<Paragraph, Integer> headings) {

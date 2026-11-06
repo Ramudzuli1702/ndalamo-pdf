@@ -10,8 +10,6 @@ import com.ndalamo.utils.Format;
 import com.ndalamo.utils.PageRanges;
 import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.poi.util.Units;
 import org.apache.poi.wp.usermodel.HeaderFooterType;
 import org.apache.poi.xwpf.usermodel.Document;
@@ -51,9 +49,6 @@ public class PdfToWordTool implements PdfTool {
     static final String PICTURES = "pictures";
     static final String OCR = "ocr";
     static final String LANGUAGE = "language";
-
-    /** Fewer letters than this and the page is probably a scan, read with OCR (step 12f). */
-    private static final int HAS_TEXT = 25;
 
     @Override public String id() { return "pdf-to-word"; }
     @Override public String name() { return "PDF to Word"; }
@@ -146,148 +141,51 @@ public class PdfToWordTool implements PdfTool {
         return results;
     }
 
-    /** Reads the chosen pages and writes the Word file. Null if cancelled. */
+    /** Reads the chosen pages (DocumentReader) and writes the Word file. Null if cancelled. */
     private FileResult convertOne(PDDocument doc, Path input, List<Integer> pages, int index, int fileCount,
                                   boolean pageBreaks, boolean includePictures, String ocrLanguages, OcrEngine[] engine,
                                   SaveTo saveTo, Progress progress) throws IOException {
-        // Read every page first: the margins are worked out from all of them together.
-        List<List<TextWord>> pageWords = new ArrayList<>();
-        List<List<PageImages.Picture>> pagePictures = new ArrayList<>();
-        List<List<PageContent.Rule>> pageRules = new ArrayList<>();
-        PDFRenderer renderer = new PDFRenderer(doc);
-        int scans = 0, scansRead = 0;
-        for (int n = 0; n < pages.size(); n++) {
-            if (progress.isCancelled()) return null;
-            int page = pages.get(n);
-            String status = "Page " + page + " of " + doc.getNumberOfPages();
-            progress.file(index, (n + 0.1) / pages.size() * 0.8, status);
-            progress.update((index + (double) n / pages.size()) / fileCount, "Reading " + input.getFileName() + " · " + status);
-            List<TextWord> words = PageText.words(doc, page - 1);
-            if (words.stream().mapToInt(w -> w.text().length()).sum() < HAS_TEXT) {
-                // Probably a scan: read it with OCR, then lay it out like any other page.
-                if (ocrLanguages == null) {
-                    scans++;
-                } else {
-                    progress.file(index, (n + 0.3) / pages.size() * 0.8, status + " · reading the scan");
-                    try {
-                        if (engine[0] == null) engine[0] = new OcrEngine(ocrLanguages);
-                        words = ScanText.words(engine[0], renderer, page - 1);
-                    } catch (Error e) {
-                        throw OcrEngine.cantStart(e);
-                    }
-                    scansRead++;
-                }
-            }
-            List<PageContent.Rule> rules = PageContent.rules(doc.getPage(page - 1));
-            pageRules.add(rules);
-            pageWords.add(PageText.markUnderlines(words, rules));
-            pagePictures.add(includePictures ? PageImages.pictures(doc.getPage(page - 1)) : List.of());
-        }
-
-        // Page numbers and lines repeated at the top or bottom of every page go in Word's header and
-        // footer, not between paragraphs.
-        List<Float> widths = new ArrayList<>(), heights = new ArrayList<>();
-        for (int page : pages) {
-            PDRectangle box = doc.getPage(page - 1).getCropBox();
-            boolean sideways = doc.getPage(page - 1).getRotation() % 180 != 0;
-            widths.add(sideways ? box.getHeight() : box.getWidth());
-            heights.add(sideways ? box.getWidth() : box.getHeight());
-        }
-        PageFurniture.Result furniture = PageFurniture.strip(pageWords, widths, heights);
-        for (int n = 0; n < pageWords.size(); n++) pageWords.set(n, furniture.pages().get(n));
-
-        float left = Float.MAX_VALUE, right = 0, top = Float.MAX_VALUE;
-        for (List<TextWord> words : pageWords) {
-            for (TextWord w : words) {
-                left = Math.min(left, w.left());
-                right = Math.max(right, w.right());
-                top = Math.min(top, w.baseline() - w.size());
-            }
-        }
-        PDRectangle size = doc.getPage(pages.get(0) - 1).getCropBox();
-        boolean turned = doc.getPage(pages.get(0) - 1).getRotation() % 180 != 0;
-        float pageWidth = turned ? size.getHeight() : size.getWidth(), pageHeight = turned ? size.getWidth() : size.getHeight();
-        if (left == Float.MAX_VALUE) {                       // no text at all
-            left = 72;
-            right = pageWidth - 72;
-            top = 72;
-        }
-        for (List<PageImages.Picture> pictures : pagePictures) {
-            for (PageImages.Picture picture : pictures) {
-                right = Math.max(right, picture.left() + picture.width());
-                top = Math.min(top, picture.top());                  // a logo above the first line
-            }
-        }
-        // If no line gets near the right side (a page of short lines), assume the right margin matches the left,
-        // as it does on nearly every page; otherwise every line would look like it reaches the edge.
-        if (right < pageWidth - left - 36) right = pageWidth - left;
-        WordLayout.Margins margins = new WordLayout.Margins(left, right);
+        DocumentReader.Reading reading = DocumentReader.read(doc, input, pages,
+                new DocumentReader.Settings(includePictures, ocrLanguages), engine, index, fileCount, progress);
+        if (reading == null) return null;
+        WordLayout.Margins margins = reading.margins();
+        Map<Paragraph, Integer> headings = reading.headings();
+        int scans = reading.scans(), scansRead = reading.scansRead(), tableCount = reading.tables();
 
         int paragraphCount = 0, pictureCount = 0;
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
-        List<List<Paragraph>> pageParagraphs = new ArrayList<>();
-        List<Columns.Page> pageLayouts = new ArrayList<>();
-        List<Paragraph> allParagraphs = new ArrayList<>();
-        List<List<TableFinder.Table<TextWord>>> pageTables = new ArrayList<>();
-        int tableCount = 0;
-        for (int n = 0; n < pageWords.size(); n++) {
-            List<TableFinder.Table<TextWord>> tables = tables(pageWords.get(n), pageRules.get(n));
-            pageTables.add(tables);
-            tableCount += tables.size();
-            // Words in a table are written in the table, not as paragraphs.
-            java.util.Set<TextWord> inTables = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-            for (TableFinder.Table<TextWord> table : tables) table.cells().forEach(row -> row.forEach(inTables::addAll));
-            List<TextWord> words = pageWords.get(n).stream().filter(w -> !inTables.contains(w)).toList();
-            Columns.Page layout = Columns.read(words, margins);                    // two-column pages in column order
-            pageLayouts.add(layout);
-            List<Paragraph> paragraphs = layout.paragraphs();
-            pageParagraphs.add(paragraphs);
-            allParagraphs.addAll(paragraphs);
-        }
-        Map<Paragraph, Integer> headings = WordStyles.headings(allParagraphs, WordStyles.bodySize(pageWords));
-
         try (XWPFDocument word = new XWPFDocument()) {
-            setPage(word, pageWidth, pageHeight, left, pageWidth - right, top);
-            addHeaderAndFooter(word, furniture);
+            setPage(word, reading.pageWidth(), reading.pageHeight(), margins.left(),
+                    reading.pageWidth() - margins.right(), reading.top());
+            addHeaderAndFooter(word, reading.furniture());
             if (!headings.isEmpty()) WordStyles.addHeadingStyles(word);
-            Map<Paragraph, WordStyles.ListPlace> lists = WordStyles.lists(word, allParagraphs, headings);
+            Map<Paragraph, WordStyles.ListPlace> lists = WordStyles.lists(word, reading.paragraphs(), headings);
             XWPFParagraph last = null;
             Paragraph lastParagraph = null;
-            for (int n = 0; n < pageWords.size(); n++) {
+            for (int n = 0; n < reading.pages().size(); n++) {
                 if (progress.isCancelled()) return null;
-                List<TextWord> words = pageWords.get(n);
-
-                List<Paragraph> paragraphs = pageParagraphs.get(n);
-                List<Block> waiting = new ArrayList<>();
-                for (PageImages.Picture picture : pagePictures.get(n)) waiting.add(new Block(picture.top(), picture.bottom(), picture, null));
-                for (TableFinder.Table<TextWord> table : pageTables.get(n)) waiting.add(new Block(table.top(), table.bottom(), null, table));
-                Columns.Page layout = pageLayouts.get(n);
-                waiting.sort(java.util.Comparator.comparingDouble(b -> layout.order(b.left(), b.right(), b.top())));
                 boolean pageStarted = false;          // has anything from this page been written yet?
                 float pictureBottom = -1;             // the bottom of a picture or table just written, for the space under it
-                for (int p = 0; p <= paragraphs.size(); p++) {
-                    Paragraph paragraph = p < paragraphs.size() ? paragraphs.get(p) : null;
-                    // Pictures and tables that start above this paragraph go first, in the order they appear.
-                    while (!waiting.isEmpty() && (paragraph == null || comesBefore(waiting.get(0), paragraph, pageLayouts.get(n)))) {
-                        Block block = waiting.remove(0);
-                        boolean breakFirst = !pageStarted && n > 0 && pageBreaks;
-                        if (block.picture() != null) {
-                            PageImages.Picture picture = block.picture();
+                for (DocumentReader.Item item : reading.pages().get(n)) {
+                    boolean firstOnPage = !pageStarted && n > 0;
+                    if (item.paragraph() == null) {
+                        if (item.picture() != null) {
+                            PageImages.Picture picture = item.picture();
                             last = writePicture(word, picture, margins, pictureBottom >= 0 ? picture.top() - pictureBottom : 6);
-                            if (breakFirst) last.setPageBreak(true);
+                            if (firstOnPage && pageBreaks) last.setPageBreak(true);
                             pictureCount++;
                         } else {
-                            if (breakFirst) word.createParagraph().setPageBreak(true);   // a table can't start a page itself
-                            writeTable(word, block.table(), margins);
+                            if (firstOnPage && pageBreaks) word.createParagraph().setPageBreak(true);   // a table can't start a page itself
+                            writeTable(word, item.table(), margins);
                             last = null;
                         }
                         pageStarted = true;
-                        pictureBottom = block.bottom();
+                        pictureBottom = item.bottom();
                         lastParagraph = null;
+                        continue;
                     }
-                    if (paragraph == null) break;
-                    boolean firstOnPage = !pageStarted && n > 0;
+                    Paragraph paragraph = item.paragraph();
                     // Without page breaks, a sentence that runs over onto the next page stays one paragraph.
                     if (firstOnPage && !pageBreaks && last != null && lastParagraph != null && !lastParagraph.endsSentence()
                             && flowing(lastParagraph) && flowing(paragraph) && paragraph.marker() == null
@@ -329,28 +227,6 @@ public class PdfToWordTool implements PdfTool {
         }
         return new FileResult(input, output, sizeBefore, Files.size(output),
                 scans == pages.size() ? FileResult.Status.PARTIAL : FileResult.Status.SUCCESS, note);
-    }
-
-    /** A picture or a table, waiting for its place between the paragraphs of its page. */
-    private record Block(float top, float bottom, PageImages.Picture picture, TableFinder.Table<TextWord> table) {
-        float left() { return picture != null ? picture.left() : table.left(); }
-        float right() { return picture != null ? picture.left() + picture.width() : table.right(); }
-    }
-
-    /** In reading order, does the picture or table go before this paragraph? On two-column pages, by column. */
-    private static boolean comesBefore(Block block, Paragraph paragraph, Columns.Page layout) {
-        return layout.comesBefore(block.left(), block.right(), block.top(), paragraph);
-    }
-
-    /**
-     * The tables on a page. Tables with drawn borders always count. Tables made of
-     * spacing alone need 3 rows and 3 columns: two columns of text is a two-column
-     * layout (step 12e), not a table, and a few aligned lines are usually a form or address.
-     */
-    private static List<TableFinder.Table<TextWord>> tables(List<TextWord> words, List<PageContent.Rule> rules) {
-        return TableFinder.find(words, rules).stream()
-                .filter(t -> t.ruled() || (t.cells().size() >= 3 && t.columns() >= 3))
-                .toList();
     }
 
     /**
