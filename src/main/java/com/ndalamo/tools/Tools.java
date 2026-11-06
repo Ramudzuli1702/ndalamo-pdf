@@ -28,7 +28,7 @@ public final class Tools {
 
             new CompressTool(),
             new CompressTool(true),    // same tool, starting with "Target size" chosen
-            soon("repair", "Repair PDF", "Fix damaged files", "Optimize"),
+            new RepairTool(),
             soon("pdfa", "PDF to PDF/A", "Long-term archiving", "Optimize"),
 
             new PdfToWordTool(),
