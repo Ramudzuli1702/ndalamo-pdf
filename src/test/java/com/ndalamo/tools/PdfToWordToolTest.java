@@ -256,6 +256,61 @@ class PdfToWordToolTest {
         }
     }
 
+    /** The document from top to bottom: paragraph texts, and "[table]" where a table is. */
+    private static List<String> bodyOrder(XWPFDocument word) {
+        return word.getBodyElements().stream()
+                .map(e -> e instanceof org.apache.poi.xwpf.usermodel.XWPFTable ? "[table]" : ((XWPFParagraph) e).getText())
+                .filter(t -> !t.isBlank()).toList();
+    }
+
+    @Test
+    void aRuledTableBecomesAWordTableInItsPlace() throws Exception {
+        String[][] stock = {{"Item", "Count", "Price"}, {"Printer paper", "12", "1 250.00"}, {"Toner", "3", "800.50"}};
+        try (XWPFDocument word = open(convert(TestFiles.ruledTablePdf(dir, "Stock.pdf", stock), true))) {
+            assertEquals(List.of("Stock report for November", "[table]", "Counted by the night shift."), bodyOrder(word),
+                    "the table's words are in the table only, not repeated as paragraphs");
+            var table = word.getTables().get(0);
+            assertEquals(3, table.getNumberOfRows());
+            assertEquals(3, table.getRow(0).getTableCells().size());
+            assertEquals("Printer paper", table.getRow(1).getCell(0).getText());
+            assertEquals("1 250.00", table.getRow(1).getCell(2).getText());
+            assertEquals(ParagraphAlignment.LEFT, table.getRow(1).getCell(2).getParagraphs().get(0).getAlignment(),
+                    "the PDF wrote this number at the left of its cell, so Word does too");
+            assertNotEquals(org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, table.getInsideHBorderType(),
+                    "the PDF drew borders, so the Word table has them");
+            int widthTwips = table.getRow(0).getCell(0).getWidth();
+            assertEquals(130 * 20, widthTwips, 40, "columns as wide as in the PDF");
+        }
+    }
+
+    @Test
+    void aSpacedTableHasNoBorders() throws Exception {
+        String[][] statement = {
+                {"Date", "Description", "Amount", "Balance"},
+                {"03 Oct", "Shoprite Soweto", "-412.35", "4 587.65"},
+                {"15 Oct", "Salary", "18 500.00", "23 087.65"},
+                {"28 Oct", "Debit order", "-650.00", "22 437.65"}};
+        try (XWPFDocument word = open(convert(TestFiles.spacedTablePdf(dir, "Statement.pdf", statement,
+                new float[]{72, 140, 330, 430}), true))) {
+            assertEquals(1, word.getTables().size());
+            var table = word.getTables().get(0);
+            assertEquals("Salary", table.getRow(2).getCell(1).getText());
+            var border = table.getInsideHBorderType();     // no border setting at all also means no borders in Word
+            assertTrue(border == null || border == org.apache.poi.xwpf.usermodel.XWPFTable.XWPFBorderType.NONE, "border: " + border);
+            assertTrue(bodyOrder(word).get(0).startsWith("Dear customer"), "the letter above stays a paragraph");
+        }
+    }
+
+    @Test
+    void ordinaryTextHasNoTables() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.letterPdf(dir, "Letter.pdf"), true))) {
+            assertTrue(word.getTables().isEmpty());
+        }
+        try (XWPFDocument word = open(convert(TestFiles.structuredPdf(dir, "Rules.pdf"), true))) {
+            assertTrue(word.getTables().isEmpty(), "a box around one note is not a table");
+        }
+    }
+
     @Test
     void listMarkersAreRecognised() {
         assertEquals("bullet", marker("•").format());

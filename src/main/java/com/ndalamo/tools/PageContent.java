@@ -23,11 +23,7 @@ import java.util.List;
 final class PageContent {
 
     /** A word and the box around it. */
-    record Box(String text, float left, float top, float right, float bottom) {
-        float centreX() { return (left + right) / 2; }
-        float centreY() { return (top + bottom) / 2; }
-        float height() { return bottom - top; }
-    }
+    record Box(String text, float left, float top, float right, float bottom) implements TableFinder.Positioned {}
 
     /**
      * A straight border line. Horizontal: {@code position} is its y, and it runs from x

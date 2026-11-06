@@ -18,6 +18,8 @@ import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
@@ -34,8 +36,9 @@ import java.util.Map;
 /**
  * PDF to Word: turns a PDF into an editable .docx (SPEC §4.1). Built in steps.
  * So far: paragraphs, alignment, indents, each word's font, size, bold, italic,
- * underline and colour (12a), headings and lists (12b, see WordStyles), and pictures
- * in their place between paragraphs (12c). Tables, columns and scans come in later steps. The goal is a clean document to
+ * underline and colour (12a), headings and lists (12b, see WordStyles), pictures in
+ * their place between paragraphs (12c), and tables as real Word tables (12d). Columns
+ * and scans come in later steps. The goal is a clean document to
  * edit, not an exact copy of the page. The PDF is only read.
  */
 public class PdfToWordTool implements PdfTool {
@@ -136,6 +139,7 @@ public class PdfToWordTool implements PdfTool {
         // Read every page first: the margins are worked out from all of them together.
         List<List<TextWord>> pageWords = new ArrayList<>();
         List<List<PageImages.Picture>> pagePictures = new ArrayList<>();
+        List<List<PageContent.Rule>> pageRules = new ArrayList<>();
         for (int n = 0; n < pages.size(); n++) {
             if (progress.isCancelled()) return null;
             int page = pages.get(n);
@@ -143,7 +147,9 @@ public class PdfToWordTool implements PdfTool {
             progress.file(index, (n + 0.1) / pages.size() * 0.8, status);
             progress.update((index + (double) n / pages.size()) / fileCount, "Reading " + input.getFileName() + " · " + status);
             List<TextWord> words = PageText.words(doc, page - 1);
-            pageWords.add(PageText.markUnderlines(words, PageContent.rules(doc.getPage(page - 1))));
+            List<PageContent.Rule> rules = PageContent.rules(doc.getPage(page - 1));
+            pageRules.add(rules);
+            pageWords.add(PageText.markUnderlines(words, rules));
             pagePictures.add(includePictures ? PageImages.pictures(doc.getPage(page - 1)) : List.of());
         }
 
@@ -179,7 +185,16 @@ public class PdfToWordTool implements PdfTool {
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
         List<List<Paragraph>> pageParagraphs = new ArrayList<>();
         List<Paragraph> allParagraphs = new ArrayList<>();
-        for (List<TextWord> words : pageWords) {
+        List<List<TableFinder.Table<TextWord>>> pageTables = new ArrayList<>();
+        int tableCount = 0;
+        for (int n = 0; n < pageWords.size(); n++) {
+            List<TableFinder.Table<TextWord>> tables = tables(pageWords.get(n), pageRules.get(n));
+            pageTables.add(tables);
+            tableCount += tables.size();
+            // Words in a table are written in the table, not as paragraphs.
+            java.util.Set<TextWord> inTables = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            for (TableFinder.Table<TextWord> table : tables) table.cells().forEach(row -> row.forEach(inTables::addAll));
+            List<TextWord> words = pageWords.get(n).stream().filter(w -> !inTables.contains(w)).toList();
             List<Paragraph> paragraphs = WordLayout.paragraphs(words, margins);
             pageParagraphs.add(paragraphs);
             allParagraphs.addAll(paragraphs);
@@ -200,21 +215,31 @@ public class PdfToWordTool implements PdfTool {
                 if (letters < HAS_TEXT) scans++;
 
                 List<Paragraph> paragraphs = pageParagraphs.get(n);
-                List<PageImages.Picture> waiting = new ArrayList<>(pagePictures.get(n));
-                waiting.sort(java.util.Comparator.comparingDouble(PageImages.Picture::top));
+                List<Block> waiting = new ArrayList<>();
+                for (PageImages.Picture picture : pagePictures.get(n)) waiting.add(new Block(picture.top(), picture.bottom(), picture, null));
+                for (TableFinder.Table<TextWord> table : pageTables.get(n)) waiting.add(new Block(table.top(), table.bottom(), null, table));
+                waiting.sort(java.util.Comparator.comparingDouble(Block::top));
                 boolean pageStarted = false;          // has anything from this page been written yet?
-                float pictureBottom = -1;             // the bottom of a picture just written, for the space under it
+                float pictureBottom = -1;             // the bottom of a picture or table just written, for the space under it
                 for (int p = 0; p <= paragraphs.size(); p++) {
                     Paragraph paragraph = p < paragraphs.size() ? paragraphs.get(p) : null;
-                    // Pictures that start above this paragraph go first, in the order they appear.
+                    // Pictures and tables that start above this paragraph go first, in the order they appear.
                     while (!waiting.isEmpty() && (paragraph == null || waiting.get(0).top() < paragraph.top())) {
-                        PageImages.Picture picture = waiting.remove(0);
-                        last = writePicture(word, picture, margins, pictureBottom >= 0 ? picture.top() - pictureBottom : 6);
-                        if (!pageStarted && n > 0 && pageBreaks) last.setPageBreak(true);
+                        Block block = waiting.remove(0);
+                        boolean breakFirst = !pageStarted && n > 0 && pageBreaks;
+                        if (block.picture() != null) {
+                            PageImages.Picture picture = block.picture();
+                            last = writePicture(word, picture, margins, pictureBottom >= 0 ? picture.top() - pictureBottom : 6);
+                            if (breakFirst) last.setPageBreak(true);
+                            pictureCount++;
+                        } else {
+                            if (breakFirst) word.createParagraph().setPageBreak(true);   // a table can't start a page itself
+                            writeTable(word, block.table(), margins);
+                            last = null;
+                        }
                         pageStarted = true;
-                        pictureBottom = picture.bottom();
+                        pictureBottom = block.bottom();
                         lastParagraph = null;
-                        pictureCount++;
                     }
                     if (paragraph == null) break;
                     boolean firstOnPage = !pageStarted && n > 0;
@@ -250,13 +275,107 @@ public class PdfToWordTool implements PdfTool {
         }
 
         String note = Format.count(pages.size(), "page", "pages") + " · " + Format.count(paragraphCount, "paragraph", "paragraphs")
-                + (pictureCount > 0 ? " · " + Format.count(pictureCount, "picture", "pictures") : "");
+                + (pictureCount > 0 ? " · " + Format.count(pictureCount, "picture", "pictures") : "")
+                + (tableCount > 0 ? " · " + Format.count(tableCount, "table", "tables") : "");
         if (scans > 0) {
             note += " · " + Format.count(scans, "page looks", "pages look") + " scanned and came out empty"
                     + " — run OCR PDF on it first";
         }
         return new FileResult(input, output, sizeBefore, Files.size(output),
                 scans == pages.size() ? FileResult.Status.PARTIAL : FileResult.Status.SUCCESS, note);
+    }
+
+    /** A picture or a table, waiting for its place between the paragraphs of its page. */
+    private record Block(float top, float bottom, PageImages.Picture picture, TableFinder.Table<TextWord> table) {}
+
+    /**
+     * The tables on a page. Tables with drawn borders always count. Tables made of
+     * spacing alone need 3 rows and 3 columns: two columns of text is a two-column
+     * layout (step 12e), not a table, and a few aligned lines are usually a form or address.
+     */
+    private static List<TableFinder.Table<TextWord>> tables(List<TextWord> words, List<PageContent.Rule> rules) {
+        return TableFinder.find(words, rules).stream()
+                .filter(t -> t.ruled() || (t.cells().size() >= 3 && t.columns() >= 3))
+                .toList();
+    }
+
+    /**
+     * A real Word table: one cell per PDF cell, columns as wide as in the PDF (shrunk to
+     * fit between the margins), borders only if the PDF drew them. Each cell keeps its
+     * words' look and sits left, centred or right in its cell as it does in the PDF.
+     */
+    private static void writeTable(XWPFDocument word, TableFinder.Table<TextWord> table, WordLayout.Margins margins) {
+        int rows = table.cells().size(), columns = table.columns();
+        XWPFTable t = word.createTable(rows, columns);
+        if (!table.ruled()) t.removeBorders();
+
+        // A table without borders is measured from its text to its text; Word adds about 6 points of
+        // padding inside each side of a cell, so add that back or every column would wrap.
+        List<Float> widths = new ArrayList<>();
+        for (float w : table.columnWidths()) widths.add(table.ruled() ? w : w + 12);
+        float total = 0;
+        for (float w : widths) total += w;
+        float scale = Math.min(1, (margins.right() - margins.left()) / total);
+        t.setWidth(String.valueOf(twips(total * scale)));
+        var grid = t.getCTTbl().getTblGrid() != null ? t.getCTTbl().getTblGrid() : t.getCTTbl().addNewTblGrid();
+        while (grid.sizeOfGridColArray() > 0) grid.removeGridCol(0);
+        for (float w : widths) grid.addNewGridCol().setW(BigInteger.valueOf(twips(w * scale)));
+
+        for (int r = 0; r < rows; r++) {
+            float cellLeft = table.left();
+            for (int c = 0; c < columns; c++) {
+                float cellRight = cellLeft + table.columnWidths().get(c);
+                XWPFTableCell cell = t.getRow(r).getCell(c);
+                cell.setWidth(String.valueOf(twips(widths.get(c) * scale)));
+                XWPFParagraph p = cell.getParagraphs().get(0);
+                p.setSpacingAfter(0);
+                List<TextWord> words = new ArrayList<>(table.cells().get(r).get(c));
+                words.sort(java.util.Comparator.comparingDouble(TextWord::baseline).thenComparingDouble(TextWord::left));
+                if (!words.isEmpty() && table.ruled()) p.setAlignment(alignmentIn(words, cellLeft, cellRight));
+                addRuns(p, words, false);
+                cellLeft = cellRight;
+            }
+        }
+        if (!table.ruled()) {
+            // Without borders the column edges are guesses, so read each column's alignment from all its cells.
+            for (int c = 0; c < columns; c++) {
+                if (rightAligned(c, table)) {
+                    for (int r = 0; r < rows; r++) t.getRow(r).getCell(c).getParagraphs().get(0).setAlignment(ParagraphAlignment.RIGHT);
+                }
+            }
+        }
+    }
+
+    /** Where text sits in a cell with known edges: a clearly bigger gap on one side means it's aligned to the other. */
+    private static ParagraphAlignment alignmentIn(List<TextWord> words, float cellLeft, float cellRight) {
+        float textLeft = Float.MAX_VALUE, textRight = -Float.MAX_VALUE;
+        for (TextWord w : words) {
+            textLeft = Math.min(textLeft, w.left());
+            textRight = Math.max(textRight, w.right());
+        }
+        float gapLeft = textLeft - cellLeft, gapRight = cellRight - textRight;
+        if (gapLeft > 6 && gapRight > 6 && Math.abs(gapLeft - gapRight) < 4) return ParagraphAlignment.CENTER;
+        if (gapLeft > gapRight + 6) return ParagraphAlignment.RIGHT;
+        return ParagraphAlignment.LEFT;
+    }
+
+    /**
+     * In a table without borders: do the column's cells (below the header row, which is
+     * often aligned differently) all end in the same place while starting in different
+     * places? Then the column is right-aligned, like amounts on a statement.
+     */
+    private static boolean rightAligned(int column, TableFinder.Table<TextWord> table) {
+        List<Float> rights = new ArrayList<>(), lefts = new ArrayList<>();
+        for (int r = 1; r < table.cells().size(); r++) {
+            List<TextWord> words = table.cells().get(r).get(column);
+            if (words.isEmpty()) continue;
+            rights.add(words.stream().map(TextWord::right).max(Float::compare).get());
+            lefts.add(words.stream().map(TextWord::left).min(Float::compare).get());
+        }
+        if (rights.size() < 2) return false;
+        float rightSpread = rights.stream().max(Float::compare).get() - rights.stream().min(Float::compare).get();
+        float leftSpread = lefts.stream().max(Float::compare).get() - lefts.stream().min(Float::compare).get();
+        return rightSpread < 2 && leftSpread > 2;
     }
 
     /** Left-aligned or justified body text, which can run on from one page to the next. */

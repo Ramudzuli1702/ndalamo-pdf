@@ -28,7 +28,12 @@ final class PageText {
 
     /** One word, or part of a word where its look changes (e.g. a bold first letter). */
     record TextWord(String text, float left, float right, float baseline, float size,
-                    String font, boolean bold, boolean italic, int colour, boolean underline) {
+                    String font, boolean bold, boolean italic, int colour, boolean underline)
+            implements TableFinder.Positioned {
+
+        /** Roughly the height of capital letters above the baseline, like PDFBox measures plain words. */
+        @Override public float top() { return baseline - size * 0.7f; }
+        @Override public float bottom() { return baseline; }
 
         /** Same font, size, weight, slant, colour and underline: can go in one Word run. */
         boolean looksLike(TextWord other) {

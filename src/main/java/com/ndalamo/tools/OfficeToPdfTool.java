@@ -118,8 +118,9 @@ public class OfficeToPdfTool implements PdfTool {
     /** Converts one file inside {@code work}; null if cancelled. */
     private FileResult convertOne(Path program, Path input, Path work, Path profile, SaveTo saveTo, Progress progress)
             throws IOException, InterruptedException {
-        // A plain copy name: LibreOffice can trip over unusual characters, and it then never sees the original.
-        Path copy = work.resolve("document." + FileInspector.extension(input));
+        // A copy under the same name with unusual characters taken out: LibreOffice can trip over them, and it
+        // never sees the original. The name matters: spreadsheets print it as the sheet name in the page header.
+        Path copy = work.resolve(plainName(input) + "." + FileInspector.extension(input));
         Files.copy(input, copy);
         Path outFolder = Files.createDirectory(work.resolve("out"));
 
@@ -134,6 +135,14 @@ public class OfficeToPdfTool implements PdfTool {
         SafeSave.write(output, temp -> Files.copy(pdf, temp, StandardCopyOption.REPLACE_EXISTING));
         return new FileResult(input, output, Files.size(input), Files.size(output), FileResult.Status.SUCCESS,
                 Format.count(pages, "page", "pages"));
+    }
+
+    /** The file's name without its extension, keeping letters, digits, spaces and - _ ( ) only. */
+    static String plainName(Path input) {
+        String name = input.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String base = (dot > 0 ? name.substring(0, dot) : name).replaceAll("[^\\p{L}\\p{N} _()\\-]", "").strip();
+        return base.isEmpty() || base.startsWith("-") ? "document" : base;
     }
 
     /** LibreOffice's own settings folder for Ndalamo, so it never touches the user's LibreOffice settings. */

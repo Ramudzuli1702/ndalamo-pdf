@@ -1,6 +1,5 @@
 package com.ndalamo.tools;
 
-import com.ndalamo.tools.PageContent.Box;
 import com.ndalamo.tools.PageContent.Rule;
 
 import java.util.ArrayList;
@@ -16,13 +15,43 @@ import java.util.List;
  * 2. Spaced tables (no lines): rows of words with wide gaps, where the gaps line
  *    up from row to row. The gaps become the column edges.
  *
- * Pages without either give no tables. Used by PDF to Excel, later PDF to Word.
+ * Pages without either give no tables. Works on any kind of positioned word, so
+ * PDF to Excel can use plain words and PDF to Word words that know their font.
  */
 final class TableFinder {
 
-    /** A table as rows of cell texts; every row has the same number of cells. */
-    record Table(List<List<String>> rows) {
-        int columns() { return rows.isEmpty() ? 0 : rows.get(0).size(); }
+    /** Anything with text and a box on the page, measured in points from the top-left. */
+    interface Positioned {
+        String text();
+        float left();
+        float right();
+        float top();
+        float bottom();
+
+        default float centreX() { return (left() + right()) / 2; }
+        default float centreY() { return (top() + bottom()) / 2; }
+        default float height() { return bottom() - top(); }
+    }
+
+    /**
+     * A table: the words in each cell (rows of cells, every row the same length), whether
+     * it had drawn borders, where it is on the page, and how wide each column is.
+     */
+    record Table<T extends Positioned>(List<List<List<T>>> cells, boolean ruled,
+                                       float left, float top, float right, float bottom, List<Float> columnWidths) {
+
+        int columns() { return cells.isEmpty() ? 0 : cells.get(0).size(); }
+
+        /** Each cell's text, its words joined with spaces. */
+        List<List<String>> rows() {
+            List<List<String>> rows = new ArrayList<>();
+            for (List<List<T>> row : cells) {
+                List<String> texts = new ArrayList<>();
+                for (List<T> cell : row) texts.add(String.join(" ", cell.stream().map(Positioned::text).toList()));
+                rows.add(texts);
+            }
+            return rows;
+        }
     }
 
     /** Lines this close (points) are treated as touching or as the same line. */
@@ -30,14 +59,14 @@ final class TableFinder {
 
     private TableFinder() {}
 
-    static List<Table> find(List<Box> words, List<Rule> rules) {
-        List<Table> ruled = ruledTables(words, rules);
+    static <T extends Positioned> List<Table<T>> find(List<T> words, List<Rule> rules) {
+        List<Table<T>> ruled = ruledTables(words, rules);
         return ruled.isEmpty() ? spacedTables(words) : ruled;
     }
 
     // ── 1. Ruled tables ──────────────────────────────────────────────────
 
-    static List<Table> ruledTables(List<Box> words, List<Rule> rules) {
+    static <T extends Positioned> List<Table<T>> ruledTables(List<T> words, List<Rule> rules) {
         List<Rule> lines = joinBrokenLines(rules);
 
         // Group lines that cross or touch: each group is one table's grid.
@@ -51,8 +80,7 @@ final class TableFinder {
             }
         }
 
-        List<Table> tables = new ArrayList<>();
-        List<float[]> tops = new ArrayList<>();                 // to put the tables in top-to-bottom order
+        List<Table<T>> tables = new ArrayList<>();
         for (int g = 0; g < lines.size(); g++) {
             if (root(group, g) != g) continue;
             List<Float> xs = new ArrayList<>(), ys = new ArrayList<>();
@@ -63,29 +91,22 @@ final class TableFinder {
             List<Float> columnEdges = distinct(xs), rowEdges = distinct(ys);
             if (columnEdges.size() < 2 || rowEdges.size() < 2) continue;
 
-            Table table = fillGrid(words, columnEdges, rowEdges);
-            if (table != null) {
-                tables.add(table);
-                tops.add(new float[]{rowEdges.get(0), tables.size() - 1});
-            }
+            Table<T> table = fillGrid(words, columnEdges, rowEdges);
+            if (table != null) tables.add(table);
         }
-        tops.sort(Comparator.comparingDouble(t -> t[0]));
-        List<Table> inOrder = new ArrayList<>();
-        for (float[] t : tops) inOrder.add(tables.get((int) t[1]));
-        return inOrder;
+        tables.sort(Comparator.comparingDouble(Table::top));
+        return tables;
     }
 
     /** Puts each word in the cell its middle falls in. Null if the grid holds less than 2×2 cells of text. */
-    private static Table fillGrid(List<Box> words, List<Float> columnEdges, List<Float> rowEdges) {
+    private static <T extends Positioned> Table<T> fillGrid(List<T> words, List<Float> columnEdges, List<Float> rowEdges) {
         int rows = rowEdges.size() - 1, columns = columnEdges.size() - 1;
-        StringBuilder[][] cells = new StringBuilder[rows][columns];
-        for (Box word : words) {
+        List<List<List<T>>> cells = emptyGrid(rows, columns);
+        for (T word : words) {
             int row = slot(rowEdges, word.centreY()), column = slot(columnEdges, word.centreX());
-            if (row < 0 || column < 0) continue;
-            if (cells[row][column] == null) cells[row][column] = new StringBuilder(word.text());
-            else cells[row][column].append(' ').append(word.text());
+            if (row >= 0 && column >= 0) cells.get(row).get(column).add(word);
         }
-        return tidy(cells);
+        return tidy(cells, columnEdges, true, rowEdges.get(0), rowEdges.get(rowEdges.size() - 1));
     }
 
     /** Which gap between edges a position falls in, or -1 if it's outside them all. */
@@ -137,18 +158,18 @@ final class TableFinder {
 
     // ── 2. Spaced tables ─────────────────────────────────────────────────
 
-    static List<Table> spacedTables(List<Box> words) {
+    static <T extends Positioned> List<Table<T>> spacedTables(List<T> words) {
         if (words.isEmpty()) return List.of();
-        List<List<Box>> lines = lines(words);
+        List<List<T>> lines = lines(words);
         float letterHeight = medianHeight(words);
         // Words in a sentence are about a third of a letter-height apart; table columns much more.
         float columnGap = Math.max(letterHeight, 5);
 
-        List<Table> tables = new ArrayList<>();
-        List<List<Box>> block = new ArrayList<>();
+        List<Table<T>> tables = new ArrayList<>();
+        List<List<T>> block = new ArrayList<>();
         int multiPartLines = 0;
         for (int i = 0; i < lines.size(); i++) {
-            List<Box> line = lines.get(i);
+            List<T> line = lines.get(i);
             boolean farFromPrevious = !block.isEmpty()
                     && line.get(0).top() - bottom(block.get(block.size() - 1)) > letterHeight * 2.5f;
             if (farFromPrevious) {
@@ -172,9 +193,10 @@ final class TableFinder {
         return tables;
     }
 
-    private static void addIfTable(List<Table> tables, List<List<Box>> block, int multiPartLines, float columnGap) {
+    private static <T extends Positioned> void addIfTable(List<Table<T>> tables, List<List<T>> block, int multiPartLines,
+                                                          float columnGap) {
         if (multiPartLines < 2) return;
-        Table table = splitIntoColumns(block, columnGap);
+        Table<T> table = splitIntoColumns(block, columnGap);
         if (table != null) tables.add(table);
     }
 
@@ -183,17 +205,17 @@ final class TableFinder {
      * the column its middle falls in. "Nearly": one line in five may run across a gap,
      * e.g. a long description, without merging two columns.
      */
-    private static Table splitIntoColumns(List<List<Box>> block, float columnGap) {
+    private static <T extends Positioned> Table<T> splitIntoColumns(List<List<T>> block, float columnGap) {
         float left = Float.MAX_VALUE, right = -Float.MAX_VALUE;
-        for (List<Box> line : block) {
+        for (List<T> line : block) {
             left = Math.min(left, line.get(0).left());
             right = Math.max(right, line.get(line.size() - 1).right());
         }
         int width = (int) Math.ceil(right - left) + 1;
         int[] covered = new int[width];                      // how many lines have a word over each point
-        for (List<Box> line : block) {
+        for (List<T> line : block) {
             boolean[] here = new boolean[width];
-            for (Box word : line) {
+            for (T word : line) {
                 for (int x = (int) (word.left() - left); x <= (int) (word.right() - left) && x < width; x++) here[Math.max(0, x)] = true;
             }
             for (int x = 0; x < width; x++) if (here[x]) covered[x]++;
@@ -214,52 +236,45 @@ final class TableFinder {
         edges.add(right + 1);
         if (edges.size() < 3) return null;                    // just one column: not a table
 
-        StringBuilder[][] cells = new StringBuilder[block.size()][edges.size() - 1];
+        List<List<List<T>>> cells = emptyGrid(block.size(), edges.size() - 1);
         for (int row = 0; row < block.size(); row++) {
-            Box previous = null;
+            T previous = null;
             int column = -1;
-            for (Box word : block.get(row)) {
+            for (T word : block.get(row)) {
                 // Words a normal space apart belong to the same cell, even when a long text spills over
                 // into the next column (spreadsheets do that), so only a column gap starts a new cell.
                 boolean sameCell = previous != null && word.left() - previous.right() <= columnGap;
                 if (!sameCell) column = slot(edges, word.centreX());
                 previous = word;
-                if (column < 0) continue;
-                if (cells[row][column] == null) cells[row][column] = new StringBuilder(word.text());
-                else cells[row][column].append(' ').append(word.text());
+                if (column >= 0) cells.get(row).get(column).add(word);
             }
         }
-        return tidy(cells);
+        float top = block.get(0).stream().map(Positioned::top).min(Float::compare).orElse(0f);
+        return tidy(cells, edges, false, top, bottom(block.get(block.size() - 1)));
     }
 
     /** Words whose middles are within each other's height belong to one line; lines top to bottom, words left to right. */
-    private static List<List<Box>> lines(List<Box> words) {
-        List<Box> sorted = new ArrayList<>(words);
-        sorted.sort(Comparator.comparingDouble(Box::centreY));
-        List<List<Box>> lines = new ArrayList<>();
-        List<Box> line = new ArrayList<>();
-        float top = 0, bottom = 0;
-        for (Box word : sorted) {
+    private static <T extends Positioned> List<List<T>> lines(List<T> words) {
+        List<T> sorted = new ArrayList<>(words);
+        sorted.sort(Comparator.comparingDouble(Positioned::centreY));
+        List<List<T>> lines = new ArrayList<>();
+        List<T> line = new ArrayList<>();
+        float bottom = 0;
+        for (T word : sorted) {
             if (!line.isEmpty() && word.centreY() > bottom) {
                 lines.add(line);
                 line = new ArrayList<>();
             }
-            if (line.isEmpty()) {
-                top = word.top();
-                bottom = word.bottom();
-            } else {
-                top = Math.min(top, word.top());
-                bottom = Math.max(bottom, word.bottom());
-            }
+            bottom = line.isEmpty() ? word.bottom() : Math.max(bottom, word.bottom());
             line.add(word);
         }
         if (!line.isEmpty()) lines.add(line);
-        for (List<Box> l : lines) l.sort(Comparator.comparingDouble(Box::left));
+        for (List<T> l : lines) l.sort(Comparator.comparingDouble(Positioned::left));
         return lines;
     }
 
     /** How many groups of words a line has, split at gaps wider than {@code columnGap}. */
-    private static int parts(List<Box> line, float columnGap) {
+    private static int parts(List<? extends Positioned> line, float columnGap) {
         int parts = 1;
         for (int i = 1; i < line.size(); i++) {
             if (line.get(i).left() - line.get(i - 1).right() > columnGap) parts++;
@@ -267,13 +282,13 @@ final class TableFinder {
         return parts;
     }
 
-    private static float bottom(List<Box> line) {
+    private static float bottom(List<? extends Positioned> line) {
         float bottom = -Float.MAX_VALUE;
-        for (Box word : line) bottom = Math.max(bottom, word.bottom());
+        for (Positioned word : line) bottom = Math.max(bottom, word.bottom());
         return bottom;
     }
 
-    private static float medianHeight(List<Box> words) {
+    private static float medianHeight(List<? extends Positioned> words) {
         float[] heights = new float[words.size()];
         for (int i = 0; i < heights.length; i++) heights[i] = words.get(i).height();
         java.util.Arrays.sort(heights);
@@ -282,23 +297,39 @@ final class TableFinder {
 
     // ── Shared ───────────────────────────────────────────────────────────
 
-    /** Drops rows and columns that are completely empty. Null if less than 2 rows or 2 columns are left. */
-    private static Table tidy(StringBuilder[][] cells) {
-        int rows = cells.length, columns = rows == 0 ? 0 : cells[0].length;
+    private static <T> List<List<List<T>>> emptyGrid(int rows, int columns) {
+        List<List<List<T>>> grid = new ArrayList<>();
+        for (int r = 0; r < rows; r++) {
+            List<List<T>> row = new ArrayList<>();
+            for (int c = 0; c < columns; c++) row.add(new ArrayList<>());
+            grid.add(row);
+        }
+        return grid;
+    }
+
+    /**
+     * Drops rows and columns that are completely empty. Null if less than 2 rows or 2
+     * columns are left. Column widths come from the edges of the columns that are kept.
+     */
+    private static <T extends Positioned> Table<T> tidy(List<List<List<T>>> cells, List<Float> columnEdges, boolean ruled,
+                                                         float top, float bottom) {
+        int rows = cells.size(), columns = rows == 0 ? 0 : cells.get(0).size();
         List<Integer> keepRows = new ArrayList<>(), keepColumns = new ArrayList<>();
         for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < columns; c++) if (cells[r][c] != null) { keepRows.add(r); break; }
+            for (int c = 0; c < columns; c++) if (!cells.get(r).get(c).isEmpty()) { keepRows.add(r); break; }
         }
         for (int c = 0; c < columns; c++) {
-            for (int r = 0; r < rows; r++) if (cells[r][c] != null) { keepColumns.add(c); break; }
+            for (int r = 0; r < rows; r++) if (!cells.get(r).get(c).isEmpty()) { keepColumns.add(c); break; }
         }
         if (keepRows.size() < 2 || keepColumns.size() < 2) return null;
-        List<List<String>> table = new ArrayList<>();
+        List<List<List<T>>> table = new ArrayList<>();
         for (int r : keepRows) {
-            List<String> row = new ArrayList<>();
-            for (int c : keepColumns) row.add(cells[r][c] == null ? "" : cells[r][c].toString());
+            List<List<T>> row = new ArrayList<>();
+            for (int c : keepColumns) row.add(cells.get(r).get(c));
             table.add(row);
         }
-        return new Table(table);
+        List<Float> widths = new ArrayList<>();
+        for (int c : keepColumns) widths.add(columnEdges.get(c + 1) - columnEdges.get(c));
+        return new Table<>(table, ruled, columnEdges.get(0), top, columnEdges.get(columnEdges.size() - 1), bottom, widths);
     }
 }

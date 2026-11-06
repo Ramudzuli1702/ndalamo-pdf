@@ -156,7 +156,7 @@ public class PdfToExcelTool implements PdfTool {
                 words = readScan(renderer, page - 1, ocr);
                 scannedRead++;
             }
-            List<Table> tables = TableFinder.find(words, rules);
+            List<Table<Box>> tables = TableFinder.find(words, rules);
             if (!tables.isEmpty()) {
                 found.add(new PageTables(page, tables));
                 tableCount += tables.size();
@@ -185,7 +185,7 @@ public class PdfToExcelTool implements PdfTool {
     }
 
     /** The tables found on one page. */
-    private record PageTables(int page, List<Table> tables) {}
+    private record PageTables(int page, List<Table<Box>> tables) {}
 
     private static int letters(List<Box> words) {
         int letters = 0;
@@ -218,7 +218,7 @@ public class PdfToExcelTool implements PdfTool {
             if (sheetPerPage) {
                 Sheet sheet = workbook.createSheet("Page " + page.page());
                 int row = 0;
-                for (Table table : page.tables()) {
+                for (Table<Box> table : page.tables()) {
                     row = write(sheet, table, row) + 1;       // an empty row between tables
                 }
                 fitColumns(sheet);
@@ -235,7 +235,7 @@ public class PdfToExcelTool implements PdfTool {
     }
 
     /** Writes a table starting at {@code firstRow}; returns the row after it. */
-    private static int write(Sheet sheet, Table table, int firstRow) {
+    private static int write(Sheet sheet, Table<Box> table, int firstRow) {
         int r = firstRow;
         for (List<String> cells : table.rows()) {
             Row row = sheet.createRow(r++);

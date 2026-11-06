@@ -42,7 +42,7 @@ class TableFinderTest {
             words.addAll(sentence(amounts[i], 300 - amounts[i].length() * 5, 100 + i * 14));
         }
 
-        List<Table> tables = TableFinder.find(words, List.of());
+        List<Table<Box>> tables = TableFinder.find(words, List.of());
 
         assertEquals(1, tables.size());
         assertEquals(2, tables.get(0).columns());
@@ -60,7 +60,7 @@ class TableFinderTest {
             words.add(rightAligned("-" + (i + 1) + "0.00", 380, y));
         }
 
-        List<Table> tables = TableFinder.find(words, List.of());
+        List<Table<Box>> tables = TableFinder.find(words, List.of());
 
         assertEquals(1, tables.size());
         assertEquals(3, tables.get(0).columns(), "date, description, amount");
@@ -78,7 +78,7 @@ class TableFinderTest {
             words.add(rightAligned("-" + (i + 1) + "0.00", 320, y));     // "premium" ends near x 265, over this column
         }
 
-        List<Table> tables = TableFinder.find(words, List.of());
+        List<Table<Box>> tables = TableFinder.find(words, List.of());
 
         assertEquals("Debit order insurance premium", tables.get(0).rows().get(2).get(1));
         assertEquals("-30.00", tables.get(0).rows().get(2).get(2));
@@ -113,7 +113,7 @@ class TableFinderTest {
                 new Rule(false, 72, 99, 140), new Rule(false, 172, 99, 140), new Rule(false, 272, 99, 140));
         List<Box> words = List.of(word("Name", 80, 115), word("Total", 180, 115), word("Thabo", 80, 135), word("42", 180, 135));
 
-        List<Table> tables = TableFinder.ruledTables(words, rules);
+        List<Table<Box>> tables = TableFinder.ruledTables(words, rules);
 
         assertEquals(1, tables.size());
         assertEquals(List.of(List.of("Name", "Total"), List.of("Thabo", "42")), tables.get(0).rows());
@@ -132,7 +132,7 @@ class TableFinderTest {
             words.add(word("c", 180, top + 35));
         }
 
-        List<Table> tables = TableFinder.ruledTables(words, rules);
+        List<Table<Box>> tables = TableFinder.ruledTables(words, rules);
 
         assertEquals(2, tables.size());
         assertEquals("First", tables.get(0).rows().get(0).get(0));
