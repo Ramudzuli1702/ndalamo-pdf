@@ -8,7 +8,8 @@ import java.util.List;
  */
 public class OptionField {
 
-    public enum Type { TEXT, NUMBER, CHOICE, CHECKBOX, FILE, PASSWORD }
+    /** AREA: a box the user drags on the first page; the value is {left, top, right, bottom} as fractions of the page as shown. */
+    public enum Type { TEXT, NUMBER, CHOICE, CHECKBOX, FILE, PASSWORD, AREA }
 
     private final String id;            // key in the options map passed to the tool
     private final String label;

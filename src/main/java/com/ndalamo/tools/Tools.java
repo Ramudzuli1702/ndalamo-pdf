@@ -42,6 +42,7 @@ public final class Tools {
 
             new PageNumbersTool(),
             new WatermarkTool(),
+            new CropTool(),
             soon("sign", "Sign PDF", "Draw, type or upload", "Edit & sign"),
             soon("redact", "Redact PDF", "Black out sensitive info", "Edit & sign"),
             soon("fill-forms", "Fill forms", "Complete PDF forms", "Edit & sign"),

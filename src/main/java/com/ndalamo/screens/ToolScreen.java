@@ -3,6 +3,7 @@ package com.ndalamo.screens;
 import com.ndalamo.models.FileInfo;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.SaveTo;
+import com.ndalamo.models.WorkspacePage;
 import com.ndalamo.services.FileInspector;
 import com.ndalamo.services.PageThumbnails;
 import com.ndalamo.tools.PdfTool;
@@ -611,8 +612,55 @@ public class ToolScreen extends BorderPane {
                 row.setAlignment(Pos.CENTER_LEFT);
                 box.getChildren().addAll(label, row);
             }
+            case AREA -> {
+                Label chosen = new Label("Not drawn yet");
+                chosen.getStyleClass().add("small-muted");
+                double[][] area = new double[1][];
+                Button draw = new Button("Draw the area…");
+                draw.getStyleClass().add("button-secondary");
+                draw.setOnAction(e -> drawArea(shown -> {
+                    area[0] = shown;
+                    chosen.setText(shown == null ? "Not drawn yet" : String.format("Drawn: %d%% × %d%% of the page",
+                            Math.round((shown[2] - shown[0]) * 100), Math.round((shown[3] - shown[1]) * 100)));
+                    draw.setText(shown == null ? "Draw the area…" : "Change the area…");
+                    refresh();
+                }));
+                optionValues.put(field.getId(), () -> area[0]);
+                HBox row = new HBox(8, draw, chosen);
+                row.setAlignment(Pos.CENTER_LEFT);
+                box.getChildren().addAll(label, row);
+            }
         }
         return box;
+    }
+
+    /**
+     * Opens the crop dialog on the first page of the first file. The box drawn comes back
+     * as fractions of the page as shown, so the tool can apply it to pages turned any way.
+     * Reading the page's turn opens the PDF, so that happens off the JavaFX thread.
+     */
+    private void drawArea(java.util.function.Consumer<double[]> onDrawn) {
+        if (files.isEmpty()) {
+            window.toast(Toast.info("Add a file first", "The area is drawn on the first page of the first file."));
+            return;
+        }
+        Path first = files.get(0);
+        CompletableFuture.supplyAsync(() -> {
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(first.toFile())) {
+                return doc.getPage(0).getRotation();
+            } catch (java.io.IOException e) {
+                return -1;
+            }
+        }).thenAccept(rotation -> Platform.runLater(() -> {
+            if (rotation < 0) {
+                window.toast(Toast.error("Couldn't open " + first.getFileName(), "Your file was not changed."));
+                return;
+            }
+            WorkspacePage page = WorkspacePage.of(first, 1, rotation);
+            int pages = info.containsKey(first) ? Math.max(1, info.get(first).getPages()) : 1;
+            window.showDialog(new CropDialog(window, thumbnails, page, pages,
+                    crop -> onDrawn.accept(crop == null ? null : crop.toShown(rotation))));
+        }));
     }
 
     /** One choice as a bordered card: a radio button, the choice and (optionally) a line explaining it. */
