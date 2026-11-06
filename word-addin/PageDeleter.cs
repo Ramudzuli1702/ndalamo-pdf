@@ -44,7 +44,7 @@ namespace Ndalamo.WordAddIn
             }
             Word.Range cursor = word.Selection.Range;
             cursor.Collapse(Word.WdCollapseDirection.wdCollapseStart);
-            int page = (int)cursor.Information[Word.WdInformation.wdActiveEndPageNumber];
+            int page = PageInView.CurrentPage(word, cursor);
             if (!TablesOkay(new[] { page }, total)) return "";
             return InOneUndoStep("Delete Page", () => { Delete(page); return ""; });
         }
