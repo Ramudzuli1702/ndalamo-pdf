@@ -16,6 +16,19 @@ class SettingsServiceTest {
     Path dir;
 
     @Test
+    void toolDefaultsAndRecentListsAreKept() throws Exception {
+        SettingsService service = new SettingsService(dir);
+        Settings settings = service.load();
+        settings.getToolDefaults().put("compress.mode", "Strong");
+        settings.getRecentFiles().add("C:/Docs/Report.pdf");
+        service.save(settings);
+
+        Settings again = new SettingsService(dir).load();
+        assertEquals("Strong", again.getToolDefaults().get("compress.mode"));
+        assertEquals(1, again.getRecentFiles().size());
+    }
+
+    @Test
     void noFileGivesDefaults() {
         Settings settings = new SettingsService(dir).load();
         assertEquals("{name}_{tool}", settings.getFileNamePattern());

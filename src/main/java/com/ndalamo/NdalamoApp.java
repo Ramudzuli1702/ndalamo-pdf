@@ -4,6 +4,7 @@ import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
 import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
+import com.ndalamo.screens.SettingsScreen;
 import com.ndalamo.screens.LibreOfficeDialog;
 import com.ndalamo.screens.LogoMark;
 import com.ndalamo.screens.MainWindow;
@@ -19,6 +20,9 @@ import com.ndalamo.tools.PdfTool;
 import com.ndalamo.utils.Theme;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.Label;
+import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -68,7 +72,7 @@ public class NdalamoApp extends Application {
 
         Theme.loadFonts();   // must happen before any screen is built
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
-        toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), this::showHome);
+        toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), () -> settings.getToolDefaults(), this::showHome);
         window.show(home);
 
         Scene scene = new Scene(window, 1280, 800);
@@ -123,10 +127,27 @@ public class NdalamoApp extends Application {
     }
 
     private void showSettings() {
-        window.show(new ComingSoonScreen("Settings",
-                "The full settings screen is built in chunk 18. Your settings are already saved in "
-                        + SettingsService.appDataFolder() + ".",
-                List.of(), this::showHome));
+        window.show(new SettingsScreen(window, settings, this::saveSettings, this::applyAppearance, wordAddInCard(),
+                version(), this::showHome));
+    }
+
+    /** Light, dark or the Windows setting. The dark colours arrive in chunk 18b; the choice is saved already. */
+    private void applyAppearance(Settings.Appearance appearance) {
+    }
+
+    /** The Settings card for the Word add-in; installing it from here comes with the add-in (chunk 19). */
+    private Node wordAddInCard() {
+        Label about = new Label("Adds a \u201cDelete Page\u201d button to the Microsoft Word ribbon. Requires Word for Windows.");
+        about.setWrapText(true);
+        Label status = new Label("Status: not installed · the add-in arrives in the next update");
+        status.getStyleClass().add("small-muted");
+        return new VBox(8, about, status);
+    }
+
+    /** The version from the app's files, or the one in the pom while running from the build. */
+    private static String version() {
+        String version = NdalamoApp.class.getPackage().getImplementationVersion();
+        return version != null ? version : "0.1.0";
     }
 
     private void openTool(PdfTool tool) {

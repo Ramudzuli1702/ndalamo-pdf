@@ -31,18 +31,26 @@ public class ToolFlow {
     private final JobService jobs;
     private final Supplier<SaveTo> saveTo;      // read fresh each time, so Settings changes apply
     private final Runnable showHome;
+    private final Supplier<Map<String, String>> toolDefaults;
 
     public ToolFlow(MainWindow window, JobService jobs, Supplier<SaveTo> saveTo, Runnable showHome) {
+        this(window, jobs, saveTo, Map::of, showHome);
+    }
+
+    /** @param toolDefaults the choices tools start with, from Settings; read fresh each time a tool opens */
+    public ToolFlow(MainWindow window, JobService jobs, Supplier<SaveTo> saveTo, Supplier<Map<String, String>> toolDefaults,
+                    Runnable showHome) {
         this.window = window;
         this.jobs = jobs;
         this.saveTo = saveTo;
+        this.toolDefaults = toolDefaults;
         this.showHome = showHome;
     }
 
     /** Opens a tool's first screen, optionally with files already added. */
     public void open(PdfTool tool, List<Path> files) {
         ToolScreen[] screen = new ToolScreen[1];
-        screen[0] = new ToolScreen(tool, files, saveTo.get(), window, showHome,
+        screen[0] = new ToolScreen(tool, files, saveTo.get(), toolDefaults.get(), window, showHome,
                 (chosen, options, target) -> run(tool, screen[0], chosen, options, target));
         window.show(screen[0]);
     }

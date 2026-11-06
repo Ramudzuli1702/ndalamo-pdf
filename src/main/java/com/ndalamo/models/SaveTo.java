@@ -14,8 +14,14 @@ public class SaveTo {
     private final Path folder;          // null = next to each original file
     private final String pattern;       // e.g. "{name}_{tool}"
     private final Settings.IfExists ifExists;
+    private final boolean askForFolder;  // "Ask every time": the tool screen asks before each run
 
     public SaveTo(Path folder, String pattern, Settings.IfExists ifExists) {
+        this(folder, pattern, ifExists, false);
+    }
+
+    private SaveTo(Path folder, String pattern, Settings.IfExists ifExists, boolean askForFolder) {
+        this.askForFolder = askForFolder;
         this.folder = folder;
         this.pattern = pattern;
         this.ifExists = ifExists;
@@ -26,12 +32,36 @@ public class SaveTo {
         Path folder = settings.getSaveLocation() == Settings.SaveLocation.FIXED_FOLDER && settings.getFixedFolder() != null
                 ? Path.of(settings.getFixedFolder())
                 : null;
-        return new SaveTo(folder, settings.getFileNamePattern(), settings.getIfExists());
+        return new SaveTo(folder, settings.getFileNamePattern(), settings.getIfExists(),
+                settings.getSaveLocation() == Settings.SaveLocation.ASK);
     }
 
     /** The same naming rules, but saving into a folder the user picked for this run. */
     public SaveTo inFolder(Path newFolder) {
-        return new SaveTo(newFolder, pattern, ifExists);
+        return new SaveTo(newFolder, pattern, ifExists, false);
+    }
+
+    /** The same, with the answer to "a result with that name exists" chosen for this run. */
+    public SaveTo withIfExists(Settings.IfExists rule) {
+        return new SaveTo(folder, pattern, rule, askForFolder);
+    }
+
+    /** Settings say "Ask every time": the tool screen picks the folder before running. */
+    public boolean asksForFolder() {
+        return askForFolder;
+    }
+
+    /** Settings say "Ask me" when a result's name is taken: the tool screen asks before running. */
+    public boolean asksIfExists() {
+        return ifExists == Settings.IfExists.ASK;
+    }
+
+    /**
+     * The name a result would get if names already taken were replaced: for checking
+     * beforehand whether running would meet a file that's already there. Never the original.
+     */
+    public Path plainOutputFor(Path input, String suffix, String extension) {
+        return OutputNames.pick(input, folderFor(input), pattern, suffix, extension, 0, Settings.IfExists.REPLACE);
     }
 
     /**
@@ -43,8 +73,8 @@ public class SaveTo {
      */
     public Path outputFor(Path input, String suffix, String extension, int pages) {
         Path target = folderFor(input);
-        // Asking "replace or add a number?" comes with the Settings screen (chunk 18);
-        // until then "ask" behaves like the safe default.
+        // "Ask" is answered on the tool screen before running (see withIfExists); if a name still
+        // turns out to be taken here, fall back to the safe choice.
         Settings.IfExists rule = ifExists == Settings.IfExists.ASK ? Settings.IfExists.ADD_NUMBER : ifExists;
         return OutputNames.pick(input, target, pattern, suffix, extension, pages, rule);
     }
@@ -56,6 +86,7 @@ public class SaveTo {
 
     /** Short description for the tool screen, e.g. "Same folder as each original". */
     public String describeFolder(boolean oneOutput) {
+        if (askForFolder) return "A folder you choose when you start";
         if (folder != null) return folder.toString();
         return oneOutput ? "Same folder as the first file" : "Same folder as each original";
     }

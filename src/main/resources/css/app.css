@@ -551,3 +551,18 @@
 .signature-pad { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 8; -fx-background-radius: 8; }
 .signature-frame { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; -fx-border-style: segments(5, 4); -fx-cursor: move; }
 .resize-handle { -fx-background-color: #2F5BEA; -fx-background-radius: 2; -fx-cursor: se-resize; }
+
+
+/* Settings screen */
+.settings-nav { -fx-background-color: #FFFFFF; -fx-border-color: #E2E4E9; -fx-border-width: 0 1 0 0; }
+.settings-nav-item { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 12; -fx-font-size: 14px; -fx-text-fill: #16181D; }
+.settings-nav-item:hover { -fx-background-color: #F4F5F7; }
+.settings-nav-selected { -fx-background-color: #E8EDFB; -fx-font-family: "IBM Plex Sans SmBld"; }
+.settings-card { -fx-background-color: #FFFFFF; -fx-border-color: #E2E4E9; -fx-border-radius: 12; -fx-background-radius: 12; }
+.settings-card-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 16px; }
+.settings-card .combo-box { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; }
+.settings-card .text-field { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; -fx-padding: 0 10; }
+.settings-card .text-field:focused, .settings-card .combo-box:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
+.status-good { -fx-text-fill: #1E6B3A; }
+.status-warning { -fx-text-fill: #9A5B00; }
+.licence-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12px; }

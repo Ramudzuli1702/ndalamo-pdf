@@ -1,0 +1,24 @@
+# What Ndalamo is built with, shown under Settings → About.
+# One line each: name | licence | licence text file(s) in this folder or under /fonts, /tessdata
+# Checked against the build with the license-maven-plugin on 2026-11-06; update when libraries change.
+Apache PDFBox, FontBox, PDFBox I/O, Tools, Debugger and JBIG2 3.0|Apache 2.0|Apache-2.0.txt
+Apache POI 5.5 and Apache XMLBeans 5.3|Apache 2.0|Apache-2.0.txt
+Apache Commons (Codec, IO, Logging, Collections, Compress, Lang, Math)|Apache 2.0|Apache-2.0.txt
+Apache Log4j API 2.24|Apache 2.0|Apache-2.0.txt
+Tess4J 5.19 and Lept4J 1.24 (including the Tesseract and Leptonica programs)|Apache 2.0|Apache-2.0.txt
+Tesseract language data (tessdata_fast: English, Afrikaans)|Apache 2.0|/tessdata/tessdata-LICENSE.txt
+Gson 2.14|Apache 2.0|Apache-2.0.txt
+Error Prone annotations, SparseBitSet, picocli, JBoss Logging, JBoss VFS|Apache 2.0|Apache-2.0.txt
+Java Native Access (JNA) 5.18|Apache 2.0 or LGPL 2.1 (used under Apache 2.0)|Apache-2.0.txt
+commonmark-java 0.31 with tables, strikethrough and task-list extensions|BSD 2-Clause|BSD-2-Clause.txt
+curvesapi 1.08|BSD|BSD-3-Clause.txt
+Java Advanced Imaging Image I/O Tools core 1.4|BSD 3-Clause|BSD-3-Clause.txt
+Bouncy Castle 1.83|Bouncy Castle Licence (MIT)|MIT.txt
+SLF4J API 2.0|MIT|MIT.txt
+Logback 1.6|EPL 2.0 or LGPL 2.1|EPL-2.0.txt,LGPL-2.1-only.txt
+OpenJFX (JavaFX) 22|GPL 2.0 with the Classpath Exception|GPL-2.0-only.txt,Classpath-exception-2.0.txt
+IBM Plex Sans|SIL Open Font License 1.1|/fonts/IBMPlexSans-OFL.txt
+Noto Sans|SIL Open Font License 1.1|/fonts/NotoSans-OFL.txt
+Dancing Script|SIL Open Font License 1.1|/fonts/DancingScript-OFL.txt
+Liberation Sans, Serif and Mono 2.1.5|SIL Open Font License 1.1|/fonts/liberation/Liberation-OFL.txt
+LibreOffice (a separate program, used by Office to PDF; not part of Ndalamo)|Mozilla Public License 2.0|

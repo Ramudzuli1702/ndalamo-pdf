@@ -1,5 +1,10 @@
 package com.ndalamo.models;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * The user's settings, saved to settings.json by SettingsService.
  *
@@ -30,6 +35,9 @@ public class Settings {
     private boolean rememberRecentFiles = true;
     private boolean askBeforeDeletingPages = true;
     private String libreOfficePath;
+    private Map<String, String> toolDefaults = new HashMap<>();
+    private List<String> recentFiles = new ArrayList<>();
+    private List<String> recentTools = new ArrayList<>();
 
     public SaveLocation getSaveLocation() { return saveLocation; }
     public void setSaveLocation(SaveLocation saveLocation) { this.saveLocation = saveLocation; }
@@ -63,6 +71,17 @@ public class Settings {
     public String getLibreOfficePath() { return libreOfficePath; }
     public void setLibreOfficePath(String libreOfficePath) { this.libreOfficePath = libreOfficePath; }
 
+    /**
+     * The choice each tool starts with, by "tool id.option id", e.g. "compress.mode" → "Strong".
+     * Set on the Settings screen; a tool without an entry starts with its own default.
+     */
+    public Map<String, String> getToolDefaults() { return toolDefaults; }
+    public void setToolDefaults(Map<String, String> toolDefaults) { this.toolDefaults = toolDefaults; }
+
+    /** Files and tools used lately, newest first, for the Home sidebar; kept only while rememberRecentFiles is on. */
+    public List<String> getRecentFiles() { return recentFiles; }
+    public List<String> getRecentTools() { return recentTools; }
+
     /** Number of background threads for jobs. Low-memory mode always uses one (SPEC §3.4). */
     public int workerThreads() {
         if (lowMemoryMode) return 1;
@@ -85,5 +104,8 @@ public class Settings {
         if (ifExists == null) ifExists = defaults.ifExists;
         if (parallelism == null) parallelism = defaults.parallelism;
         if (appearance == null) appearance = defaults.appearance;
+        if (toolDefaults == null) toolDefaults = new HashMap<>();
+        if (recentFiles == null) recentFiles = new ArrayList<>();
+        if (recentTools == null) recentTools = new ArrayList<>();
     }
 }

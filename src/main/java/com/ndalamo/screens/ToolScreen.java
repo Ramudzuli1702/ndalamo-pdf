@@ -3,6 +3,8 @@ package com.ndalamo.screens;
 import com.ndalamo.models.FileInfo;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.SaveTo;
+import com.ndalamo.models.Settings;
+import java.nio.file.Files;
 import com.ndalamo.models.Signature;
 import com.ndalamo.models.WorkspacePage;
 import com.ndalamo.services.FileInspector;
@@ -86,10 +88,18 @@ public class ToolScreen extends BorderPane {
     private final Label problem = new Label();
     private boolean showingMistake;
     private final Button runButton = new Button();
+    private final Map<String, String> defaults;
 
     public ToolScreen(PdfTool tool, List<Path> startingFiles, SaveTo saveTo, MainWindow window,
                       Runnable onHome, RunRequest onRun) {
+        this(tool, startingFiles, saveTo, Map.of(), window, onHome, onRun);
+    }
+
+    /** @param defaults the choices to start with, from Settings ("tool id.option id" → choice) */
+    public ToolScreen(PdfTool tool, List<Path> startingFiles, SaveTo saveTo, Map<String, String> defaults, MainWindow window,
+                      Runnable onHome, RunRequest onRun) {
         this.tool = tool;
+        this.defaults = defaults;
         this.window = window;
         this.saveTo = saveTo;
         this.onRun = onRun;
@@ -396,7 +406,7 @@ public class ToolScreen extends BorderPane {
                 return;
             }
             if (!tool.needsPasswords()) {
-                onRun.run(List.copyOf(files), options, saveTo);
+                start(List.copyOf(files), options);
                 return;
             }
             // Unlock: ask for each locked file's password first, one dialog at a time.
@@ -411,13 +421,54 @@ public class ToolScreen extends BorderPane {
                     return;
                 }
                 options.put(PdfTool.PASSWORDS, passwords);
-                onRun.run(toRun, options, saveTo);
+                start(toRun, options);
             });
         });
 
         runButton.setMinHeight(Region.USE_PREF_SIZE);
         panel.getChildren().addAll(scroll, problem, runButton);
         return panel;
+    }
+
+    /**
+     * Starts the run, first asking what Settings say to ask: which folder ("Ask every
+     * time"), and, if results with those names are already there, whether to replace
+     * them or add a number ("Ask me").
+     */
+    private void start(List<Path> toRun, Map<String, Object> options) {
+        SaveTo target = saveTo;
+        if (target.asksForFolder()) {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Where should the results go?");
+            File startIn = toRun.get(0).toAbsolutePath().getParent().toFile();
+            if (startIn.isDirectory()) chooser.setInitialDirectory(startIn);
+            File folder = chooser.showDialog(getScene().getWindow());
+            if (folder == null) return;                              // cancelled: nothing runs
+            target = target.inFolder(folder.toPath());
+        }
+        if (target.asksIfExists()) {
+            SaveTo chosen = target;
+            List<Path> outputs = (tool.oneOutput() ? toRun.subList(0, 1) : toRun).stream()
+                    .map(input -> chosen.plainOutputFor(input, tool.outputSuffix(), tool.outputExtension())).toList();
+            List<String> taken = outputs.stream().filter(Files::exists).map(p -> p.getFileName().toString()).toList();
+            if (!taken.isEmpty()) {
+                String names = String.join(", ", taken.subList(0, Math.min(3, taken.size())))
+                        + (taken.size() > 3 ? " and " + (taken.size() - 3) + " more" : "");
+                new ChoiceDialog(window, taken.size() == 1 ? names + " already exists" : taken.size() + " results already exist",
+                        names + (taken.size() == 1 ? " is" : " are") + " already there. Replace "
+                                + (taken.size() == 1 ? "it" : "them") + ", or keep "
+                                + (taken.size() == 1 ? "it" : "them") + " and add a number to the new name? Your original files are never replaced.",
+                        null)
+                        .button("Cancel", ChoiceDialog.Style.PLAIN, x -> {})
+                        .button("Add a number", ChoiceDialog.Style.PLAIN,
+                                x -> onRun.run(toRun, options, chosen.withIfExists(Settings.IfExists.ADD_NUMBER)))
+                        .button(taken.size() == 1 ? "Replace it" : "Replace them", ChoiceDialog.Style.DANGER,
+                                x -> onRun.run(toRun, options, chosen.withIfExists(Settings.IfExists.REPLACE)))
+                        .show();
+                return;
+            }
+        }
+        onRun.run(toRun, options, target);
     }
 
     /** Shows the password dialog for each file in turn, then carries on with {@code done}. */
@@ -557,8 +608,11 @@ public class ToolScreen extends BorderPane {
                     if (now != null) ((Node) now).getParent().getStyleClass().add("choice-selected");
                     updatePreview();
                 });
+                // Start with the choice set in Settings, if it's still one of this field's choices.
+                String saved = defaults.get(tool.id() + "." + field.getId());
+                Object start = saved != null && field.getChoices().contains(saved) ? saved : field.getDefaultValue();
                 group.getToggles().stream()
-                        .filter(t -> t.getUserData().equals(field.getDefaultValue()))
+                        .filter(t -> t.getUserData().equals(start))
                         .findFirst().ifPresent(t -> t.setSelected(true));
                 optionValues.put(field.getId(),
                         () -> group.getSelectedToggle() == null ? null : group.getSelectedToggle().getUserData());
