@@ -3,6 +3,7 @@ package com.ndalamo.screens;
 import com.ndalamo.models.FileInfo;
 import com.ndalamo.models.OptionField;
 import com.ndalamo.models.SaveTo;
+import com.ndalamo.models.Signature;
 import com.ndalamo.models.WorkspacePage;
 import com.ndalamo.services.FileInspector;
 import com.ndalamo.services.PageThumbnails;
@@ -45,6 +46,7 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -648,8 +650,47 @@ public class ToolScreen extends BorderPane {
                 VBox column = new VBox(6, fill, chosen);
                 box.getChildren().addAll(label, column);
             }
+            case SIGNATURE -> {
+                Label chosen = new Label("Not made yet");
+                chosen.getStyleClass().add("small-muted");
+                Signature[] signature = new Signature[1];
+                Button create = new Button("Create your signature…");
+                create.getStyleClass().add("button-secondary");
+                Button move = new Button("Move it…");
+                move.getStyleClass().add("button-secondary");
+                move.setVisible(false);
+                move.setManaged(false);
+                Consumer<Signature> placed = s -> {
+                    signature[0] = s;
+                    chosen.setText("On page " + s.page());
+                    create.setText("Make a new one…");
+                    move.setVisible(true);
+                    move.setManaged(true);
+                    refresh();
+                };
+                create.setOnAction(e -> {
+                    if (files.isEmpty()) {
+                        window.toast(Toast.info("Add a file first", "The signature is placed on a page of the first file."));
+                        return;
+                    }
+                    window.showDialog(new SignatureDialog(window, png -> placeSignature(png, signature[0], placed)));
+                });
+                move.setOnAction(e -> {
+                    if (signature[0] != null && !files.isEmpty()) placeSignature(signature[0].png(), signature[0], placed);
+                });
+                optionValues.put(field.getId(), () -> signature[0]);
+                HBox buttons = new HBox(8, create, move);
+                box.getChildren().addAll(label, buttons, chosen);
+            }
         }
         return box;
+    }
+
+    /** Opens the place dialog on the first file, starting where the signature was before (if anywhere). */
+    private void placeSignature(byte[] png, Signature before, Consumer<Signature> onPlaced) {
+        Path first = files.get(0);
+        int pages = info.containsKey(first) ? Math.max(1, info.get(first).getPages()) : 1;
+        window.showDialog(new PlaceSignatureDialog(window, thumbnails, first, pages, before, png, onPlaced));
     }
 
     /**

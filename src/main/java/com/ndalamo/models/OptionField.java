@@ -10,7 +10,8 @@ public class OptionField {
 
     /** AREA: a box the user drags on the first page; the value is {left, top, right, bottom} as fractions of the page as shown. */
     /** FORM: a PDF form's fields, filled in on FormDialog; the value is a Map of field name to answer. */
-    public enum Type { TEXT, NUMBER, CHOICE, CHECKBOX, FILE, PASSWORD, AREA, FORM }
+    /** SIGNATURE: made on SignatureDialog and placed on PlaceSignatureDialog; the value is a Signature. */
+    public enum Type { TEXT, NUMBER, CHOICE, CHECKBOX, FILE, PASSWORD, AREA, FORM, SIGNATURE }
 
     private final String id;            // key in the options map passed to the tool
     private final String label;

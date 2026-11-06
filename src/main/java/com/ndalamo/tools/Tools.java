@@ -43,7 +43,7 @@ public final class Tools {
             new PageNumbersTool(),
             new WatermarkTool(),
             new CropTool(),
-            soon("sign", "Sign PDF", "Draw, type or upload", "Edit & sign"),
+            new SignTool(),
             new RedactTool(),
             new FillFormsTool(),
 

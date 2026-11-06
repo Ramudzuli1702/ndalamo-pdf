@@ -534,3 +534,20 @@
 .dialog-card .text-area .content { -fx-background-color: #FFFFFF; -fx-background-radius: 6; }
 .dialog-card .combo-box .arrow-button { -fx-background-color: transparent; }
 .dialog-card .combo-box .arrow { -fx-background-color: #5B616E; }
+
+/* Sign PDF and Fill forms dialogs */
+.field-label { -fx-font-size: 13px; -fx-text-fill: #3A3F4A; }
+.problem-text { -fx-font-size: 13px; -fx-text-fill: #B42318; }
+.segment-button {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6 14;
+    -fx-font-size: 13px;
+}
+.segment-button:hover { -fx-background-color: #F4F5F7; }
+.segment-button:selected { -fx-background-color: #EEF2FD; -fx-border-color: #2F5BEA; -fx-text-fill: #2F5BEA; }
+.signature-pad { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 8; -fx-background-radius: 8; }
+.signature-frame { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; -fx-border-style: segments(5, 4); -fx-cursor: move; }
+.resize-handle { -fx-background-color: #2F5BEA; -fx-background-radius: 2; -fx-cursor: se-resize; }
