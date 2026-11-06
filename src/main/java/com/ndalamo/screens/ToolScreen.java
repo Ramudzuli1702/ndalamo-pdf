@@ -630,8 +630,56 @@ public class ToolScreen extends BorderPane {
                 row.setAlignment(Pos.CENTER_LEFT);
                 box.getChildren().addAll(label, row);
             }
+            case FORM -> {
+                Label chosen = new Label("Not filled in yet");
+                chosen.getStyleClass().add("small-muted");
+                chosen.setWrapText(true);
+                @SuppressWarnings("unchecked") Map<String, String>[] answers = new Map[1];
+                Button fill = new Button("Fill in the form…");
+                fill.getStyleClass().add("button-secondary");
+                fill.setOnAction(e -> fillForm(answers[0], given -> {
+                    answers[0] = given;
+                    long answered = given.values().stream().filter(v -> !v.isBlank() && !v.equals("false")).count();
+                    chosen.setText(answered + " of " + given.size() + " answered");
+                    fill.setText("Change the answers…");
+                    refresh();
+                }));
+                optionValues.put(field.getId(), () -> answers[0]);
+                VBox column = new VBox(6, fill, chosen);
+                box.getChildren().addAll(label, column);
+            }
         }
         return box;
+    }
+
+    /**
+     * Reads the first file's form fields (off the JavaFX thread: it opens the PDF) and
+     * shows them to fill in. Answers given before are kept when the form is reopened.
+     */
+    private void fillForm(Map<String, String> previous, java.util.function.Consumer<Map<String, String>> onFilled) {
+        if (files.isEmpty()) {
+            window.toast(Toast.info("Add a form first", "The form's fields are read from the first file."));
+            return;
+        }
+        Path first = files.get(0);
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return com.ndalamo.tools.FillFormsTool.fields(first);
+            } catch (java.io.IOException e) {
+                throw new java.util.concurrent.CompletionException(e);
+            }
+        }).whenComplete((fields, error) -> Platform.runLater(() -> {
+            if (error != null) {
+                Throwable cause = error.getCause() != null ? error.getCause() : error;
+                window.showDialog(new MessageDialog(window, "Can't fill in " + first.getFileName(), cause.getMessage()));
+            } else if (fields.isEmpty()) {
+                window.toast(Toast.info(first.getFileName() + " has no form",
+                        "There are no fields to fill in. Your file was not changed."));
+            } else {
+                window.showDialog(new FormDialog(window, first.getFileName().toString(), fields,
+                        previous == null ? Map.of() : previous, onFilled));
+            }
+        }));
     }
 
     /**

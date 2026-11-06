@@ -45,7 +45,7 @@ public final class Tools {
             new CropTool(),
             soon("sign", "Sign PDF", "Draw, type or upload", "Edit & sign"),
             soon("redact", "Redact PDF", "Black out sensitive info", "Edit & sign"),
-            soon("fill-forms", "Fill forms", "Complete PDF forms", "Edit & sign"),
+            new FillFormsTool(),
 
             new ProtectTool(),
             new UnlockTool(),

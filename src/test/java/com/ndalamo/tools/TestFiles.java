@@ -546,6 +546,104 @@ final class TestFiles {
     }
 
     /**
+     * A one-page application form with: a text field "name" (tooltip "Full name"), a
+     * multi-line "address", a tick box "agree", a radio choice "payment" (Cash / EFT), a
+     * drop-down "province" showing "Limpopo" / "Gauteng" but storing "LP" / "GP", and a
+     * read-only "reference" already filled in with "REF-001".
+     */
+    static Path formPdf(Path folder, String name) throws IOException {
+        Path file = folder.resolve(name);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+            doc.addPage(page);
+            var form = new org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm(doc);
+            doc.getDocumentCatalog().setAcroForm(form);
+            var resources = new org.apache.pdfbox.pdmodel.PDResources();
+            resources.put(org.apache.pdfbox.cos.COSName.getPDFName("Helv"), new PDType1Font(Standard14Fonts.FontName.HELVETICA));
+            form.setDefaultResources(resources);
+            form.setDefaultAppearance("/Helv 10 Tf 0 g");
+
+            var nameField = new org.apache.pdfbox.pdmodel.interactive.form.PDTextField(form);
+            nameField.setPartialName("name");
+            nameField.setAlternateFieldName("Full name");
+            place(nameField.getWidgets().get(0), page, 100, 750, 300, 20);
+            form.getFields().add(nameField);
+
+            var address = new org.apache.pdfbox.pdmodel.interactive.form.PDTextField(form);
+            address.setPartialName("address");
+            address.setMultiline(true);
+            place(address.getWidgets().get(0), page, 100, 680, 300, 50);
+            form.getFields().add(address);
+
+            var agree = new org.apache.pdfbox.pdmodel.interactive.form.PDCheckBox(form);
+            agree.setPartialName("agree");
+            agree.setAlternateFieldName("I agree to the rules");
+            place(agree.getWidgets().get(0), page, 100, 640, 14, 14);
+            onOffLooks(doc, agree.getWidgets().get(0), "Yes");
+            form.getFields().add(agree);
+
+            var payment = new org.apache.pdfbox.pdmodel.interactive.form.PDRadioButton(form);
+            payment.setPartialName("payment");
+            List<org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget> buttons = new ArrayList<>();
+            String[] ways = {"Cash", "EFT"};
+            for (int i = 0; i < ways.length; i++) {
+                var widget = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget();
+                place(widget, page, 100 + i * 80, 600, 14, 14);
+                onOffLooks(doc, widget, ways[i]);
+                widget.setParent(payment);
+                buttons.add(widget);
+            }
+            payment.setWidgets(buttons);
+            form.getFields().add(payment);
+
+            var province = new org.apache.pdfbox.pdmodel.interactive.form.PDComboBox(form);
+            province.setPartialName("province");
+            province.setOptions(List.of("LP", "GP"), List.of("Limpopo", "Gauteng"));
+            place(province.getWidgets().get(0), page, 100, 560, 200, 20);
+            form.getFields().add(province);
+
+            var reference = new org.apache.pdfbox.pdmodel.interactive.form.PDTextField(form);
+            reference.setPartialName("reference");
+            place(reference.getWidgets().get(0), page, 100, 520, 200, 20);
+            form.getFields().add(reference);
+            reference.setValue("REF-001");
+            reference.setReadOnly(true);
+
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    private static void place(org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget, PDPage page,
+                              float x, float y, float w, float h) throws IOException {
+        widget.setRectangle(new org.apache.pdfbox.pdmodel.common.PDRectangle(x, y, w, h));
+        widget.setPage(page);
+        widget.setPrinted(true);
+        page.getAnnotations().add(widget);
+    }
+
+    /** The "on" and "off" pictures a tick box or radio button needs: a filled square when on, empty when off. */
+    private static void onOffLooks(PDDocument doc, org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget,
+                                   String onName) throws IOException {
+        var box = new org.apache.pdfbox.pdmodel.common.PDRectangle(0, 0, 14, 14);
+        var onLook = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream(doc);
+        onLook.setBBox(box);
+        try (var c = new org.apache.pdfbox.pdmodel.PDAppearanceContentStream(onLook)) {
+            c.addRect(3, 3, 8, 8);
+            c.fill();
+        }
+        var offLook = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream(doc);
+        offLook.setBBox(box);
+        var states = new org.apache.pdfbox.cos.COSDictionary();
+        states.setItem(org.apache.pdfbox.cos.COSName.getPDFName(onName), onLook);
+        states.setItem(org.apache.pdfbox.cos.COSName.Off, offLook);
+        var appearance = new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary();
+        appearance.getCOSObject().setItem(org.apache.pdfbox.cos.COSName.N, states);
+        widget.setAppearance(appearance);
+        widget.setAppearanceState("Off");
+    }
+
+    /**
      * Breaks text into lines no wider than {@code width}, like a word processor does,
      * hyphenating a long word at the end of a line when its first part fits.
      */

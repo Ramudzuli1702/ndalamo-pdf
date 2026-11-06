@@ -521,3 +521,16 @@
     -fx-padding: 0 12;
 }
 .workspace-panel .text-field:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
+
+/* Drop-down lists and long-text boxes in dialogs (Fill forms), styled like the text fields. */
+.dialog-card .combo-box, .dialog-card .text-area {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5D8DF;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.dialog-card .combo-box { -fx-pref-height: 36; }
+.dialog-card .combo-box:focused, .dialog-card .text-area:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
+.dialog-card .text-area .content { -fx-background-color: #FFFFFF; -fx-background-radius: 6; }
+.dialog-card .combo-box .arrow-button { -fx-background-color: transparent; }
+.dialog-card .combo-box .arrow { -fx-background-color: #5B616E; }
