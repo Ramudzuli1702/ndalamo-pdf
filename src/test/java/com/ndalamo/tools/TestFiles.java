@@ -482,6 +482,11 @@ final class TestFiles {
      * (two per column, side by side), and a full-width line at the bottom.
      */
     static Path twoColumnPdf(Path folder, String name) throws IOException {
+        return twoColumnPdf(folder, name, false);
+    }
+
+    /** As above; with {@code picture}, a 150 × 60 point picture sits at the top of the right column. */
+    static Path twoColumnPdf(Path folder, String name, boolean picture) throws IOException {
         Path file = folder.resolve(name);
         PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
@@ -491,8 +496,17 @@ final class TestFiles {
             doc.addPage(page);
             try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
                 writeLine(c, bold, 18, 72, 770, "How stokvels work");
+                if (picture) {
+                    BufferedImage chart = new BufferedImage(300, 120, BufferedImage.TYPE_INT_RGB);
+                    Graphics2D g = chart.createGraphics();
+                    g.setColor(Color.GREEN);
+                    g.fillRect(0, 0, 300, 120);
+                    g.dispose();
+                    var image = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(doc, chart);
+                    c.drawImage(image, rightX, 745 - 60, 150, 60);
+                }
                 for (int column = 0; column < 2; column++) {
-                    float x = column == 0 ? leftX : rightX, y = 735;
+                    float x = column == 0 ? leftX : rightX, y = column == 1 && picture ? 670 : 735;
                     for (int p = 0; p < 2; p++) {
                         for (String line : wrap(regular, 10, COLUMN_PARAGRAPHS[column * 2 + p], columnWidth)) {
                             writeLine(c, regular, 10, x, y, line);
@@ -502,6 +516,29 @@ final class TestFiles {
                     }
                 }
                 writeLine(c, regular, 9, 72, 560, "Ndalamo Community Newsletter, November 2026, written for members of local savings groups.");
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    /**
+     * A report of {@code pages} pages, each with "Ndalamo Annual Report 2026" at the top,
+     * a paragraph "This is page N of the report.", and "Page N of {pages}" centred at the bottom.
+     */
+    static Path reportPdf(Path folder, String name, int pages) throws IOException {
+        Path file = folder.resolve(name);
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        try (PDDocument doc = new PDDocument()) {
+            for (int n = 1; n <= pages; n++) {
+                PDPage page = new PDPage(org.apache.pdfbox.pdmodel.common.PDRectangle.A4);
+                doc.addPage(page);
+                try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
+                    writeLine(c, regular, 9, 72, 810, "Ndalamo Annual Report 2026");
+                    writeLine(c, regular, 11, 72, 740, "This is page " + n + " of the report.");
+                    String number = "Page " + n + " of " + pages;
+                    writeLine(c, regular, 9, (595 - regular.getStringWidth(number) / 1000 * 9) / 2, 40, number);
+                }
             }
             doc.save(file.toFile());
         }

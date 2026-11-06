@@ -12,6 +12,7 @@ import com.ndalamo.utils.SafeSave;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.poi.util.Units;
+import org.apache.poi.wp.usermodel.HeaderFooterType;
 import org.apache.poi.xwpf.usermodel.Document;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
@@ -153,6 +154,20 @@ public class PdfToWordTool implements PdfTool {
             pagePictures.add(includePictures ? PageImages.pictures(doc.getPage(page - 1)) : List.of());
         }
 
+        // Page numbers and lines repeated at the top or bottom of every page go in Word's header and
+        // footer, not between paragraphs.
+        List<Float> widths = new ArrayList<>(), heights = new ArrayList<>();
+        for (int page : pages) {
+            PDRectangle box = doc.getPage(page - 1).getCropBox();
+            boolean sideways = doc.getPage(page - 1).getRotation() % 180 != 0;
+            widths.add(sideways ? box.getHeight() : box.getWidth());
+            heights.add(sideways ? box.getWidth() : box.getHeight());
+        }
+        List<Integer> pageLetters = new ArrayList<>();          // counted before headers and footers come out
+        for (List<TextWord> words : pageWords) pageLetters.add(words.stream().mapToInt(w -> w.text().length()).sum());
+        PageFurniture.Result furniture = PageFurniture.strip(pageWords, widths, heights);
+        for (int n = 0; n < pageWords.size(); n++) pageWords.set(n, furniture.pages().get(n));
+
         float left = Float.MAX_VALUE, right = 0, top = Float.MAX_VALUE;
         for (List<TextWord> words : pageWords) {
             for (TextWord w : words) {
@@ -184,6 +199,7 @@ public class PdfToWordTool implements PdfTool {
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
         List<List<Paragraph>> pageParagraphs = new ArrayList<>();
+        List<Columns.Page> pageLayouts = new ArrayList<>();
         List<Paragraph> allParagraphs = new ArrayList<>();
         List<List<TableFinder.Table<TextWord>>> pageTables = new ArrayList<>();
         int tableCount = 0;
@@ -195,7 +211,9 @@ public class PdfToWordTool implements PdfTool {
             java.util.Set<TextWord> inTables = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             for (TableFinder.Table<TextWord> table : tables) table.cells().forEach(row -> row.forEach(inTables::addAll));
             List<TextWord> words = pageWords.get(n).stream().filter(w -> !inTables.contains(w)).toList();
-            List<Paragraph> paragraphs = Columns.paragraphs(words, margins);       // two-column pages in column order
+            Columns.Page layout = Columns.read(words, margins);                    // two-column pages in column order
+            pageLayouts.add(layout);
+            List<Paragraph> paragraphs = layout.paragraphs();
             pageParagraphs.add(paragraphs);
             allParagraphs.addAll(paragraphs);
         }
@@ -203,6 +221,7 @@ public class PdfToWordTool implements PdfTool {
 
         try (XWPFDocument word = new XWPFDocument()) {
             setPage(word, pageWidth, pageHeight, left, pageWidth - right, top);
+            addHeaderAndFooter(word, furniture);
             if (!headings.isEmpty()) WordStyles.addHeadingStyles(word);
             Map<Paragraph, WordStyles.ListPlace> lists = WordStyles.lists(word, allParagraphs, headings);
             XWPFParagraph last = null;
@@ -210,21 +229,20 @@ public class PdfToWordTool implements PdfTool {
             for (int n = 0; n < pageWords.size(); n++) {
                 if (progress.isCancelled()) return null;
                 List<TextWord> words = pageWords.get(n);
-                int letters = 0;
-                for (TextWord w : words) letters += w.text().length();
-                if (letters < HAS_TEXT) scans++;
+                if (pageLetters.get(n) < HAS_TEXT) scans++;
 
                 List<Paragraph> paragraphs = pageParagraphs.get(n);
                 List<Block> waiting = new ArrayList<>();
                 for (PageImages.Picture picture : pagePictures.get(n)) waiting.add(new Block(picture.top(), picture.bottom(), picture, null));
                 for (TableFinder.Table<TextWord> table : pageTables.get(n)) waiting.add(new Block(table.top(), table.bottom(), null, table));
-                waiting.sort(java.util.Comparator.comparingDouble(Block::top));
+                Columns.Page layout = pageLayouts.get(n);
+                waiting.sort(java.util.Comparator.comparingDouble(b -> layout.order(b.left(), b.right(), b.top())));
                 boolean pageStarted = false;          // has anything from this page been written yet?
                 float pictureBottom = -1;             // the bottom of a picture or table just written, for the space under it
                 for (int p = 0; p <= paragraphs.size(); p++) {
                     Paragraph paragraph = p < paragraphs.size() ? paragraphs.get(p) : null;
                     // Pictures and tables that start above this paragraph go first, in the order they appear.
-                    while (!waiting.isEmpty() && (paragraph == null || waiting.get(0).top() < paragraph.top())) {
+                    while (!waiting.isEmpty() && (paragraph == null || comesBefore(waiting.get(0), paragraph, pageLayouts.get(n)))) {
                         Block block = waiting.remove(0);
                         boolean breakFirst = !pageStarted && n > 0 && pageBreaks;
                         if (block.picture() != null) {
@@ -286,7 +304,15 @@ public class PdfToWordTool implements PdfTool {
     }
 
     /** A picture or a table, waiting for its place between the paragraphs of its page. */
-    private record Block(float top, float bottom, PageImages.Picture picture, TableFinder.Table<TextWord> table) {}
+    private record Block(float top, float bottom, PageImages.Picture picture, TableFinder.Table<TextWord> table) {
+        float left() { return picture != null ? picture.left() : table.left(); }
+        float right() { return picture != null ? picture.left() + picture.width() : table.right(); }
+    }
+
+    /** In reading order, does the picture or table go before this paragraph? On two-column pages, by column. */
+    private static boolean comesBefore(Block block, Paragraph paragraph, Columns.Page layout) {
+        return layout.comesBefore(block.left(), block.right(), block.top(), paragraph);
+    }
 
     /**
      * The tables on a page. Tables with drawn borders always count. Tables made of
@@ -376,6 +402,41 @@ public class PdfToWordTool implements PdfTool {
         float rightSpread = rights.stream().max(Float::compare).get() - rights.stream().min(Float::compare).get();
         float leftSpread = lefts.stream().max(Float::compare).get() - lefts.stream().min(Float::compare).get();
         return rightSpread < 2 && leftSpread > 2;
+    }
+
+    /**
+     * The PDF's repeated header and footer lines as Word's header and footer, and its
+     * page numbers as Word's own page number, which counts by itself as the text changes.
+     */
+    private static void addHeaderAndFooter(XWPFDocument word, PageFurniture.Result furniture) {
+        boolean numberInHeader = furniture.pageNumbers() && furniture.pageNumbersAtTop();
+        boolean numberInFooter = furniture.pageNumbers() && !furniture.pageNumbersAtTop();
+        if (furniture.header() != null || numberInHeader) {
+            fill(word.createHeader(HeaderFooterType.DEFAULT), furniture.header(), numberInHeader, furniture.pageNumberAlignment());
+        }
+        if (furniture.footer() != null || numberInFooter) {
+            fill(word.createFooter(HeaderFooterType.DEFAULT), furniture.footer(), numberInFooter, furniture.pageNumberAlignment());
+        }
+    }
+
+    private static void fill(org.apache.poi.xwpf.usermodel.XWPFHeaderFooter part, String text, boolean pageNumber,
+                             WordLayout.Alignment numberAlignment) {
+        if (text != null) {
+            XWPFParagraph p = part.createParagraph();
+            p.setAlignment(ParagraphAlignment.CENTER);
+            p.createRun().setText(text);
+        }
+        if (pageNumber) {
+            XWPFParagraph p = part.createParagraph();
+            p.setAlignment(switch (numberAlignment) {
+                case LEFT -> ParagraphAlignment.LEFT;
+                case RIGHT -> ParagraphAlignment.RIGHT;
+                default -> ParagraphAlignment.CENTER;
+            });
+            var field = p.getCTP().addNewFldSimple();
+            field.setInstr("PAGE");
+            field.addNewR().addNewT().setStringValue("1");      // shown until Word works out the number
+        }
     }
 
     /** Left-aligned or justified body text, which can run on from one page to the next. */

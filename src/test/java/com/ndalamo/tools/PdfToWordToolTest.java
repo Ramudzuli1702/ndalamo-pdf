@@ -360,6 +360,39 @@ class PdfToWordToolTest {
     }
 
     @Test
+    void pageNumbersAndRepeatedHeadersGoInWordsHeaderAndFooter() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.reportPdf(dir, "Report.pdf", 3), true))) {
+            assertEquals(List.of("This is page 1 of the report.", "This is page 2 of the report.", "This is page 3 of the report."),
+                    texts(word), "no page numbers or repeated title in the body");
+            assertEquals("Ndalamo Annual Report 2026", word.getHeaderList().get(0).getText().strip());
+            var footer = word.getFooterList().get(0);
+            assertEquals(ParagraphAlignment.CENTER, footer.getParagraphs().get(0).getAlignment());
+            assertEquals("PAGE", footer.getParagraphs().get(0).getCTP().getFldSimpleArray(0).getInstr(),
+                    "Word's own page number, which keeps counting as the text changes");
+        }
+    }
+
+    @Test
+    void aOnePageLetterKeepsItsTitle() throws Exception {
+        // The letter's title sits near the top of the page but isn't repeated, so it stays in the body.
+        try (XWPFDocument word = open(convert(TestFiles.letterPdf(dir, "Letter.pdf"), true))) {
+            assertEquals("Application for a bursary", texts(word).get(0));
+            assertTrue(word.getHeaderList().isEmpty());
+        }
+    }
+
+    @Test
+    void aPictureInTheRightColumnComesAfterTheLeftColumn() throws Exception {
+        try (XWPFDocument word = open(convert(TestFiles.twoColumnPdf(dir, "Newsletter.pdf", true), true))) {
+            List<String> order = word.getParagraphs().stream()
+                    .map(p -> p.getRuns().stream().anyMatch(r -> !r.getEmbeddedPictures().isEmpty()) ? "[picture]" : p.getText())
+                    .filter(t -> !t.isBlank()).toList();
+            assertEquals("[picture]", order.get(3), "after the title and both left-column paragraphs: " + order);
+            assertEquals(TestFiles.COLUMN_PARAGRAPHS[2], order.get(4));
+        }
+    }
+
+    @Test
     void listMarkersAreRecognised() {
         assertEquals("bullet", marker("•").format());
         assertEquals("bullet", marker("").format(), "Word's Symbol-font bullet");

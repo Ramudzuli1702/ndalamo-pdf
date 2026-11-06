@@ -27,19 +27,77 @@ final class Columns {
 
     private record Gutter(float left, float right) {}
 
+    /** A stretch of the page from top to bottom: full width, or split into two columns. */
+    private record Section(float top, float bottom, boolean split) {}
+
+    /**
+     * A page read in order: its paragraphs, and enough about its layout to tell where a
+     * picture or table belongs among them (see {@link #comesBefore}).
+     */
+    record Page(List<Paragraph> paragraphs, Float gutterMiddle, List<Section> sections) {
+
+        /**
+         * True if something with this box comes before the paragraph in reading order:
+         * an earlier stretch of the page; in a two-column stretch, the left column before
+         * the right; otherwise, higher up.
+         */
+        boolean comesBefore(float left, float right, float top, Paragraph paragraph) {
+            TextWord first = paragraph.words().isEmpty() ? null : paragraph.words().get(0);
+            float pLeft = first == null ? 0 : first.left();
+            int[] a = place(left, right, top), b = place(pLeft, pLeft + 1, paragraph.top());
+            if (a[0] != b[0]) return a[0] < b[0];
+            if (a[1] != b[1]) return a[1] < b[1];
+            return top < paragraph.top();
+        }
+
+        /** A number that sorts things on the page into reading order. */
+        float order(float left, float right, float top) {
+            int[] p = place(left, right, top);
+            return p[0] * 100_000f + p[1] * 10_000f + top;
+        }
+
+        /** {section number, column: 0 left or full width, 1 right}. Something starting left of the gutter counts as left. */
+        private int[] place(float left, float right, float top) {
+            int section = sections.size();
+            for (int i = 0; i < sections.size(); i++) {
+                if (top <= sections.get(i).bottom()) {
+                    section = i;
+                    break;
+                }
+            }
+            boolean split = section < sections.size() && sections.get(section).split();
+            int column = split && gutterMiddle != null && left >= gutterMiddle ? 1 : 0;
+            return new int[]{section, column};
+        }
+    }
+
     private Columns() {}
 
     /** The page's paragraphs in reading order, whether it has one column or two. */
     static List<Paragraph> paragraphs(List<TextWord> words, Margins margins) {
+        return read(words, margins).paragraphs();
+    }
+
+    /** Reads the page: one column, or two read left column first. */
+    static Page read(List<TextWord> words, Margins margins) {
         Gutter gutter = gutter(words, margins);
-        if (gutter == null) return WordLayout.paragraphs(words, margins);
+        if (gutter == null) return new Page(WordLayout.paragraphs(words, margins), null, List.of());
 
         List<Paragraph> paragraphs = new ArrayList<>();
+        List<Section> sections = new ArrayList<>();
         List<TextWord> full = new ArrayList<>(), leftColumn = new ArrayList<>(), rightColumn = new ArrayList<>();
         float middle = (gutter.left() + gutter.right()) / 2;
         for (List<TextWord> line : lines(words)) {
             // A title crosses the middle of the gutter; a column's first word may just touch its edge.
             boolean crosses = line.stream().anyMatch(w -> w.left() < middle && w.right() > middle);
+            float lineTop = line.stream().map(TextWord::top).min(Float::compare).get();
+            float lineBottom = line.stream().map(TextWord::bottom).max(Float::compare).get();
+            Section last = sections.isEmpty() ? null : sections.get(sections.size() - 1);
+            if (last == null || last.split() == crosses) {
+                sections.add(new Section(lineTop, lineBottom, !crosses));          // a new stretch starts
+            } else {
+                sections.set(sections.size() - 1, new Section(last.top(), lineBottom, last.split()));
+            }
             if (crosses) {
                 // A full-width line ends the two-column stretch above it.
                 flushColumns(paragraphs, leftColumn, rightColumn, margins, gutter);
@@ -54,7 +112,7 @@ final class Columns {
         }
         flushColumns(paragraphs, leftColumn, rightColumn, margins, gutter);
         if (!full.isEmpty()) paragraphs.addAll(WordLayout.paragraphs(full, margins));
-        return paragraphs;
+        return new Page(paragraphs, middle, sections);
     }
 
     private static void flushColumns(List<Paragraph> paragraphs, List<TextWord> leftColumn, List<TextWord> rightColumn,
