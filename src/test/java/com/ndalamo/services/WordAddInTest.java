@@ -43,6 +43,21 @@ class WordAddInTest {
     }
 
     @Test
+    void findsOnlyThisAddInInWordsDisabledItems() {
+        // As printed by "reg query" on a PC where Word had switched the add-in off (second value),
+        // next to an entry of Word's own (first value) that must be left alone.
+        String output = """
+
+                HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\16.0\\Word\\Resiliency\\DisabledItems
+                    198EFFE    REG_BINARY    0400000010000000480000000061F6847CFFB44FB0C002CD7FB668FE5000720065007600690065007700650072003A0020004D006900630072006F0073006F0066007400200057006F007200640020007000720065007600690065007700650072000000
+                    E51C90B    REG_BINARY    01000000880000002400000063003A005C00750073006500720073005C00720061006D00750064007A0075006C0069005C0061007000700064006100740061005C006C006F00630061006C005C006E00640061006C0061006D006F005C0077006F00720064002D0061006400640069006E005C006E00640061006C0061006D006F0077006F00720064002E0064006C006C0000006E00640061006C0061006D006F002E0077006F007200640061006400640069006E000000
+
+                """;
+        assertEquals(List.of("E51C90B"), WordAddIn.disabledNames(output));
+        assertEquals(List.of(), WordAddIn.disabledNames(""));
+    }
+
+    @Test
     void idsMatchTheWordProject() throws IOException {
         Path project = Path.of("word-addin");
         String connect = Files.readString(project.resolve("Connect.cs"));

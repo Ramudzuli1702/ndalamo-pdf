@@ -34,6 +34,10 @@ public final class WordAddIn {
     static final String PROG_ID_KEY = "HKCU\\Software\\Classes\\" + PROG_ID;
     static final String WORD_KEY = "HKCU\\Software\\Microsoft\\Office\\Word\\Addins\\" + PROG_ID;
     private static final String WORD_PATH_KEY = "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Winword.exe";
+    /** Where Word lists add-ins it has switched off after a problem (Word 2016 and later, then 2013). */
+    private static final List<String> DISABLED_ITEMS_KEYS = List.of(
+            "HKCU\\Software\\Microsoft\\Office\\16.0\\Word\\Resiliency\\DisabledItems",
+            "HKCU\\Software\\Microsoft\\Office\\15.0\\Word\\Resiliency\\DisabledItems");
     /** Windows' category for .NET classes, written the same way .NET's own regasm does. */
     private static final String DOTNET_CATEGORY = "{62C8FE65-4EBB-45e7-B440-6E39B2CDBF29}";
 
@@ -58,8 +62,9 @@ public final class WordAddIn {
         boolean registered = isWindows() && query(WORD_KEY, "LoadBehavior").isPresent();
         if (registered) {
             String loadBehavior = query(WORD_KEY, "LoadBehavior").orElse("");
-            // 3 = load at start-up. Word lowers it to 2 when it disables an add-in.
-            return loadBehavior.endsWith("0x3") ? Status.INSTALLED : Status.TURNED_OFF_IN_WORD;
+            // 3 = load at start-up. Word lowers it to 2, or lists it under Disabled Items, when it turns it off.
+            boolean on = loadBehavior.endsWith("0x3") && disabledEntries().isEmpty();
+            return on ? Status.INSTALLED : Status.TURNED_OFF_IN_WORD;
         }
         return unavailableReason() == null ? Status.NOT_INSTALLED : Status.UNAVAILABLE;
     }
@@ -82,6 +87,55 @@ public final class WordAddIn {
             throw new IOException("The add-in couldn't be copied (" + e.getReason() + "). Close Word, then try again.", e);
         }
         for (List<String> command : installCommands(target)) run(command);
+        // If Word switched the add-in off after a problem, it would stay off; installing again turns it back on.
+        for (String[] entry : disabledEntries()) run(List.of("reg", "delete", entry[0], "/v", entry[1], "/f"));
+    }
+
+    /** Word's Disabled Items entries for this add-in, as {key, value name}. */
+    private static List<String[]> disabledEntries() {
+        List<String[]> entries = new ArrayList<>();
+        if (!isWindows()) return entries;
+        for (String key : DISABLED_ITEMS_KEYS) {
+            for (String name : disabledNames(regOutput(List.of("reg", "query", key)))) entries.add(new String[] {key, name});
+        }
+        return entries;
+    }
+
+    /**
+     * The values in "reg query" output of a Disabled Items key that are about this add-in. Each value is
+     * binary, holding the DLL's path and the add-in's name as UTF-16 text.
+     */
+    static List<String> disabledNames(String regQueryOutput) {
+        List<String> names = new ArrayList<>();
+        for (String line : regQueryOutput.split("\\R")) {
+            String[] parts = line.strip().split("\\s+");
+            if (parts.length != 3 || !parts[1].equals("REG_BINARY") || parts[2].length() % 2 != 0) continue;
+            byte[] bytes = new byte[parts[2].length() / 2];
+            try {
+                for (int i = 0; i < bytes.length; i++) bytes[i] = (byte) Integer.parseInt(parts[2].substring(2 * i, 2 * i + 2), 16);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            String text = new String(bytes, StandardCharsets.UTF_16LE).toLowerCase(java.util.Locale.ROOT);
+            if (text.contains(DLL_NAME.toLowerCase(java.util.Locale.ROOT)) || text.contains(PROG_ID.toLowerCase(java.util.Locale.ROOT))) {
+                names.add(parts[0]);
+            }
+        }
+        return names;
+    }
+
+    /** What a "reg" command prints, or "" if it fails (for example, the key doesn't exist). */
+    private static String regOutput(List<String> command) {
+        try {
+            Process reg = new ProcessBuilder(command).redirectErrorStream(true).start();
+            String output = new String(reg.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            return reg.waitFor(5, TimeUnit.SECONDS) && reg.exitValue() == 0 ? output : "";
+        } catch (IOException e) {
+            return "";
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "";
+        }
     }
 
     /** Unregisters the add-in and deletes its copy (unless Word still has it open; it's harmless then). */

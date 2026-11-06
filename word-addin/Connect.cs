@@ -13,15 +13,19 @@ namespace Ndalamo.WordAddIn
     /// Word's interface for COM add-ins (from Office's extensibility.dll), declared here so the
     /// add-in needs no extra assembly. The GUID and member order must match the original.
     /// </summary>
+    /// "custom" must be marked as a SAFEARRAY: left plain, .NET reads System.Array as an interface
+    /// pointer, and Word's SAFEARRAY then crashes the .NET runtime inside Word.
     [ComImport, Guid("B65AD801-ABAF-11D0-BB8B-00A0C90F2744"), InterfaceType(ComInterfaceType.InterfaceIsDual)]
     public interface IDTExtensibility2
     {
         [DispId(1)] void OnConnection([MarshalAs(UnmanagedType.IDispatch)] object application, int connectMode,
-            [MarshalAs(UnmanagedType.IDispatch)] object addInInst, ref Array custom);
-        [DispId(2)] void OnDisconnection(int removeMode, ref Array custom);
-        [DispId(3)] void OnAddInsUpdate(ref Array custom);
-        [DispId(4)] void OnStartupComplete(ref Array custom);
-        [DispId(5)] void OnBeginShutdown(ref Array custom);
+            [MarshalAs(UnmanagedType.IDispatch)] object addInInst,
+            [MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] ref Array custom);
+        [DispId(2)] void OnDisconnection(int removeMode,
+            [MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] ref Array custom);
+        [DispId(3)] void OnAddInsUpdate([MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] ref Array custom);
+        [DispId(4)] void OnStartupComplete([MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] ref Array custom);
+        [DispId(5)] void OnBeginShutdown([MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] ref Array custom);
     }
 
     /// <summary>
@@ -48,7 +52,14 @@ namespace Ndalamo.WordAddIn
         {
             word = (Word.Application)application;
             // Lets scripts reach this object through Word's COMAddIns (used to test the add-in in Word).
-            ((COMAddIn)addInInst).Object = this;
+            try
+            {
+                if (addInInst is COMAddIn addIn) addIn.Object = this;
+            }
+            catch (COMException)
+            {
+                // Only scripts use this; the buttons work without it.
+            }
         }
 
         public void OnDisconnection(int removeMode, ref Array custom)
@@ -96,7 +107,14 @@ namespace Ndalamo.WordAddIn
 
         public object GetImage(IRibbonControl control)
         {
-            return PictureConverter.ToPicture(DrawIcon(control.Id == "NdalamoDeletePage" ? 32 : 16));
+            try
+            {
+                return PictureConverter.ToPicture(DrawIcon(control.Id == "NdalamoDeletePage" ? 32 : 16));
+            }
+            catch (Exception)
+            {
+                return null;   // Word shows the button without a picture
+            }
         }
 
         // ---- The actions, also callable from scripts (they return what happened, without showing a message) ----
