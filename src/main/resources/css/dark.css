@@ -1,0 +1,45 @@
+/*
+ * The dark theme: the same colour roles as app.css, with dark surfaces and a lighter
+ * accent (SPEC §6.1). Added on top of app.css by Theme.apply; nothing else is restyled.
+ */
+.root {
+    -nd-bg: #131519;
+    -nd-surface: #1C1F25;
+    -nd-on-accent: #FFFFFF;
+    -nd-border: #2C3038;
+    -nd-border-strong: #3A3F49;
+    -nd-text: #E8EAEF;
+    -nd-text-soft: #C9CDD6;
+    -nd-text-muted: #A0A6B2;
+    -nd-text-faint: #7A808C;
+    -nd-control: #5C626E;
+    -nd-accent: #5B7FF2;
+    -nd-accent-soft: #24304F;
+    -nd-accent-softer: #1F2944;
+    -nd-accent-faint: #1A2136;
+    -nd-accent-line: #4D5D8F;
+    -nd-link: #8FA7FF;
+    -nd-input-bg: #171A1F;
+    -nd-bg-alt: #23262D;
+    -nd-chip: #282C34;
+    -nd-success: #6FD195;
+    -nd-success-bar: #3FA46B;
+    -nd-warning: #E9A94F;
+    -nd-danger: #FF7B70;
+    -nd-danger-strong: #FF9C93;
+    -nd-danger-soft: #3B1F1E;
+    -nd-danger-faint: #2D1B1B;
+    -nd-danger-line: #6B302B;
+    -nd-success-soft: #1B3326;
+    -nd-warning-deep: #F0A46A;
+    -nd-warning-soft: #36281A;
+    -nd-cat-organize-tint: #24304F; -nd-cat-organize-ink: #8FA7FF;
+    -nd-cat-optimize-tint: #1B3326; -nd-cat-optimize-ink: #6FD195;
+    -nd-cat-convert-tint: #3A2618;  -nd-cat-convert-ink: #F4A36B;
+    -nd-cat-edit-tint: #2D2442;     -nd-cat-edit-ink: #B79CF5;
+    -nd-cat-security-tint: #282C34; -nd-cat-security-ink: #C9CDD6;
+
+    /* Danger buttons are red with white text in both themes: keep that red deep enough to read on. */
+}
+.button-danger { -fx-background-color: #C9372C; }
+.button-danger:hover { -fx-background-color: #DA4A3F; }

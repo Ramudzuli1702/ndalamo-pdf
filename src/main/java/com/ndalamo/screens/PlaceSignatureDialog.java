@@ -2,6 +2,7 @@ package com.ndalamo.screens;
 
 import com.ndalamo.models.Signature;
 import com.ndalamo.services.PageThumbnails;
+import com.ndalamo.utils.Theme;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -78,7 +79,7 @@ public class PlaceSignatureDialog extends VBox {
         pageView.setPreserveRatio(true);
         canvas.getChildren().addAll(pageView, signatureFrame, handle);
         canvas.setPrefSize(VIEW, VIEW);
-        canvas.setStyle("-fx-background-color: #F4F5F7;");
+        canvas.setStyle("-fx-background-color: " + Theme.BG + ";");
         signatureFrame.setOnMousePressed(e -> startDrag(e.getSceneX(), e.getSceneY()));
         signatureFrame.setOnMouseDragged(e -> {
             left = clamp(startLeft + (e.getSceneX() - dragX) / shownW, 0, 1 - width);

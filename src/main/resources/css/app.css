@@ -1,49 +1,104 @@
 /*
- * Ndalamo styles. Colours match utils/Theme.java and SPEC §6.1 — change both together.
+ * Ndalamo styles. Colours are the roles defined in .root below (SPEC §6.1); dark.css
+ * gives the dark theme by redefining only those roles. Java code uses the same role
+ * names through utils/Theme.java.
  *
  * Fonts: JavaFX treats Plex SemiBold and Medium as separate families, so
  * semibold text uses "IBM Plex Sans SmBld" instead of -fx-font-weight (see Theme.java).
  */
 
+/*
+ * Colour roles. Every colour below is one of these names; dark.css redefines them
+ * for the dark theme (SPEC §6.1: same roles, dark surfaces, lighter accent).
+ * JavaFX's own controls (scroll bars, list pop-ups, text boxes) take their colours
+ * from -fx-base and friends, which are set from the same roles.
+ */
 .root {
+    -nd-bg: #F4F5F7;         /* window background, hover fills */
+    -nd-surface: #FFFFFF;    /* cards, panels, header, inputs */
+    -nd-on-accent: #FFFFFF;  /* text on the blue and red buttons */
+    -nd-border: #E2E4E9;     /* card borders, dividers */
+    -nd-border-strong: #D5D8DF; /* inputs, secondary buttons */
+    -nd-text: #16181D;       /* main text */
+    -nd-text-soft: #3A3F4A;  /* body text in dialogs and options */
+    -nd-text-muted: #5B616E; /* secondary text */
+    -nd-text-faint: #8A909C; /* hints, drag handles */
+    -nd-control: #B9BEC9;    /* radio and tick-box rims, scroll thumbs */
+    -nd-accent: #2F5BEA;     /* primary buttons, selection, progress */
+    -nd-accent-soft: #E8EDFB; /* active nav, selected backgrounds */
+    -nd-accent-softer: #EEF2FD; /* selected cards */
+    -nd-accent-faint: #F5F7FE; /* drop target */
+    -nd-accent-line: #A9B4D6; /* hovered page borders */
+    -nd-link: #2448C9;       /* links */
+    -nd-input-bg: #F9FAFB;   /* search box */
+    -nd-bg-alt: #EEF0F4;     /* alternate fills */
+    -nd-chip: #ECEEF2;       /* chips */
+    -nd-success: #1E6B3A;    /* success text */
+    -nd-success-bar: #2E8B57; /* finished progress bars */
+    -nd-warning: #9A5B00;    /* warning text */
+    -nd-danger: #B42318;     /* errors, destructive buttons */
+    -nd-danger-strong: #8F1C13; /* destructive button hover */
+    -nd-danger-soft: #FDECEA; /* error backgrounds */
+    -nd-danger-faint: #FFF6F5; /* danger panel buttons */
+    -nd-danger-line: #F0C6C0; /* danger panel borders */
+    -nd-success-soft: #E6F4EC; /* success backgrounds */
+    -nd-warning-deep: #9A3412; /* partial-result text and icons */
+    -nd-warning-soft: #FFF4E5; /* partial-result backgrounds */
+    /* Tool categories on Home: icon background (tint) and icon colour (ink). */
+    -nd-cat-organize-tint: #E8EDFB; -nd-cat-organize-ink: #2448C9;
+    -nd-cat-optimize-tint: #E6F4EC; -nd-cat-optimize-ink: #1E6B3A;
+    -nd-cat-convert-tint: #FDEEE3;  -nd-cat-convert-ink: #B4440C;
+    -nd-cat-edit-tint: #F1ECFB;     -nd-cat-edit-ink: #5B35B5;
+    -nd-cat-security-tint: #ECEEF2; -nd-cat-security-ink: #2E333D;
+
+    -fx-base: -nd-surface;
+    -fx-background: -nd-bg;
+    -fx-control-inner-background: -nd-surface;
+    -fx-accent: -nd-accent;
+    -fx-text-base-color: -nd-text;
+    -fx-text-background-color: -nd-text;
+    -fx-text-inner-color: -nd-text;
+    -fx-selection-bar: -nd-accent;
+    -fx-selection-bar-non-focused: -nd-accent-soft;
+
     -fx-font-family: "IBM Plex Sans";
     -fx-font-size: 14px;
-    -fx-background-color: #F4F5F7;
-    -fx-text-fill: #16181D;
-    -fx-focus-color: #2F5BEA;
+    -fx-background-color: -nd-bg;
+    -fx-text-fill: -nd-text;
+    -fx-focus-color: -nd-accent;
     -fx-faint-focus-color: #2F5BEA22;
 }
 
-.label { -fx-text-fill: #16181D; }
+.label { -fx-text-fill: -nd-text; }
 .semibold { -fx-font-family: "IBM Plex Sans SmBld"; }
-.muted { -fx-text-fill: #5B616E; }
+.muted { -fx-text-fill: -nd-text-muted; }
 
 /* ── Buttons ────────────────────────────────────────────────────────── */
 
 .button-primary {
-    -fx-background-color: #2F5BEA;
+    -fx-background-color: -nd-accent;
     -fx-background-radius: 8;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -nd-on-accent;
     -fx-font-family: "IBM Plex Sans SmBld";
     -fx-font-size: 15px;
     -fx-padding: 0 20;
     -fx-pref-height: 44;
     -fx-cursor: hand;
 }
-.button-primary:hover { -fx-background-color: #2448C9; }
+.button-primary:hover { -fx-background-color: -nd-link; }
 
 .button-secondary {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
-    -fx-text-fill: #16181D;
+    -fx-text-fill: -nd-text;
     -fx-font-size: 14px;
     -fx-padding: 0 14;
     -fx-pref-height: 40;
     -fx-cursor: hand;
 }
-.button-secondary:hover { -fx-background-color: #F4F5F7; }
+.button-secondary:hover { -fx-background-color: -nd-bg; }
 
 .icon-button {
     -fx-pref-width: 44;
@@ -53,16 +108,16 @@
 /* ── Headers ────────────────────────────────────────────────────────── */
 
 .app-header {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 14 24;
     -fx-spacing: 16;
 }
 
 .screen-header {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 12 20;
     -fx-spacing: 12;
@@ -72,26 +127,26 @@
 .screen-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 16px; }
 
 .search-box {
-    -fx-background-color: #F9FAFB;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-input-bg;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 0 14;
     -fx-pref-height: 40;
     -fx-spacing: 8;
 }
-.search-box:focus-within { -fx-border-color: #2F5BEA; }
+.search-box:focus-within { -fx-border-color: -nd-accent; }
 
 .search-field {
     -fx-background-color: transparent;
     -fx-padding: 0;
-    -fx-prompt-text-fill: #5B616E;
+    -fx-prompt-text-fill: -nd-text-muted;
 }
 
 .key-hint {
     -fx-font-size: 12px;
-    -fx-text-fill: #5B616E;
-    -fx-border-color: #D5D8DF;
+    -fx-text-fill: -nd-text-muted;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 4;
     -fx-padding: 1 6;
 }
@@ -99,21 +154,21 @@
 /* ── Home sidebar ───────────────────────────────────────────────────── */
 
 .sidebar {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 1 0 0;
     -fx-padding: 24 20;
 }
 
-.sidebar-label { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 12px; -fx-text-fill: #5B616E; }
-.empty-note { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
-.offline-badge { -fx-font-size: 13px; -fx-text-fill: #1E6B3A; }
+.sidebar-label { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 12px; -fx-text-fill: -nd-text-muted; }
+.empty-note { -fx-font-size: 13px; -fx-text-fill: -nd-text-muted; }
+.offline-badge { -fx-font-size: 13px; -fx-text-fill: -nd-success; }
 
 /* ── Drop zone ──────────────────────────────────────────────────────── */
 
 .drop-zone {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #A9B4D6;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-accent-line;
     -fx-border-width: 2;
     -fx-border-style: dashed;
     -fx-border-radius: 12;
@@ -121,7 +176,7 @@
     -fx-padding: 28;
     -fx-spacing: 20;
 }
-.drop-zone-icon { -fx-background-color: #E8EDFB; -fx-background-radius: 12; }
+.drop-zone-icon { -fx-background-color: -nd-accent-soft; -fx-background-radius: 12; }
 .drop-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; }
 
 /* ── Tool cards ─────────────────────────────────────────────────────── */
@@ -129,26 +184,26 @@
 .section-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; }
 
 .tool-card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
     -fx-padding: 14;
     -fx-min-height: 72;
     -fx-cursor: hand;
 }
-.tool-card:hover, .tool-card:focused { -fx-border-color: #2F5BEA; }
+.tool-card:hover, .tool-card:focused { -fx-border-color: -nd-accent; }
 /* Not-yet-built tools: no hover highlight or hand cursor, since they can't be opened. */
 .tool-card.not-ready { -fx-cursor: default; }
-.tool-card.not-ready:hover { -fx-border-color: #E2E4E9; }
+.tool-card.not-ready:hover { -fx-border-color: -nd-border; }
 
 .tool-name { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 14px; }
-.tool-desc { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+.tool-desc { -fx-font-size: 12px; -fx-text-fill: -nd-text-muted; }
 
 .coming-soon {
     -fx-font-size: 11px;
-    -fx-text-fill: #5B616E;
-    -fx-background-color: #ECEEF2;
+    -fx-text-fill: -nd-text-muted;
+    -fx-background-color: -nd-chip;
     -fx-background-radius: 999;
     -fx-padding: 1 8;
 }
@@ -159,8 +214,8 @@
 .plain-scroll { -fx-padding: 0; }
 
 .card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
     -fx-padding: 24;
@@ -169,10 +224,10 @@
 
 /* ── Tool flow (chunk 3) ────────────────────────────────────────────── */
 
-.step-label { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
+.step-label { -fx-font-size: 13px; -fx-text-fill: -nd-text-muted; }
 .page-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 24px; }
 .small-heading { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 13px; }
-.small-muted { -fx-font-size: 13px; -fx-text-fill: #5B616E; }
+.small-muted { -fx-font-size: 13px; -fx-text-fill: -nd-text-muted; }
 .mono { -fx-font-family: "Consolas", monospace; }
 
 .button-tall { -fx-pref-height: 44; -fx-padding: 0 18; }
@@ -189,10 +244,10 @@
     -fx-padding: 0;
     -fx-cursor: hand;
 }
-.icon-only:hover { -fx-background-color: #F4F5F7; }
+.icon-only:hover { -fx-background-color: -nd-bg; }
 
 .link, .text-button {
-    -fx-text-fill: #2448C9;
+    -fx-text-fill: -nd-link;
     -fx-font-family: "IBM Plex Sans SmBld";
     -fx-font-size: 13px;
     -fx-background-color: transparent;
@@ -201,44 +256,44 @@
     -fx-cursor: hand;
 }
 .link:hover, .text-button:hover { -fx-underline: true; }
-.link:visited { -fx-text-fill: #2448C9; }
+.link:visited { -fx-text-fill: -nd-link; }
 
 /* File list on the tool screen */
 .file-row {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
     -fx-padding: 12 14;
 }
-.file-row.drop-target { -fx-border-color: #2F5BEA; -fx-border-width: 2; -fx-padding: 11 13; }
+.file-row.drop-target { -fx-border-color: -nd-accent; -fx-border-width: 2; -fx-padding: 11 13; }
 .file-name { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 14px; }
-.file-meta { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
+.file-meta { -fx-font-size: 12px; -fx-text-fill: -nd-text-muted; }
 .thumbnail {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 3;
 }
 
 .options-panel {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 0 0 1;
     -fx-padding: 24 22;
 }
-.save-section { -fx-border-color: #E2E4E9; -fx-border-width: 1 0 0 0; -fx-padding: 18 0 0 0; }
+.save-section { -fx-border-color: -nd-border; -fx-border-width: 1 0 0 0; -fx-padding: 18 0 0 0; }
 
 .details-pane > .title { -fx-background-color: transparent; -fx-padding: 4 0; }
 .details-pane > .content { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 8 0 0 0; }
 
 /* Progress bars: big one on the progress screen, small one in toasts */
 .big-bar > .track, .small-bar > .track {
-    -fx-background-color: #E2E4E9;
+    -fx-background-color: -nd-border;
     -fx-background-radius: 999;
     -fx-background-insets: 0;
 }
 .big-bar > .bar, .small-bar > .bar {
-    -fx-background-color: #2F5BEA;
+    -fx-background-color: -nd-accent;
     -fx-background-radius: 999;
     -fx-background-insets: 0;
 }
@@ -247,35 +302,35 @@
 
 /* Result screen */
 .result-list {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
 }
-.result-row { -fx-padding: 14 16; -fx-border-color: #EEF0F4; -fx-border-width: 0 0 1 0; }
+.result-row { -fx-padding: 14 16; -fx-border-color: -nd-bg-alt; -fx-border-width: 0 0 1 0; }
 
 .chip {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 999;
     -fx-background-radius: 999;
     -fx-pref-height: 40;
     -fx-padding: 0 14;
     -fx-cursor: hand;
 }
-.chip:hover { -fx-background-color: #F4F5F7; }
+.chip:hover { -fx-background-color: -nd-bg; }
 
 /* Toasts */
 .toast {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
     -fx-padding: 14 14 14 16;
     -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.14), 24, 0, 0, 8);
 }
 .toast-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 14px; }
-.toast-body { -fx-font-size: 13px; -fx-text-fill: #3A3F4A; }
+.toast-body { -fx-font-size: 13px; -fx-text-fill: -nd-text-soft; }
 .toast-close {
     -fx-background-color: transparent;
     -fx-background-radius: 6;
@@ -284,111 +339,111 @@
     -fx-padding: 0;
     -fx-cursor: hand;
 }
-.toast-close:hover { -fx-background-color: #F4F5F7; }
+.toast-close:hover { -fx-background-color: -nd-bg; }
 
 /* Dialogs */
 .dim-backdrop { -fx-background-color: rgba(22,24,29,0.45); }
 .dialog-card {
-    -fx-background-color: #FFFFFF;
+    -fx-background-color: -nd-surface;
     -fx-background-radius: 14;
     -fx-padding: 24;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 40, 0, 0, 16);
 }
 .dialog-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; }
-.dialog-text { -fx-font-size: 14px; -fx-text-fill: #3A3F4A; }
+.dialog-text { -fx-font-size: 14px; -fx-text-fill: -nd-text-soft; }
 
 /* ── Page preview on the tool screen ────────────────────────────────── */
 
-.page-preview { -fx-border-color: #E2E4E9; -fx-border-width: 1 0 0 0; -fx-padding: 20 0 0 0; }
+.page-preview { -fx-border-color: -nd-border; -fx-border-width: 1 0 0 0; -fx-padding: 20 0 0 0; }
 .page-frame {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 4;
     -fx-background-radius: 4;
     -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.08), 6, 0, 0, 2);
 }
-.page-frame:hover { -fx-border-color: #2F5BEA; }
-.page-chosen { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
-.page-removed { -fx-border-color: #B42318; -fx-border-width: 2; }
-.page-caption { -fx-font-size: 12px; -fx-text-fill: #5B616E; }
-.page-drop-target .page-frame { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
-.cut-marker { -fx-background-color: #2F5BEA; -fx-background-radius: 2; }
+.page-frame:hover { -fx-border-color: -nd-accent; }
+.page-chosen { -fx-border-color: -nd-accent; -fx-border-width: 2; }
+.page-removed { -fx-border-color: -nd-danger; -fx-border-width: 2; }
+.page-caption { -fx-font-size: 12px; -fx-text-fill: -nd-text-muted; }
+.page-drop-target .page-frame { -fx-border-color: -nd-accent; -fx-border-width: 2; }
+.cut-marker { -fx-background-color: -nd-accent; -fx-background-radius: 2; }
 
 /* ── Choice cards and progress cards (chunk 5) ──────────────────────── */
 
 .choice-card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 12;
     -fx-cursor: hand;
 }
-.choice-card:hover { -fx-border-color: #D5D8DF; }
+.choice-card:hover { -fx-border-color: -nd-border-strong; }
 .choice-card.choice-selected {
-    -fx-border-color: #2F5BEA;
+    -fx-border-color: -nd-accent;
     -fx-border-width: 2;
     -fx-padding: 11;
-    -fx-background-color: #F5F7FE;
+    -fx-background-color: -nd-accent-faint;
 }
 
 .progress-card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 10;
     -fx-background-radius: 10;
     -fx-padding: 14 16;
 }
 .file-status { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 13px; }
-.small-bar.bar-done > .bar { -fx-background-color: #2E8B57; }
+.small-bar.bar-done > .bar { -fx-background-color: -nd-success-bar; }
 
 
 /* ── Options panel, matching Tool.dc.html (polish) ──────────────────── */
 
 .option-legend { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; }
 .choice-title { -fx-font-family: "IBM Plex Sans Medm"; -fx-font-size: 14px; }
-.inside-label { -fx-font-size: 13px; -fx-text-fill: #16181D; }
-.mono-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12.5px; -fx-fill: #5B616E; }
+.inside-label { -fx-font-size: 13px; -fx-text-fill: -nd-text; }
+.mono-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12.5px; -fx-fill: -nd-text-muted; }
 .save-line .label { -fx-font-size: 13px; }
 
 /* Text boxes in the options panel and dialogs: plain bordered boxes, blue border when typing */
 .options-panel .text-field, .options-panel .password-field, .dialog-card .text-field, .dialog-card .password-field {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-pref-height: 36;
     -fx-padding: 0 10;
-    -fx-prompt-text-fill: #8A909C;
+    -fx-prompt-text-fill: -nd-text-faint;
 }
 .options-panel .text-field:focused, .options-panel .password-field:focused,
 .dialog-card .text-field:focused, .dialog-card .password-field:focused {
-    -fx-border-color: #2F5BEA;
+    -fx-border-color: -nd-accent;
     -fx-border-width: 1.5;
 }
 
 /* Radio buttons and checkboxes in the brand blue */
 .radio-button .radio {
-    -fx-background-color: #B9BEC9, #FFFFFF;
+    -fx-background-color: -nd-control, -nd-surface;
     -fx-background-insets: 0, 1.5;
     -fx-background-radius: 999;
     -fx-padding: 4;
 }
-.radio-button:selected .radio { -fx-background-color: #2F5BEA, #FFFFFF; }
+.radio-button:selected .radio { -fx-background-color: -nd-accent, -nd-surface; }
 .radio-button .dot { -fx-background-color: transparent; -fx-background-radius: 999; -fx-padding: 4; }
-.radio-button:selected .dot { -fx-background-color: #2F5BEA; }
+.radio-button:selected .dot { -fx-background-color: -nd-accent; }
 .radio-button:focused .radio { -fx-effect: dropshadow(gaussian, #2F5BEA55, 4, 0.6, 0, 0); }
 
-.check-box { -fx-font-size: 14px; -fx-text-fill: #3A3F4A; -fx-label-padding: 0 0 0 4; }
+.check-box { -fx-font-size: 14px; -fx-text-fill: -nd-text-soft; -fx-label-padding: 0 0 0 4; }
 .check-box .box {
-    -fx-background-color: #B9BEC9, #FFFFFF;
+    -fx-background-color: -nd-control, -nd-surface;
     -fx-background-insets: 0, 1.5;
     -fx-background-radius: 4, 3;
     -fx-padding: 3;
 }
-.check-box:selected .box { -fx-background-color: #2F5BEA, #2F5BEA; }
+.check-box:selected .box { -fx-background-color: -nd-accent, -nd-accent; }
 .check-box .mark { -fx-background-color: transparent; -fx-padding: 5; }
-.check-box:selected .mark { -fx-background-color: #FFFFFF; }
+.check-box:selected .mark { -fx-background-color: -nd-surface; }
 .check-box:focused .box { -fx-effect: dropshadow(gaussian, #2F5BEA55, 4, 0.6, 0, 0); }
 
 /* "Advanced options" link that folds out */
@@ -397,34 +452,34 @@
     -fx-padding: 2 0;
     -fx-font-family: "IBM Plex Sans Medm";
     -fx-font-size: 14px;
-    -fx-text-fill: #16181D;
+    -fx-text-fill: -nd-text;
     -fx-cursor: hand;
 }
-.disclosure:hover { -fx-text-fill: #2448C9; }
+.disclosure:hover { -fx-text-fill: -nd-link; }
 
 /* Slim scrollbars inside scrolling panels, no arrow buttons */
 .plain-scroll .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 8; -fx-padding: 0; }
 .plain-scroll .scroll-bar:horizontal { -fx-background-color: transparent; -fx-pref-height: 8; -fx-padding: 0; }
 .plain-scroll .scroll-bar .track { -fx-background-color: transparent; -fx-border-color: transparent; }
-.plain-scroll .scroll-bar .thumb { -fx-background-color: #D5D8DF; -fx-background-radius: 999; -fx-background-insets: 1; }
-.plain-scroll .scroll-bar .thumb:hover { -fx-background-color: #B9BEC9; }
+.plain-scroll .scroll-bar .thumb { -fx-background-color: -nd-border-strong; -fx-background-radius: 999; -fx-background-insets: 1; }
+.plain-scroll .scroll-bar .thumb:hover { -fx-background-color: -nd-control; }
 .plain-scroll .scroll-bar .increment-button, .plain-scroll .scroll-bar .decrement-button { -fx-padding: 0; -fx-pref-height: 0; -fx-pref-width: 0; }
 .plain-scroll .scroll-bar .increment-arrow, .plain-scroll .scroll-bar .decrement-arrow { -fx-padding: 0; -fx-shape: " "; }
 .plain-scroll > .corner { -fx-background-color: transparent; }
 
-.save-text { -fx-font-size: 13px; -fx-fill: #5B616E; }
+.save-text { -fx-font-size: 13px; -fx-fill: -nd-text-muted; }
 
 .button-danger {
-    -fx-background-color: #B42318;
+    -fx-background-color: -nd-danger;
     -fx-background-radius: 8;
-    -fx-text-fill: #FFFFFF;
+    -fx-text-fill: -nd-on-accent;
     -fx-font-family: "IBM Plex Sans SmBld";
     -fx-padding: 0 18;
     -fx-cursor: hand;
 }
-.button-danger:hover { -fx-background-color: #8F1C13; }
+.button-danger:hover { -fx-background-color: -nd-danger-strong; }
 
-.dialog-card .password-field.field-error { -fx-border-color: #B42318; -fx-border-width: 2; }
+.dialog-card .password-field.field-error { -fx-border-color: -nd-danger; -fx-border-width: 2; }
 
 /* ── Page workspace (Workspace.dc.html) ─────────────────────────────── */
 
@@ -434,11 +489,11 @@
     -fx-background-radius: 8 8 0 0;
     -fx-cursor: hand;
 }
-.ws-tab .label { -fx-text-fill: #5B616E; }
-.ws-tab:hover { -fx-background-color: #F4F5F7; }
+.ws-tab .label { -fx-text-fill: -nd-text-muted; }
+.ws-tab:hover { -fx-background-color: -nd-bg; }
 .ws-tab-active {
-    -fx-background-color: #E8EDFB;
-    -fx-border-color: transparent transparent #2F5BEA transparent;
+    -fx-background-color: -nd-accent-soft;
+    -fx-border-color: transparent transparent -nd-accent transparent;
     -fx-border-width: 0 0 2 0;
 }
 .ws-tab-active .label { -fx-font-family: "IBM Plex Sans SmBld"; }
@@ -448,29 +503,29 @@
     -fx-padding: 4;
     -fx-cursor: hand;
 }
-.tab-close:hover { -fx-background-color: #D5D8DF; }
+.tab-close:hover { -fx-background-color: -nd-border-strong; }
 .ws-tab-add {
     -fx-pref-width: 40;
     -fx-pref-height: 40;
     -fx-background-color: transparent;
-    -fx-border-color: #A9B4D6;
+    -fx-border-color: -nd-accent-line;
     -fx-border-style: dashed;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
-    -fx-text-fill: #2448C9;
+    -fx-text-fill: -nd-link;
     -fx-font-size: 18px;
     -fx-cursor: hand;
 }
 
 .ws-action-bar {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 10 20;
 }
 .ws-action {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-pref-height: 36;
@@ -478,24 +533,24 @@
     -fx-font-size: 13px;
     -fx-cursor: hand;
 }
-.ws-action:hover { -fx-background-color: #F4F5F7; }
+.ws-action:hover { -fx-background-color: -nd-bg; }
 .ws-action:disabled { -fx-opacity: 0.45; }
 
 .ws-page {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-effect: dropshadow(gaussian, rgba(22,24,29,0.12), 4, 0, 0, 1);
     -fx-cursor: hand;
 }
-.ws-page:hover { -fx-border-color: #A9B4D6; }
-.ws-page-selected, .ws-page-selected:hover { -fx-border-color: #2F5BEA; -fx-border-width: 2; }
-.ws-drop-before .ws-page { -fx-border-color: #2F5BEA; -fx-border-width: 0 0 0 4; }
+.ws-page:hover { -fx-border-color: -nd-accent-line; }
+.ws-page-selected, .ws-page-selected:hover { -fx-border-color: -nd-accent; -fx-border-width: 2; }
+.ws-drop-before .ws-page { -fx-border-color: -nd-accent; -fx-border-width: 0 0 0 4; }
 
 .workspace-panel {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E4E9;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
     -fx-border-width: 0 0 0 1;
     -fx-padding: 24 20;
 }
@@ -507,62 +562,62 @@
     -fx-font-size: 14px;
     -fx-cursor: hand;
 }
-.ws-panel-button { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-text-fill: #16181D; }
-.ws-panel-button:hover { -fx-background-color: #F4F5F7; }
-.ws-panel-danger { -fx-background-color: #FFF6F5; -fx-border-color: #F0C6C0; -fx-text-fill: #B42318; }
-.ws-panel-danger:hover { -fx-background-color: #FDECEA; }
+.ws-panel-button { -fx-background-color: -nd-on-accent; -fx-border-color: -nd-border-strong; -fx-text-fill: -nd-text; }
+.ws-panel-button:hover { -fx-background-color: -nd-bg; }
+.ws-panel-danger { -fx-background-color: -nd-danger-faint; -fx-border-color: -nd-danger-line; -fx-text-fill: -nd-danger; }
+.ws-panel-danger:hover { -fx-background-color: -nd-danger-soft; }
 .ws-panel-button:disabled, .ws-panel-danger:disabled { -fx-opacity: 0.45; }
 .workspace-panel .text-field {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-pref-height: 40;
     -fx-padding: 0 12;
 }
-.workspace-panel .text-field:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
+.workspace-panel .text-field:focused { -fx-border-color: -nd-accent; -fx-border-width: 1.5; }
 
 /* Drop-down lists and long-text boxes in dialogs (Fill forms), styled like the text fields. */
 .dialog-card .combo-box, .dialog-card .text-area {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
 }
 .dialog-card .combo-box { -fx-pref-height: 36; }
-.dialog-card .combo-box:focused, .dialog-card .text-area:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
-.dialog-card .text-area .content { -fx-background-color: #FFFFFF; -fx-background-radius: 6; }
+.dialog-card .combo-box:focused, .dialog-card .text-area:focused { -fx-border-color: -nd-accent; -fx-border-width: 1.5; }
+.dialog-card .text-area .content { -fx-background-color: -nd-surface; -fx-background-radius: 6; }
 .dialog-card .combo-box .arrow-button { -fx-background-color: transparent; }
-.dialog-card .combo-box .arrow { -fx-background-color: #5B616E; }
+.dialog-card .combo-box .arrow { -fx-background-color: -nd-text-muted; }
 
 /* Sign PDF and Fill forms dialogs */
-.field-label { -fx-font-size: 13px; -fx-text-fill: #3A3F4A; }
-.problem-text { -fx-font-size: 13px; -fx-text-fill: #B42318; }
+.field-label { -fx-font-size: 13px; -fx-text-fill: -nd-text-soft; }
+.problem-text { -fx-font-size: 13px; -fx-text-fill: -nd-danger; }
 .segment-button {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D5D8DF;
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 6 14;
     -fx-font-size: 13px;
 }
-.segment-button:hover { -fx-background-color: #F4F5F7; }
-.segment-button:selected { -fx-background-color: #EEF2FD; -fx-border-color: #2F5BEA; -fx-text-fill: #2F5BEA; }
-.signature-pad { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 8; -fx-background-radius: 8; }
-.signature-frame { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; -fx-border-style: segments(5, 4); -fx-cursor: move; }
-.resize-handle { -fx-background-color: #2F5BEA; -fx-background-radius: 2; -fx-cursor: se-resize; }
+.segment-button:hover { -fx-background-color: -nd-bg; }
+.segment-button:selected { -fx-background-color: -nd-accent-softer; -fx-border-color: -nd-accent; -fx-text-fill: -nd-accent; }
+.signature-pad { -fx-background-color: -nd-surface; -fx-border-color: -nd-border-strong; -fx-border-radius: 8; -fx-background-radius: 8; }
+.signature-frame { -fx-border-color: -nd-accent; -fx-border-width: 1.5; -fx-border-style: segments(5, 4); -fx-cursor: move; }
+.resize-handle { -fx-background-color: -nd-accent; -fx-background-radius: 2; -fx-cursor: se-resize; }
 
 
 /* Settings screen */
-.settings-nav { -fx-background-color: #FFFFFF; -fx-border-color: #E2E4E9; -fx-border-width: 0 1 0 0; }
-.settings-nav-item { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 12; -fx-font-size: 14px; -fx-text-fill: #16181D; }
-.settings-nav-item:hover { -fx-background-color: #F4F5F7; }
-.settings-nav-selected { -fx-background-color: #E8EDFB; -fx-font-family: "IBM Plex Sans SmBld"; }
-.settings-card { -fx-background-color: #FFFFFF; -fx-border-color: #E2E4E9; -fx-border-radius: 12; -fx-background-radius: 12; }
+.settings-nav { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 0 1 0 0; }
+.settings-nav-item { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 12; -fx-font-size: 14px; -fx-text-fill: -nd-text; }
+.settings-nav-item:hover { -fx-background-color: -nd-bg; }
+.settings-nav-selected { -fx-background-color: -nd-accent-soft; -fx-font-family: "IBM Plex Sans SmBld"; }
+.settings-card { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-radius: 12; -fx-background-radius: 12; }
 .settings-card-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 16px; }
-.settings-card .combo-box { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; }
-.settings-card .text-field { -fx-background-color: #FFFFFF; -fx-border-color: #D5D8DF; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; -fx-padding: 0 10; }
-.settings-card .text-field:focused, .settings-card .combo-box:focused { -fx-border-color: #2F5BEA; -fx-border-width: 1.5; }
-.status-good { -fx-text-fill: #1E6B3A; }
-.status-warning { -fx-text-fill: #9A5B00; }
+.settings-card .combo-box { -fx-background-color: -nd-surface; -fx-border-color: -nd-border-strong; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; }
+.settings-card .text-field { -fx-background-color: -nd-surface; -fx-border-color: -nd-border-strong; -fx-border-radius: 6; -fx-background-radius: 6; -fx-pref-height: 36; -fx-padding: 0 10; }
+.settings-card .text-field:focused, .settings-card .combo-box:focused { -fx-border-color: -nd-accent; -fx-border-width: 1.5; }
+.status-good { -fx-text-fill: -nd-success; }
+.status-warning { -fx-text-fill: -nd-warning; }
 .licence-text { -fx-font-family: "Consolas", monospace; -fx-font-size: 12px; }

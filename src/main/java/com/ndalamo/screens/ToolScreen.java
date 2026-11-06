@@ -298,7 +298,7 @@ public class ToolScreen extends BorderPane {
             refresh();
         });
 
-        HBox row = new HBox(14, Icons.dragHandle(16, "#8A909C"), thumbnail, text, remove);
+        HBox row = new HBox(14, Icons.dragHandle(16, Theme.TEXT_FAINT), thumbnail, text, remove);
         row.getStyleClass().add("file-row");
         row.setAlignment(Pos.CENTER_LEFT);
         makeDraggable(row, index);

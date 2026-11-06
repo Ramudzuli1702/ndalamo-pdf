@@ -3,6 +3,7 @@ package com.ndalamo.screens;
 import com.ndalamo.models.WorkspacePage;
 import com.ndalamo.services.PageThumbnails;
 import com.ndalamo.utils.Format;
+import com.ndalamo.utils.Theme;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -51,7 +52,7 @@ public class CropDialog extends VBox {
         picture.setFitHeight(VIEW);
         Pane canvas = new Pane(picture, box);
         canvas.setPrefSize(VIEW, VIEW);
-        canvas.setStyle("-fx-background-color: #F4F5F7; -fx-cursor: crosshair;");
+        canvas.setStyle("-fx-background-color: " + Theme.BG + "; -fx-cursor: crosshair;");
         box.setFill(Color.web("#2F5BEA", 0.12));
         box.setStroke(Color.web("#2F5BEA"));
         box.setStrokeWidth(2);

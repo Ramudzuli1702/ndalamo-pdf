@@ -19,6 +19,7 @@ import com.ndalamo.tools.OfficeToPdfTool;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.utils.Theme;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Label;
@@ -105,6 +106,12 @@ public class NdalamoApp extends Application {
         stage.setMinWidth(1024);
         stage.setMinHeight(700);
         stage.setScene(scene);
+        Theme.apply(scene, settings.getAppearance());
+        if (Theme.isDark()) rebuildHome();                    // Home was built before the theme was known
+        // "Follow system": switch when Windows switches between light and dark.
+        Platform.getPreferences().colorSchemeProperty().addListener((obs, old, now) -> {
+            if (settings.getAppearance() == Settings.Appearance.FOLLOW_SYSTEM) applyAppearance(settings.getAppearance());
+        });
         stage.show();
     }
 
@@ -131,8 +138,24 @@ public class NdalamoApp extends Application {
                 version(), this::showHome));
     }
 
-    /** Light, dark or the Windows setting. The dark colours arrive in chunk 18b; the choice is saved already. */
+    /**
+     * Light, dark or the Windows setting. Colours switch at once through the stylesheet;
+     * Home and an open Settings screen are rebuilt so the logo, drawn in fixed colours,
+     * matches too.
+     */
     private void applyAppearance(Settings.Appearance appearance) {
+        Theme.apply(stage.getScene(), appearance);
+        boolean onSettings = window.current() instanceof SettingsScreen;
+        boolean onHome = window.current() == home;
+        rebuildHome();
+        if (onHome) showHome();
+        if (onSettings) showSettings();
+    }
+
+    private void rebuildHome() {
+        boolean showing = window.current() == home;
+        home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
+        if (showing) window.show(home);
     }
 
     /** The Settings card for the Word add-in; installing it from here comes with the add-in (chunk 19). */

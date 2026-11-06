@@ -1,44 +1,58 @@
 package com.ndalamo.utils;
 
+import com.ndalamo.models.Settings;
+import javafx.application.ColorScheme;
+import javafx.application.Platform;
+import javafx.scene.Scene;
 import javafx.scene.text.Font;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 
 /**
- * The app's colours and shapes, taken from the design tokens in SPEC §6.1.
- * Screens use these instead of typing hex codes, so the look stays consistent
- * and a dark theme can be added in one place later.
+ * The app's colours and shapes (SPEC §6.1), and switching between light and dark.
+ *
+ * The colours are the role names defined in app.css (e.g. "-nd-text"), not hex
+ * codes, so inline styles and icons follow the theme: dark.css redefines the roles,
+ * and everything using them changes with it. Use them in styles, e.g.
+ * {@code setStyle("-fx-background-color: " + Theme.ACCENT)}, or pass them to Icons.
  */
 public final class Theme {
 
     private static final Logger log = LoggerFactory.getLogger(Theme.class);
 
+    private static boolean dark;
+
     private Theme() {}
 
     // ── Neutrals ─────────────────────────────────────────────────────────
-    public static final String BG            = "#F4F5F7"; // window background
-    public static final String SURFACE       = "#FFFFFF"; // cards, panels, header
-    public static final String BORDER        = "#E2E4E9"; // card borders, dividers
-    public static final String BORDER_STRONG = "#D5D8DF"; // inputs, secondary buttons
-    public static final String TEXT          = "#16181D";
-    public static final String TEXT_MUTED    = "#5B616E";
+    public static final String BG            = "-nd-bg";             // window background
+    public static final String SURFACE       = "-nd-surface";        // cards, panels, header
+    public static final String BORDER        = "-nd-border";         // card borders, dividers
+    public static final String BORDER_STRONG = "-nd-border-strong";  // inputs, secondary buttons
+    public static final String TEXT          = "-nd-text";
+    public static final String TEXT_MUTED    = "-nd-text-muted";
+    public static final String TEXT_FAINT    = "-nd-text-faint";
 
     // ── Brand and links ──────────────────────────────────────────────────
-    public static final String ACCENT        = "#2F5BEA"; // primary buttons, selection, progress
-    public static final String ACCENT_SOFT   = "#E8EDFB"; // active nav, selected backgrounds
-    public static final String LINK          = "#2448C9";
-    public static final String LOGO_GREEN    = "#1E8A4C"; // logo bars and leaf only
+    public static final String ACCENT        = "-nd-accent";         // primary buttons, selection, progress
+    public static final String ACCENT_SOFT   = "-nd-accent-soft";    // active nav, selected backgrounds
+    public static final String LINK          = "-nd-link";
+    /** The logo's green; a brand colour, the same in both themes. */
+    public static final String LOGO_GREEN    = "#1E8A4C";
+    /** The brand blue as a fixed colour, for drawings that can't use a role (the logo tile). */
+    public static final String BRAND_BLUE    = "#2F5BEA";
 
     // ── Status (one colour per meaning) ──────────────────────────────────
-    public static final String SUCCESS       = "#1E6B3A";
-    public static final String SUCCESS_SOFT  = "#E6F4EC";
-    public static final String WARNING       = "#9A3412";
-    public static final String WARNING_SOFT  = "#FFF4E5";
-    public static final String DANGER        = "#B42318";
-    public static final String DANGER_SOFT   = "#FDECEA";
+    public static final String SUCCESS       = "-nd-success";
+    public static final String SUCCESS_SOFT  = "-nd-success-soft";
+    public static final String WARNING       = "-nd-warning-deep";
+    public static final String WARNING_SOFT  = "-nd-warning-soft";
+    public static final String DANGER        = "-nd-danger";
+    public static final String DANGER_SOFT   = "-nd-danger-soft";
 
     // ── Shape ────────────────────────────────────────────────────────────
     public static final int RADIUS_SM = 8;   // buttons, inputs
@@ -47,23 +61,42 @@ public final class Theme {
 
     // ── Tool categories: icon background / icon colour (SPEC §6.1) ──────
     public static String categoryTint(String category) {
-        return switch (category) {
-            case "Organize" -> "#E8EDFB";
-            case "Optimize" -> "#E6F4EC";
-            case "Convert" -> "#FDEEE3";
-            case "Edit & sign" -> "#F1ECFB";
-            default -> "#ECEEF2";            // Security & compare
-        };
+        return "-nd-cat-" + categoryKey(category) + "-tint";
     }
 
     public static String categoryInk(String category) {
+        return "-nd-cat-" + categoryKey(category) + "-ink";
+    }
+
+    private static String categoryKey(String category) {
         return switch (category) {
-            case "Organize" -> "#2448C9";
-            case "Optimize" -> "#1E6B3A";
-            case "Convert" -> "#B4440C";
-            case "Edit & sign" -> "#5B35B5";
-            default -> "#2E333D";
+            case "Organize" -> "organize";
+            case "Optimize" -> "optimize";
+            case "Convert" -> "convert";
+            case "Edit & sign" -> "edit";
+            default -> "security";             // Security & compare
         };
+    }
+
+    // ── Light and dark ───────────────────────────────────────────────────
+
+    /** True while the dark theme is on, for the few drawings that pick fixed colours (the logo). */
+    public static boolean isDark() {
+        return dark;
+    }
+
+    /**
+     * Turns the dark theme on or off for the window: adds or removes dark.css, which
+     * redefines the colour roles. "Follow system" reads Windows' light/dark setting.
+     */
+    public static void apply(Scene scene, Settings.Appearance appearance) {
+        dark = appearance == Settings.Appearance.DARK
+                || appearance == Settings.Appearance.FOLLOW_SYSTEM && Platform.getPreferences().getColorScheme() == ColorScheme.DARK;
+        URL sheet = Theme.class.getResource("/css/dark.css");
+        if (sheet == null) return;
+        String darkSheet = sheet.toExternalForm();
+        scene.getStylesheets().remove(darkSheet);
+        if (dark) scene.getStylesheets().add(darkSheet);
     }
 
     // ── Fonts: IBM Plex Sans, bundled in src/main/resources/fonts ────────

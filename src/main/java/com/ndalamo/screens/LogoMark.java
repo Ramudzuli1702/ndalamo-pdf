@@ -39,7 +39,8 @@ public final class LogoMark {
 
     /** Dark outline with green bars, for light backgrounds. */
     public static Region color(double size) {
-        return draw(size, Color.web(Theme.TEXT), Color.web(Theme.LOGO_GREEN), false);
+        // The outline follows the theme: near-black on light, near-white on dark (screens are rebuilt on a switch).
+        return draw(size, Color.web(Theme.isDark() ? "#E8EAEF" : "#16181D"), Color.web(Theme.LOGO_GREEN), false);
     }
 
     /** All white, for blue or dark backgrounds (e.g. the home header tile). */
@@ -49,7 +50,7 @@ public final class LogoMark {
 
     /** White logo on a blue rounded square — the window and taskbar icon. */
     public static Region appIcon(double size) {
-        Rectangle tile = new Rectangle(size, size, Color.web(Theme.ACCENT));
+        Rectangle tile = new Rectangle(size, size, Color.web(Theme.BRAND_BLUE));
         // Corner radius and logo size match brand/ndalamo-app-icon.svg (56 and 160 out of 256).
         tile.setArcWidth(size * 2 * 56 / 256);
         tile.setArcHeight(size * 2 * 56 / 256);

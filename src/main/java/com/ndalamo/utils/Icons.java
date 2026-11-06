@@ -109,7 +109,8 @@ public final class Icons {
             SVGPath svg = new SVGPath();
             svg.setContent(path);
             svg.setFill(null);
-            svg.setStroke(Color.web(color));
+            // A style, not a fixed colour, so a role name like "-nd-text" follows the light or dark theme.
+            svg.setStyle("-fx-stroke: " + color + ";");
             svg.setStrokeWidth(strokeWidth);
             svg.setStrokeLineCap(StrokeLineCap.ROUND);
             svg.setStrokeLineJoin(StrokeLineJoin.ROUND);
