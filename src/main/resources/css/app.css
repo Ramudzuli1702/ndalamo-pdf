@@ -629,3 +629,15 @@
 /* Page cards move focus with the arrow keys themselves, which :focus-visible doesn't notice, so these use :focused. */
 /* A glow outside the page, so the page with focus stands out even among selected (blue-bordered) pages. */
 .ws-page-card:focused .ws-page, .preview-card:focused { -fx-effect: dropshadow(gaussian, -nd-accent, 10, 0.55, 0, 0); }
+
+/* ── Suggested tools after a drop (screen 3) ────────────────────────── */
+
+.tool-card.suggest-recommended { -fx-border-color: -nd-accent; -fx-border-width: 2; -fx-padding: 16; }
+.recommended-badge {
+    -fx-font-family: "IBM Plex Sans SmBld";
+    -fx-font-size: 12px;
+    -fx-text-fill: -nd-on-accent;
+    -fx-background-color: -nd-accent;
+    -fx-background-radius: 999;
+    -fx-padding: 4 10;
+}

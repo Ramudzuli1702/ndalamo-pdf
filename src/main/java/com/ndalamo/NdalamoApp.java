@@ -5,6 +5,7 @@ import com.ndalamo.models.Settings;
 import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
+import com.ndalamo.screens.SuggestScreen;
 import com.ndalamo.screens.LibreOfficeDialog;
 import com.ndalamo.screens.LogoMark;
 import com.ndalamo.screens.MainWindow;
@@ -236,11 +237,29 @@ public class NdalamoApp extends Application {
             workspace.open(files.stream().map(File::toPath).toList());
             return;
         }
-        // Suggested tools for these files (screen 3) are built in chunk 15.
-        window.show(new ComingSoonScreen("Suggested tools",
-                "Ndalamo will suggest the right tools for these files. That screen is built in chunk 15. "
-                        + "Your files have not been changed.",
-                files.stream().map(File::getName).toList(), this::showHome));
+        List<Path> paths = files.stream().map(File::toPath).toList();
+        // Dropped again while suggestions are showing: add them and suggest for the whole set.
+        if (window.current() instanceof SuggestScreen suggestions) {
+            suggestions.addFiles(paths);
+            return;
+        }
+        window.show(new SuggestScreen(window, paths, this::showHome, this::openToolWith, this::showHome));
+    }
+
+    /** A suggestion was picked: open that tool with the files it accepts (the workspace opens them as tabs). */
+    private void openToolWith(PdfTool tool, List<Path> files) {
+        List<Path> accepted = files.stream()
+                .filter(f -> tool.fileTypes().contains(com.ndalamo.services.FileInspector.extension(f))).toList();
+        if (tool instanceof WorkspaceTool) {
+            window.show(workspace());
+            workspace.open(accepted);
+            return;
+        }
+        if (tool instanceof OfficeToPdfTool) {
+            LibreOfficeDialog.whenFound(window, this::rememberLibreOffice, () -> toolFlow.open(tool, accepted));
+            return;
+        }
+        toolFlow.open(tool, accepted);
     }
 
     public static void main(String[] args) {
