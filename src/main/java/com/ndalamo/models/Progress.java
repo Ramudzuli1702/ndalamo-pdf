@@ -26,6 +26,10 @@ public class Progress {
 
     private final Listener listener;
     private volatile boolean cancelled;
+    // Set for a part of a bigger job (a pipeline step): updates go to the parent, scaled into its share.
+    private final Progress parent;
+    private final double from, share;
+    private final String label;
     private long lastSent;
     private boolean sentAny;
     private final Map<Integer, Long> lastSentForFile = new HashMap<>();
@@ -37,9 +41,34 @@ public class Progress {
 
     public Progress(Listener listener) {
         this.listener = listener;
+        this.parent = null;
+        this.from = 0;
+        this.share = 1;
+        this.label = null;
+    }
+
+    private Progress(Progress parent, double from, double share, String label) {
+        this.listener = null;
+        this.parent = parent;
+        this.from = from;
+        this.share = share;
+        this.label = label;
+    }
+
+    /**
+     * Progress for one part of this job, e.g. step 2 of a pipeline: its 0-100% fills
+     * {@code from} to {@code from + share} of this one, its status lines start with
+     * {@code label} (if not null), and it stops when this job is cancelled.
+     */
+    public Progress part(double from, double share, String label) {
+        return new Progress(this, from, share, label);
     }
 
     public void update(double fraction, String status) {
+        if (parent != null) {
+            parent.update(from + share * clamp(fraction), label == null ? status : label + " \u00b7 " + status);
+            return;
+        }
         if (listener == null) return;
         double clamped = clamp(fraction);
         long now = System.nanoTime();
@@ -70,7 +99,7 @@ public class Progress {
     }
 
     public boolean isCancelled() {
-        return cancelled;
+        return cancelled || (parent != null && parent.isCancelled());
     }
 
     private static double clamp(double fraction) {

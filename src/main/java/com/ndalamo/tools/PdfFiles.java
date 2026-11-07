@@ -34,7 +34,7 @@ final class PdfFiles {
 
     /** Why a file couldn't be opened, in a few words: "needs a password". */
     static String problem(Exception e) {
-        return e instanceof InvalidPasswordException ? "needs a password" : "damaged or not a readable PDF";
+        return e instanceof InvalidPasswordException ? "needs a password" : "is damaged or not a readable PDF";
     }
 
     /** The result for an input that couldn't be processed. Nothing was written and the original is unchanged. */

@@ -94,7 +94,7 @@ public class MergeTool implements PdfTool {
                         merger.appendDocument(merged, source);
                     }
                 } catch (IOException e) {
-                    skipped.add(name + " (" + PdfFiles.problem(e) + ")");
+                    skipped.add(name + " (" + PdfFiles.problem(e).replaceFirst("^is ", "") + ")");
                 }
             }
 
