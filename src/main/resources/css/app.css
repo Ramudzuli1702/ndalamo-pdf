@@ -686,3 +686,12 @@
 .palette-item:hover { -fx-background-color: -nd-accent-softer; }
 .screen-header .name-field { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; -fx-pref-height: 38; }
 .status-error { -fx-text-fill: -nd-danger; }
+
+.pipeline-banner {
+    -fx-background-color: -nd-accent-softer;
+    -fx-border-color: -nd-accent-soft;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14 16;
+    -fx-font-size: 14px;
+}

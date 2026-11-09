@@ -41,6 +41,16 @@ public class ResultScreen extends BorderPane {
 
     public ResultScreen(PdfTool tool, List<FileResult> results, int inputCount, MainWindow window, Runnable onHome,
                         BiConsumer<PdfTool, List<Path>> onContinue) {
+        this(tool, results, inputCount, window, onHome, onContinue, List.of(), () -> {});
+    }
+
+    /**
+     * @param steps          the tools just used in a row, offered as a pipeline; empty for no banner
+     * @param onSavePipeline opens the pipeline builder with those steps
+     */
+    public ResultScreen(PdfTool tool, List<FileResult> results, int inputCount, MainWindow window, Runnable onHome,
+                        BiConsumer<PdfTool, List<Path>> onContinue, List<com.ndalamo.models.Pipeline.Step> steps,
+                        Runnable onSavePipeline) {
         this.window = window;
         ScreenHeader header = new ScreenHeader(tool.name(), onHome);
         Label step = new Label("Done");
@@ -54,7 +64,7 @@ public class ResultScreen extends BorderPane {
         VBox content = new VBox(22, headline(tool, results, outputs, inputCount, anyPartial), resultList(results));
         List<PdfTool> next = nextTools(tool, outputs);
         if (!next.isEmpty()) content.getChildren().add(continueSection(next, outputs, onContinue));
-        // "Save as pipeline" banner arrives with pipelines (chunk 16).
+        if (!outputs.isEmpty() && !steps.isEmpty()) content.getChildren().add(pipelineBanner(steps, onSavePipeline));
 
         content.setMaxWidth(820);
         content.setPadding(new Insets(40, 24, 40, 24));
@@ -64,6 +74,23 @@ public class ResultScreen extends BorderPane {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("plain-scroll");
         setCenter(scroll);
+    }
+
+    /** "Do this often? Save Compress PDF → Protect PDF as a one-click pipeline." */
+    private static HBox pipelineBanner(List<com.ndalamo.models.Pipeline.Step> steps, Runnable onSave) {
+        String names = String.join(" \u2192 ", steps.stream()
+                .map(s -> com.ndalamo.tools.Tools.find(s.getToolId()).map(PdfTool::name).orElse(s.getToolId())).toList());
+        Label text = new Label("Do this often? Save " + names + " as a one-click pipeline.");
+        text.setWrapText(true);
+        HBox.setHgrow(text, javafx.scene.layout.Priority.ALWAYS);
+        Button save = new Button("Save as pipeline");
+        save.getStyleClass().add("button-secondary");
+        save.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
+        save.setOnAction(e -> onSave.run());
+        HBox banner = new HBox(14, text, save);
+        banner.setAlignment(Pos.CENTER_LEFT);
+        banner.getStyleClass().add("pipeline-banner");
+        return banner;
     }
 
     private HBox headline(PdfTool tool, List<FileResult> results, List<Path> outputs, int inputCount, boolean partial) {

@@ -25,6 +25,7 @@ import com.ndalamo.services.SettingsService;
 import com.ndalamo.tools.LibreOffice;
 import com.ndalamo.tools.OfficeToPdfTool;
 import com.ndalamo.tools.PdfTool;
+import com.ndalamo.tools.Tools;
 import com.ndalamo.utils.Theme;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -85,7 +86,11 @@ public class NdalamoApp extends Application {
 
         Theme.loadFonts();   // must happen before any screen is built
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
+        home.showPinned(pipelines, p -> runPipeline(p, List.of()));
         toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), () -> settings.getToolDefaults(), this::showHome);
+        // "Save as pipeline" on the results: the builder opens with the tools just used, named after them.
+        toolFlow.onSaveAsPipeline(steps -> editPipeline(new Pipeline(String.join(" + ", steps.stream()
+                .map(s -> Tools.find(s.getToolId()).map(PdfTool::name).orElse(s.getToolId()).replace(" PDF", "")).toList()), steps)));
         window.show(home);
 
         Scene scene = new Scene(window, 1280, 800);
@@ -201,6 +206,7 @@ public class NdalamoApp extends Application {
     }
 
     private void savePipelines() {
+        home.showPinned(pipelines, p -> runPipeline(p, List.of()));
         try {
             pipelineService.save(pipelines);
         } catch (IOException e) {
@@ -232,6 +238,7 @@ public class NdalamoApp extends Application {
     private void rebuildHome() {
         boolean showing = window.current() == home;
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
+        home.showPinned(pipelines, p -> runPipeline(p, List.of()));
         if (showing) window.show(home);
     }
 
@@ -306,7 +313,8 @@ public class NdalamoApp extends Application {
             suggestions.addFiles(paths);
             return;
         }
-        window.show(new SuggestScreen(window, paths, this::showHome, this::openToolWith, this::showHome));
+        window.show(new SuggestScreen(window, paths, this::showHome, this::openToolWith, this::showHome,
+                pipelines, this::runPipeline));
     }
 
     /** A suggestion was picked: open that tool with the files it accepts (the workspace opens them as tabs). */

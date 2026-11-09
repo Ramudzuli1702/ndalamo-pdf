@@ -35,6 +35,7 @@ public class HomeScreen extends BorderPane {
     private final Header header;
     private final VBox sections = new VBox(28);
     private final Consumer<PdfTool> onOpenTool;
+    private final VBox pinned = new VBox(10);
 
     public HomeScreen(Runnable onPipelines, Runnable onSettings, Runnable onChooseFiles,
                       Consumer<PdfTool> onOpenTool) {
@@ -42,7 +43,9 @@ public class HomeScreen extends BorderPane {
         header = new Header(onPipelines, onSettings);
         header.getSearchField().textProperty().addListener((obs, old, text) -> showTools(text));
 
-        VBox main = new VBox(28, dropZone(onChooseFiles), sections);
+        pinned.setVisible(false);
+        pinned.setManaged(false);
+        VBox main = new VBox(28, dropZone(onChooseFiles), pinned, sections);
         main.setPadding(new Insets(28, 32, 28, 32));
 
         ScrollPane scroll = new ScrollPane(main);
@@ -53,6 +56,41 @@ public class HomeScreen extends BorderPane {
         setTop(header);
         setCenter(new HBox(sidebar(), scroll));
         showTools("");
+    }
+
+    /** The pinned pipelines row above the tool groups (SPEC §6.2); clicking one runs it. Hidden when none are pinned. */
+    public void showPinned(List<com.ndalamo.models.Pipeline> pipelines, Consumer<com.ndalamo.models.Pipeline> onRun) {
+        pinned.getChildren().clear();
+        List<com.ndalamo.models.Pipeline> shown = pipelines.stream().filter(com.ndalamo.models.Pipeline::isPinned).toList();
+        pinned.setVisible(!shown.isEmpty());
+        pinned.setManaged(!shown.isEmpty());
+        if (shown.isEmpty()) return;
+        Label title = new Label("Pinned pipelines");
+        title.getStyleClass().add("section-title");
+        javafx.scene.layout.FlowPane cards = new javafx.scene.layout.FlowPane(12, 12);
+        for (com.ndalamo.models.Pipeline pipeline : shown) {
+            Label name = new Label(pipeline.getName());
+            name.getStyleClass().add("tool-name");
+            Label steps = new Label(String.join(" \u2192 ", pipeline.toolIds().stream()
+                    .map(id -> com.ndalamo.tools.Tools.find(id).map(PdfTool::name).orElse(id).replace(" PDF", "")).toList()));
+            steps.getStyleClass().add("tool-desc");
+            steps.setWrapText(true);
+            VBox card = new VBox(4, name, steps);
+            card.getStyleClass().addAll("tool-card", "pinned-pipeline");
+            card.setPrefWidth(250);
+            card.setFocusTraversable(true);
+            card.setAccessibleRole(javafx.scene.AccessibleRole.BUTTON);
+            card.setAccessibleText("Run pipeline " + pipeline.getName());
+            card.setOnMouseClicked(e -> onRun.accept(pipeline));
+            card.setOnKeyPressed(e -> {
+                if (e.getCode() == javafx.scene.input.KeyCode.ENTER || e.getCode() == javafx.scene.input.KeyCode.SPACE) {
+                    onRun.accept(pipeline);
+                    e.consume();
+                }
+            });
+            cards.getChildren().add(card);
+        }
+        pinned.getChildren().addAll(title, cards);
     }
 
     /** Puts the cursor in the search box (Ctrl+K). */

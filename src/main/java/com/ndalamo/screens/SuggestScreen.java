@@ -1,6 +1,9 @@
 package com.ndalamo.screens;
 
+import com.ndalamo.models.Pipeline;
 import com.ndalamo.services.FileInspector;
+import com.ndalamo.services.PipelineTool;
+import com.ndalamo.services.PipelineValidator;
 import com.ndalamo.services.PageThumbnails;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.tools.Tools;
@@ -41,6 +44,9 @@ import java.util.function.BiConsumer;
 public class SuggestScreen extends BorderPane {
 
     private final BiConsumer<PdfTool, List<Path>> onOpenTool;
+    private final MainWindow window;
+    private final List<Pipeline> pipelines;
+    private final BiConsumer<Pipeline, List<Path>> onRunPipeline;
     private final Runnable onSeeAllTools;
     private final FileInspector inspector = new FileInspector();
     private final VBox content = new VBox(24);
@@ -52,6 +58,16 @@ public class SuggestScreen extends BorderPane {
      */
     public SuggestScreen(MainWindow window, List<Path> dropped, Runnable onHome,
                          BiConsumer<PdfTool, List<Path>> onOpenTool, Runnable onSeeAllTools) {
+        this(window, dropped, onHome, onOpenTool, onSeeAllTools, List.of(), (p, f) -> {});
+    }
+
+    /** @param pipelines the saved pipelines; "Run a pipeline" is offered when one fits the files */
+    public SuggestScreen(MainWindow window, List<Path> dropped, Runnable onHome,
+                         BiConsumer<PdfTool, List<Path>> onOpenTool, Runnable onSeeAllTools,
+                         List<Pipeline> pipelines, BiConsumer<Pipeline, List<Path>> onRunPipeline) {
+        this.window = window;
+        this.pipelines = pipelines;
+        this.onRunPipeline = onRunPipeline;
         this.onOpenTool = onOpenTool;
         this.onSeeAllTools = onSeeAllTools;
         setTop(new ScreenHeader("What do you want to do?", onHome));
@@ -108,6 +124,12 @@ public class SuggestScreen extends BorderPane {
             // Two cards to a row, filling the width (like the mockup's grid).
             others.widthProperty().addListener((obs, was, now) -> others.getChildren().forEach(n ->
                     ((VBox) n).setPrefWidth((now.doubleValue() - 10) / 2)));
+            Node pipelineCard = pipelineOption();
+            if (pipelineCard != null) {
+                // Four other suggestions at most (two rows), like the mockup: the pipeline takes the last place.
+                if (others.getChildren().size() >= 4) others.getChildren().remove(3, others.getChildren().size());
+                others.getChildren().add(pipelineCard);
+            }
             if (!others.getChildren().isEmpty()) list.getChildren().add(others);
             content.getChildren().add(list);
         }
@@ -193,6 +215,49 @@ public class SuggestScreen extends BorderPane {
         card.setAccessibleRole(javafx.scene.AccessibleRole.BUTTON);
         card.setAccessibleText(toolName + (recommended ? ", recommended" : "") + ". " + suggestion.reason());
         Runnable open = () -> found.ifPresent(tool -> onOpenTool.accept(tool, List.copyOf(files)));
+        card.setOnMouseClicked(e -> open.run());
+        card.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER || e.getCode() == javafx.scene.input.KeyCode.SPACE) {
+                open.run();
+                e.consume();
+            }
+        });
+        return card;
+    }
+
+    /** "Run a pipeline", when saved pipelines can start with these files (SPEC §4.2); null if none can. */
+    private Node pipelineOption() {
+        List<Pipeline> fitting = pipelines.stream()
+                .filter(PipelineValidator::canRun)
+                .filter(p -> files.stream().anyMatch(f -> new PipelineTool(p).fileTypes().contains(FileInspector.extension(f))))
+                .toList();
+        if (fitting.isEmpty()) return null;
+        Pipeline first = fitting.get(0);
+        String reason = fitting.size() == 1
+                ? "\u201c" + first.getName() + "\u201d: " + new PipelineTool(first).description()
+                : fitting.size() + " of your pipelines can run on these files.";
+        Label name = new Label("Run a pipeline");
+        name.getStyleClass().add("tool-name");
+        Label why = new Label(reason);
+        why.getStyleClass().add("tool-desc");
+        why.setWrapText(true);
+        VBox card = new VBox(2, name, why);
+        card.getStyleClass().add("tool-card");
+        card.setFocusTraversable(true);
+        card.setAccessibleRole(javafx.scene.AccessibleRole.BUTTON);
+        card.setAccessibleText("Run a pipeline. " + reason);
+        Runnable open = () -> {
+            if (fitting.size() == 1) {
+                onRunPipeline.accept(first, List.copyOf(files));
+                return;
+            }
+            ChoiceDialog choose = new ChoiceDialog(window, "Which pipeline?", "Pick the pipeline to run on these files.", null);
+            choose.button("Cancel", ChoiceDialog.Style.PLAIN, x -> {});
+            for (Pipeline p : fitting.subList(0, Math.min(4, fitting.size()))) {
+                choose.button(p.getName(), ChoiceDialog.Style.PLAIN, x -> onRunPipeline.accept(p, List.copyOf(files)));
+            }
+            choose.width(720).show();
+        };
         card.setOnMouseClicked(e -> open.run());
         card.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER || e.getCode() == javafx.scene.input.KeyCode.SPACE) {

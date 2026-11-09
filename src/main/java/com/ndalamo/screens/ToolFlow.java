@@ -1,5 +1,14 @@
 package com.ndalamo.screens;
 
+import com.ndalamo.models.Pipeline;
+import com.ndalamo.services.PipelineService;
+import com.ndalamo.services.PipelineTool;
+import com.ndalamo.services.PipelineValidator;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 import com.ndalamo.models.FileResult;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
@@ -48,6 +57,19 @@ public class ToolFlow {
     }
 
     /** Opens a tool's first screen, optionally with files already added. */
+    /**
+     * The tools just used one after another on each other's results (via "Continue with these
+     * files"), for "Save as pipeline". A run on other files starts a new chain.
+     */
+    private List<Pipeline.Step> chain = new ArrayList<>();
+    private Set<Path> lastOutputs = Set.of();
+    private Consumer<List<Pipeline.Step>> onSaveAsPipeline = steps -> {};
+
+    /** What "Save as pipeline" on the results does with the steps just used. */
+    public void onSaveAsPipeline(Consumer<List<Pipeline.Step>> handler) {
+        this.onSaveAsPipeline = handler;
+    }
+
     public void open(PdfTool tool, List<Path> files) {
         ToolScreen[] screen = new ToolScreen[1];
         screen[0] = new ToolScreen(tool, files, saveTo.get(), toolDefaults.get(), window, showHome,
@@ -56,6 +78,7 @@ public class ToolFlow {
     }
 
     private void run(PdfTool tool, ToolScreen toolScreen, List<Path> files, Map<String, Object> options, SaveTo target) {
+        List<Pipeline.Step> steps = chainWith(tool, files, options);
         Progress[] job = new Progress[1];               // filled in once the job starts
         ProgressScreen[] progressScreen = new ProgressScreen[1];
         Toast[] backgroundToast = new Toast[1];
@@ -90,17 +113,20 @@ public class ToolFlow {
                 },
                 results -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();
+                    chain = steps;
+                    lastOutputs = results.stream().map(FileResult::getOutput).filter(p -> p != null)
+                            .map(p -> p.toAbsolutePath().normalize()).collect(Collectors.toSet());
                     if (job[0].isCancelled() && results.isEmpty()) {
                         window.show(toolScreen);
                         window.toast(Toast.info(tool.name() + " cancelled",
                                 "Nothing was saved and your files were not changed."));
                     } else if (job[0].isCancelled()) {
                         // Stopped partway through a batch: keep what was finished.
-                        showResults(tool, results, files.size());
+                        showResults(tool, results, files.size(), List.of());
                         window.toast(Toast.info("Stopped early",
                                 "The files listed were finished and saved; the rest were left as they were."));
                     } else if (window.current() == progressScreen[0]) {
-                        showResults(tool, results, files.size());
+                        showResults(tool, results, files.size(), steps);
                     } else {
                         window.toast(resultToast(tool, results, files.size()));
                     }
@@ -117,14 +143,29 @@ public class ToolFlow {
                 });
     }
 
-    private void showResults(PdfTool tool, List<FileResult> results, int inputCount) {
-        window.show(new ResultScreen(tool, results, inputCount, window, showHome, this::open));
+    private void showResults(PdfTool tool, List<FileResult> results, int inputCount, List<Pipeline.Step> steps) {
+        window.show(new ResultScreen(tool, results, inputCount, window, showHome, this::open, steps,
+                () -> onSaveAsPipeline.accept(steps)));
+    }
+
+    /**
+     * The chain including this run: added to the last one if these files are what the last run
+     * made, otherwise just this step. Empty for tools that can't be pipeline steps (and pipelines).
+     */
+    private List<Pipeline.Step> chainWith(PdfTool tool, List<Path> files, Map<String, Object> options) {
+        if (tool instanceof PipelineTool || PipelineValidator.whyNotInPipeline(tool) != null) return List.of();
+        Pipeline.Step step = new Pipeline.Step(tool.id(), PipelineService.toSaved(tool, options));
+        boolean continuing = !chain.isEmpty() && !files.isEmpty()
+                             && files.stream().allMatch(f -> lastOutputs.contains(f.toAbsolutePath().normalize()));
+        List<Pipeline.Step> steps = new ArrayList<>(continuing ? chain : List.of());
+        steps.add(step);
+        return steps;
     }
 
     /** The toast shown when a run finishes while the user is elsewhere in the app. */
     private Toast resultToast(PdfTool tool, List<FileResult> results, int inputCount) {
         List<Path> outputs = results.stream().map(FileResult::getOutput).filter(p -> p != null).toList();
-        Toast.Action details = new Toast.Action("View details", () -> showResults(tool, results, inputCount));
+        Toast.Action details = new Toast.Action("View details", () -> showResults(tool, results, inputCount, List.of()));
         if (outputs.isEmpty()) {
             return Toast.error("Couldn’t finish " + tool.name(), "Your original files were not changed.", details);
         }
