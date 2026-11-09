@@ -5,6 +5,12 @@ import com.ndalamo.models.Settings;
 import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
+import com.ndalamo.screens.PipelineBuilderScreen;
+import com.ndalamo.screens.PipelinesScreen;
+import com.ndalamo.screens.Toast;
+import com.ndalamo.models.Pipeline;
+import com.ndalamo.services.PipelineService;
+import com.ndalamo.services.PipelineTool;
 import com.ndalamo.screens.SuggestScreen;
 import com.ndalamo.screens.LibreOfficeDialog;
 import com.ndalamo.screens.LogoMark;
@@ -38,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -61,6 +68,8 @@ public class NdalamoApp extends Application {
     private final SettingsService settingsService = new SettingsService();
     private JobService jobService;
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
+    private final PipelineService pipelineService = new PipelineService();
+    private List<Pipeline> pipelines = new ArrayList<>();
 
     @Override
     public void start(Stage stage) {
@@ -69,6 +78,7 @@ public class NdalamoApp extends Application {
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
         settings = settingsService.load();
+        pipelines = pipelineService.load();
         LibreOffice.setChosenLocation(settings.getLibreOfficePath());
         jobService = new JobService(settings.workerThreads());
         log.info("Ndalamo started with {} worker thread(s)", settings.workerThreads());
@@ -141,10 +151,63 @@ public class NdalamoApp extends Application {
         window.show(home);
     }
 
+    // ── Pipelines ────────────────────────────────────────────────────────
+
     private void showPipelines() {
-        window.show(new ComingSoonScreen("Pipelines",
-                "Saved chains of tools, like OCR → Compress → Protect, are built in chunk 16.",
-                List.of(), this::showHome));
+        window.show(new PipelinesScreen(window, pipelines, new PipelinesScreen.Actions() {
+            @Override public void home() { showHome(); }
+            @Override public void pipelines() { showPipelines(); }
+            @Override public void watchFolders() {
+                window.show(new ComingSoonScreen("Watch folders",
+                        "Folders that run a pipeline on every file put in them come in the next update (chunk 17).",
+                        List.of(), NdalamoApp.this::showPipelines));
+            }
+            @Override public void create() { editPipeline(new Pipeline()); }
+            @Override public void edit(Pipeline pipeline) { editPipeline(pipeline.editableCopy()); }
+            @Override public void run(Pipeline pipeline) { runPipeline(pipeline, List.of()); }
+            @Override public void duplicate(Pipeline pipeline) {
+                pipelines.add(pipelines.indexOf(pipeline) + 1, pipeline.duplicate());
+                savePipelines();
+                showPipelines();
+            }
+            @Override public void delete(Pipeline pipeline) {
+                pipelines.remove(pipeline);
+                savePipelines();
+                showPipelines();
+                window.toast(Toast.success("Pipeline deleted", "\u201c" + pipeline.getName() + "\u201d was removed."));
+            }
+        }));
+    }
+
+    /** Opens the builder on a copy; saving puts it in the list (replacing the one with the same id). */
+    private void editPipeline(Pipeline copy) {
+        window.show(new PipelineBuilderScreen(window, copy, SaveTo.from(settings), this::showPipelines, saved -> {
+            int at = -1;
+            for (int i = 0; i < pipelines.size(); i++) if (pipelines.get(i).getId().equals(saved.getId())) at = i;
+            if (at >= 0) pipelines.set(at, saved);
+            else pipelines.add(saved);
+            savePipelines();
+            showPipelines();
+            window.toast(Toast.success("Pipeline saved", "\u201c" + saved.getName() + "\u201d is ready to run."));
+        }));
+    }
+
+    /** Runs a pipeline through the usual tool screens; each finished run is counted. */
+    private void runPipeline(Pipeline pipeline, List<Path> files) {
+        toolFlow.open(new PipelineTool(pipeline, () -> Platform.runLater(() -> {
+            pipeline.ranOnce(System.currentTimeMillis());
+            savePipelines();
+        })), files);
+    }
+
+    private void savePipelines() {
+        try {
+            pipelineService.save(pipelines);
+        } catch (IOException e) {
+            log.warn("Could not save pipelines", e);
+            window.toast(Toast.error("Pipelines weren't saved", "Ndalamo couldn't write its pipelines file. Try again; if it keeps "
+                    + "happening, check that the disk isn't full."));
+        }
     }
 
     private void showSettings() {

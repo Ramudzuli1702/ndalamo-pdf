@@ -62,6 +62,17 @@ public class Pipeline {
         return copy;
     }
 
+    /** A copy to edit in the builder: the same pipeline (same id), so leaving without saving changes nothing. */
+    public Pipeline editableCopy() {
+        Pipeline copy = new Pipeline(name, steps.stream().map(Step::copy).toList());
+        copy.id = id;
+        copy.suffix = suffix;
+        copy.pinned = pinned;
+        copy.lastRun = lastRun;
+        copy.runs = runs;
+        return copy;
+    }
+
     /**
      * The word for {tool} in result names: the one set, or the name's first word in lower case
      * ("Client documents" → "client"), keeping only letters and digits so it's safe in a file name.

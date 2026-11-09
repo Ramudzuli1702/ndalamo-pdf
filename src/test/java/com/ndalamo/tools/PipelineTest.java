@@ -7,6 +7,7 @@ import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
 import com.ndalamo.services.PipelineRunner;
 import com.ndalamo.services.PipelineService;
+import com.ndalamo.services.PipelineTool;
 import com.ndalamo.services.PipelineValidator;
 import com.ndalamo.services.PipelineValidator.Fix;
 import com.ndalamo.services.PipelineValidator.Problem;
@@ -203,6 +204,39 @@ class PipelineTest {
         try (var files = Files.list(dir)) {
             assertEquals(1, files.count());
         }
+    }
+
+    // ── Running through the tool screens ──────────────────────────────────
+
+    @Test
+    void aPipelineLooksLikeAToolToTheScreens() throws Exception {
+        Pipeline p = pipeline("Client documents", step("compress"), step("protect"));
+        PipelineTool tool = new PipelineTool(p);
+        assertEquals("Compress PDF → Protect PDF", tool.description());
+        assertEquals(List.of("s2.password", "s2.confirm"), tool.optionFields().stream().map(f -> f.getId()).toList());
+        assertEquals("client", tool.outputSuffix());
+        assertFalse(tool.oneOutput());
+        assertTrue(new PipelineTool(pipeline("b", step("merge"), step("compress"))).oneOutput());
+        // The step's own checks speak through the pipeline.
+        String missing = tool.checkOptions(Map.of());
+        assertTrue(missing != null && missing.startsWith("Step 2 (Protect PDF): "), missing);
+        String different = tool.checkOptions(Map.of("s2.password", "one", "s2.confirm", "two"));
+        assertTrue(different != null && different.startsWith("Step 2 (Protect PDF): "), different);
+
+        Path a = TestFiles.pdf(dir, "Letter.pdf", "Letter", 1);
+        int[] counted = {0};
+        PipelineTool counting = new PipelineTool(p, () -> counted[0]++);
+        assertEquals(null, counting.checkOptions(Map.of("s2.password", "pass1234", "s2.confirm", "pass1234")));
+        FileResult result = counting.run(List.of(a), Map.of("s2.password", "pass1234", "s2.confirm", "pass1234"), sameFolder, new Progress()).get(0);
+        assertEquals(dir.resolve("Letter_client.pdf"), result.getOutput());
+        assertEquals(1, counted[0], "each finished run is counted");
+    }
+
+    @Test
+    void unlockInAPipelineAsksForOnePassword() {
+        PipelineTool tool = new PipelineTool(pipeline("Open", step("unlock"), step("compress")));
+        assertEquals(List.of("s1." + PipelineRunner.FILE_PASSWORD), tool.optionFields().stream().map(f -> f.getId()).toList());
+        assertTrue(tool.checkOptions(Map.of()).startsWith("Type the password for step 1"));
     }
 
     // ── Saving ────────────────────────────────────────────────────────────

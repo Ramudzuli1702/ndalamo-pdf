@@ -641,3 +641,48 @@
     -fx-background-radius: 999;
     -fx-padding: 4 10;
 }
+
+
+/* ── Pipelines (screens 7 and 8) ────────────────────────────────────── */
+
+.header-nav-item { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 12; -fx-font-size: 14px; -fx-text-fill: -nd-text; }
+.header-nav-item:hover { -fx-background-color: -nd-bg; }
+.header-nav-item.header-nav-selected { -fx-background-color: -nd-accent-soft; -fx-font-family: "IBM Plex Sans SmBld"; }
+.step-chip { -fx-background-color: -nd-chip; -fx-background-radius: 999; -fx-padding: 4 10; -fx-font-size: 13px; }
+.small-badge { -fx-font-size: 12px; -fx-background-radius: 999; -fx-padding: 2 9; -fx-font-family: "IBM Plex Sans SmBld"; }
+.badge-accent { -fx-background-color: -nd-accent-soft; -fx-text-fill: -nd-accent; }
+.badge-warning { -fx-background-color: -nd-warning-soft; -fx-text-fill: -nd-warning; }
+.step-card {
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 12 14;
+}
+.drag-handle { -fx-text-fill: -nd-text-muted; -fx-cursor: move; -fx-font-size: 14px; }
+.step-number {
+    -fx-min-width: 26; -fx-min-height: 26; -fx-alignment: center;
+    -fx-background-color: -nd-accent-soft; -fx-text-fill: -nd-accent;
+    -fx-background-radius: 999; -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 13px;
+}
+.step-warning, .step-error { -fx-background-radius: 0 0 10 10; -fx-padding: 10 14; -fx-font-size: 13px; }
+.step-warning { -fx-background-color: -nd-warning-soft; }
+.step-warning .label { -fx-text-fill: -nd-warning; }
+.step-error { -fx-background-color: -nd-danger-soft; }
+.step-error .label { -fx-text-fill: -nd-danger; }
+.add-step {
+    -fx-background-color: transparent;
+    -fx-border-color: -nd-border-strong;
+    -fx-border-style: segments(6, 4);
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 12;
+    -fx-text-fill: -nd-accent;
+    -fx-font-size: 14px;
+}
+.add-step:hover { -fx-background-color: -nd-accent-softer; }
+.builder-aside { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 0 0 0 1; }
+.palette-item { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 10; -fx-font-size: 14px; -fx-text-fill: -nd-text; }
+.palette-item:hover { -fx-background-color: -nd-accent-softer; }
+.screen-header .name-field { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 15px; -fx-pref-height: 38; }
+.status-error { -fx-text-fill: -nd-danger; }
