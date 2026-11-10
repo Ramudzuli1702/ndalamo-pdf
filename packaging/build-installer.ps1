@@ -95,11 +95,21 @@ $msi = Get-ChildItem $out -Filter 'Ndalamo-*.msi' | Select-Object -First 1
 $wix = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
 $bundle = Join-Path $root 'packaging\bundle'
 $obj = Join-Path $out 'bundle.wixobj'
-& (Join-Path $wix 'candle.exe') -nologo -ext WixBalExtension "-dVersion=$version" "-dIcon=$root\packaging\ndalamo.ico" "-dTerms=$root\packaging\terms.txt" `
+# The bundled LibreOffice's version, read from its .msi: a PC with this or a newer one skips it.
+$installer = New-Object -ComObject WindowsInstaller.Installer
+$loDb = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @($LibreOfficeMsi, 0))
+$loView = $loDb.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $loDb, @("SELECT Value FROM Property WHERE Property='ProductVersion'"))
+$loView.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $loView, $null) | Out-Null
+$loRow = $loView.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $loView, $null)
+$loVersion = $loRow.GetType().InvokeMember('StringData', 'GetProperty', $null, $loRow, @([int]1))
+$loView.GetType().InvokeMember('Close', 'InvokeMethod', $null, $loView, $null) | Out-Null
+[System.Runtime.InteropServices.Marshal]::ReleaseComObject($loDb) | Out-Null
+Write-Host "LibreOffice in the full setup: $loVersion"
+& (Join-Path $wix 'candle.exe') -nologo -ext WixBalExtension -ext WixUtilExtension "-dVersion=$version" "-dLibreOfficeVersion=$loVersion" "-dIcon=$root\packaging\ndalamo.ico" "-dTerms=$root\packaging\terms.txt" `
     "-dNdalamoMsi=$($msi.FullName)" "-dLibreOfficeMsi=$LibreOfficeMsi" -out $obj (Join-Path $bundle 'Bundle.wxs')
 if ($LASTEXITCODE -ne 0) { throw 'candle (setup bundle) failed' }
 $setup = Join-Path $out "Ndalamo-$version-with-LibreOffice.exe"
 # -b: where Theme.xml, Theme.wxl and logo.png are found.
-& (Join-Path $wix 'light.exe') -nologo -ext WixBalExtension -b $bundle -out $setup $obj
+& (Join-Path $wix 'light.exe') -nologo -ext WixBalExtension -ext WixUtilExtension -b $bundle -out $setup $obj
 if ($LASTEXITCODE -ne 0) { throw 'light (setup bundle) failed' }
 Write-Host ("Full setup: {0} ({1:N0} MB)" -f $setup, ((Get-Item $setup).Length / 1MB))

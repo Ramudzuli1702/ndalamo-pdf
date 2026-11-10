@@ -7,8 +7,9 @@
   <String Id="Title">[WixBundleName]</String>
   <String Id="InstallHeader">Welcome</String>
   <String Id="InstallMessage">Setup will install [WixBundleName], the free offline PDF toolkit, on this PC.</String>
+  <String Id="InstallWordAddInCheckbox">Add &amp;Delete Page to Microsoft Word (if Word is on this PC)</String>
   <String Id="InstallLibreOfficeCheckbox">Also install &amp;LibreOffice (needed for Word, Excel and PowerPoint to PDF)</String>
-  <String Id="InstallLibreOfficeNote">LibreOffice is a separate free program. You can remove it later from Windows' Apps list.</String>
+  <String Id="InstallLibreOfficeNote">A separate free program, skipped if this PC already has a current one. It can be removed later from Windows' Apps list.</String>
   <String Id="InstallVersion">Version [WixBundleVersion]</String>
   <String Id="ConfirmCancelMessage">Are you sure you want to cancel?</String>
   <String Id="ExecuteUpgradeRelatedBundleMessage">Previous version</String>

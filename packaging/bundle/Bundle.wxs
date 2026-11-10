@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The full Ndalamo setup (decision 009): installs Ndalamo, and LibreOffice too when the
-  "Also install LibreOffice" box is ticked (it is by default). Built by build-installer.ps1
+  The full Ndalamo setup (decision 009): installs Ndalamo, the Word add-in and LibreOffice in one
+  go. The add-in and LibreOffice each have a box on the first page, ticked by default. Built by build-installer.ps1
   only when a LibreOffice .msi is in packaging\libreoffice. Both installs share one admin prompt.
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
-     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
   <Bundle Name="Ndalamo"
           Version="$(var.Version)"
           Manufacturer="Ndalamo"
@@ -19,11 +20,22 @@
       <Payload SourceFile="$(var.Terms)" Name="terms.txt" />
     </BootstrapperApplicationRef>
 
-    <!-- Set by the checkbox of the same name on the first page. -->
+    <!-- Set by the checkboxes of the same names on the first page. -->
     <Variable Name="InstallLibreOffice" Type="numeric" Value="1" />
+    <Variable Name="InstallWordAddIn" Type="numeric" Value="1" />
+
+    <!--
+      The LibreOffice already on the PC, if any, found by LibreOffice's own upgrade code (the same
+      for every version). The bundled one is installed when there's none, and replaces an older
+      one; a PC with the same or a newer LibreOffice keeps it and this step is skipped.
+    -->
+    <util:ProductSearch Variable="InstalledLibreOffice" UpgradeCode="{4B17E523-5D91-4E69-BD96-7FD81CFA81BB}" Result="version" />
 
     <Chain>
-      <MsiPackage Id="Ndalamo" SourceFile="$(var.NdalamoMsi)" DisplayInternalUI="no" Vital="yes" />
+      <MsiPackage Id="Ndalamo" SourceFile="$(var.NdalamoMsi)" DisplayInternalUI="no" Vital="yes">
+        <!-- The Word add-in (main.wxs): added by the installed app once its files are in place. -->
+        <MsiProperty Name="WORDADDIN" Value="[InstallWordAddIn]" />
+      </MsiPackage>
 
       <!--
         LibreOffice's official, unchanged installer, run silently. Permanent: removing Ndalamo
@@ -31,7 +43,7 @@
         Its own options: don't take over Office file types, no update checks (Ndalamo's offline
         promise), no desktop icon, no tray quick-starter, never restart Windows by itself.
       -->
-      <MsiPackage Id="LibreOffice" SourceFile="$(var.LibreOfficeMsi)" InstallCondition="InstallLibreOffice = 1"
+      <MsiPackage Id="LibreOffice" SourceFile="$(var.LibreOfficeMsi)" InstallCondition="InstallLibreOffice = 1 AND (NOT InstalledLibreOffice OR InstalledLibreOffice &lt; v$(var.LibreOfficeVersion))"
                   Vital="no" Permanent="yes" DisplayInternalUI="no">
         <MsiProperty Name="REGISTER_ALL_MSO_TYPES" Value="0" />
         <MsiProperty Name="REGISTER_NO_MSO_TYPES" Value="1" />

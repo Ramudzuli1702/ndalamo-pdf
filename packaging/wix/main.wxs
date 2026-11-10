@@ -83,6 +83,19 @@
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WixShellExecTarget" Value="[INSTALLDIR]Ndalamo.exe" />
     <CustomAction Id="NdalamoOpenAfterInstall" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+
+    <!--
+      Ndalamo: "Delete Page" for Microsoft Word, installed with Ndalamo. The installed app does the
+      work (the same code as Settings › Word add-in): it copies the add-in for this Windows user and
+      registers it, or does nothing if Word isn't on the PC. WORDADDIN is 1 unless the full setup's
+      "Add Delete Page to Microsoft Word" box was unticked. Uninstalling removes it again (but not
+      when a newer Ndalamo is replacing this one: that adds it straight back).
+    -->
+    <Property Id="WORDADDIN" Value="1" Secure="yes" />
+    <CustomAction Id="NdalamoAddWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]Ndalamo.exe&quot; --install-word-addin"
+                  Execute="deferred" Impersonate="yes" Return="ignore" />
+    <CustomAction Id="NdalamoRemoveWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]Ndalamo.exe&quot; --remove-word-addin"
+                  Execute="deferred" Impersonate="yes" Return="ignore" />
     <UI>
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="NdalamoOpenAfterInstall">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
     </UI>
@@ -142,6 +155,9 @@
       <?endif?>
       <RemoveExistingProducts Before="CostInitialize"/>
       <Custom Action="JpFindRelatedProducts" After="FindRelatedProducts"/>
+      <!-- Ndalamo: the Word add-in, added once the files are in place and taken out before they go. -->
+      <Custom Action="NdalamoAddWordAddIn" After="InstallFiles">NOT REMOVE AND WORDADDIN = "1"</Custom>
+      <Custom Action="NdalamoRemoveWordAddIn" Before="RemoveFiles">REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
     </InstallExecuteSequence>
 
     <InstallUISequence>

@@ -7,8 +7,9 @@ Add `-SkipTests` if the tests have just run. Results go to `target\installer\`:
 - `Ndalamo-<version>.exe`: Ndalamo only (about 115 MB). Carries its own Java runtime, so
   people don't need Java. Office to PDF explains how to add LibreOffice if it's missing.
 - `Ndalamo-<version>-with-LibreOffice.exe`: the full setup (decision 009), made only when a
-  LibreOffice installer is present (below). Its first page has "Also install LibreOffice",
-  ticked by default.
+  LibreOffice installer is present (below). One Install puts on Ndalamo, the Word add-in and
+  LibreOffice; its first page has a ticked box for each of the last two. LibreOffice installs
+  for every user of the PC, so this setup asks for administrator permission once.
 
 Needs JDK 22 (for `jpackage`; set `JPACKAGE_JDK` if it isn't in `C:\Program Files\Java\jdk-22`),
 Maven, WiX Toolset 3.14, and the .NET SDK (for the Word add-in).
@@ -27,7 +28,10 @@ in Windows' Apps list. Ship a current LibreOffice with each Ndalamo release for 
 ## What installing looks like
 
 Welcome (with the terms of use to accept, from `terms.txt`), then Install, then Finish with
-"Open Ndalamo now" ticked. Ndalamo installs for the current Windows user (no administrator
+"Open Ndalamo now" ticked. Both setups also add "Delete Page" to Microsoft Word when Word is on
+the PC: the installer runs the installed `Ndalamo.exe --install-word-addin` (the same code as
+Settings › Word add-in), and uninstalling runs `--remove-word-addin`. The full setup's
+"Add Delete Page to Microsoft Word" box turns this off (MSI property `WORDADDIN=0`). Ndalamo installs for the current Windows user (no administrator
 prompt) and adds Start-menu and desktop shortcuts. The first time it opens, a short tour shows
 Home and every tool. The installer's pictures (`wix\ndalamo-banner.bmp`, `wix\ndalamo-dialog.bmp`)
 are drawn from the logo.
