@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <?ifdef JpIsSystemWide ?>
+    <?define JpInstallScope="perMachine"?>
+  <?else?>
+    <?define JpInstallScope="perUser"?>
+  <?endif?>
+
+  <?define JpProductLanguage=1033 ?>
+  <?define JpInstallerVersion=200 ?>
+  <?define JpCompressedMsi=yes ?>
+
+  <?include $(var.JpConfigDir)/overrides.wxi ?>
+
+  <?ifdef JpAllowUpgrades ?>
+    <?define JpUpgradeVersionOnlyDetectUpgrade="no"?>
+  <?else?>
+    <?define JpUpgradeVersionOnlyDetectUpgrade="yes"?>
+  <?endif?>
+  <?ifdef JpAllowDowngrades ?>
+    <?define JpUpgradeVersionOnlyDetectDowngrade="no"?>
+  <?else?>
+    <?define JpUpgradeVersionOnlyDetectDowngrade="yes"?>
+  <?endif?>
+
+  <Product
+    Id="$(var.JpProductCode)"
+    Name="$(var.JpAppName)"
+    Language="$(var.JpProductLanguage)"
+    Version="$(var.JpAppVersion)"
+    Manufacturer="$(var.JpAppVendor)"
+    UpgradeCode="$(var.JpProductUpgradeCode)">
+
+    <Package
+      Description="$(var.JpAppDescription)"
+      Manufacturer="$(var.JpAppVendor)"
+      InstallerVersion="$(var.JpInstallerVersion)"
+      Compressed="$(var.JpCompressedMsi)"
+      InstallScope="$(var.JpInstallScope)" Platform="x64"
+    />
+
+    <Media Id="1" Cabinet="Data.cab" EmbedCab="yes" />
+
+    <Upgrade Id="$(var.JpProductUpgradeCode)">
+      <UpgradeVersion
+        OnlyDetect="$(var.JpUpgradeVersionOnlyDetectUpgrade)"
+        Property="JP_UPGRADABLE_FOUND"
+        Maximum="$(var.JpAppVersion)"
+        MigrateFeatures="yes"
+        IncludeMaximum="$(var.JpUpgradeVersionOnlyDetectUpgrade)" />
+      <UpgradeVersion
+        OnlyDetect="$(var.JpUpgradeVersionOnlyDetectDowngrade)"
+        Property="JP_DOWNGRADABLE_FOUND"
+        Minimum="$(var.JpAppVersion)"
+        MigrateFeatures="yes"
+        IncludeMinimum="$(var.JpUpgradeVersionOnlyDetectDowngrade)" />
+    </Upgrade>
+
+    <?ifndef JpAllowUpgrades ?>
+    <CustomAction Id="JpDisallowUpgrade" Error="!(loc.DisallowUpgradeErrorMessage)" />
+    <?endif?>
+    <?ifndef JpAllowDowngrades ?>
+    <CustomAction Id="JpDisallowDowngrade" Error="!(loc.DowngradeErrorMessage)" />
+    <?endif?>
+
+    <Binary Id="JpCaDll" SourceFile="wixhelper.dll"/>
+
+    <CustomAction Id="JpFindRelatedProducts" BinaryKey="JpCaDll" DllEntry="FindRelatedProductsEx" />
+
+    <!-- Standard required root -->
+    <Directory Id="TARGETDIR" Name="SourceDir"/>
+
+    <Feature Id="DefaultFeature" Title="!(loc.MainFeatureTitle)" Level="1">
+      <ComponentGroupRef Id="Shortcuts"/>
+      <ComponentGroupRef Id="Files"/>
+      <ComponentGroupRef Id="FileAssociations"/>
+      <!-- Ndalamo: "Open with" entries (see the fragment at the end of this file). -->
+      <ComponentGroupRef Id="NdalamoOpenWith"/>
+    </Feature>
+
+    <CustomAction Id="JpSetARPINSTALLLOCATION" Property="ARPINSTALLLOCATION" Value="[INSTALLDIR]" />
+    <CustomAction Id="JpSetARPCOMMENTS" Property="ARPCOMMENTS" Value="$(var.JpAppDescription)" />
+    <CustomAction Id="JpSetARPCONTACT" Property="ARPCONTACT" Value="$(var.JpAppVendor)" />
+    <CustomAction Id="JpSetARPSIZE" Property="ARPSIZE" Value="$(var.JpAppSizeKb)" />
+
+    <?ifdef JpHelpURL ?>
+      <CustomAction Id="JpSetARPHELPLINK" Property="ARPHELPLINK" Value="$(var.JpHelpURL)" />
+    <?endif?>
+
+    <?ifdef JpAboutURL ?>
+      <CustomAction Id="JpSetARPURLINFOABOUT" Property="ARPURLINFOABOUT" Value="$(var.JpAboutURL)" />
+    <?endif?>
+
+    <?ifdef JpUpdateURL ?>
+      <CustomAction Id="JpSetARPURLUPDATEINFO" Property="ARPURLUPDATEINFO" Value="$(var.JpUpdateURL)" />
+    <?endif?>
+
+    <?ifdef JpIcon ?>
+    <Property Id="ARPPRODUCTICON" Value="JpARPPRODUCTICON"/>
+    <Icon Id="JpARPPRODUCTICON" SourceFile="$(var.JpIcon)"/>
+    <?endif?>
+
+    <UIRef Id="JpUI"/>
+
+    <InstallExecuteSequence>
+      <Custom Action="JpSetARPINSTALLLOCATION" After="CostFinalize">Not Installed</Custom>
+      <Custom Action="JpSetARPCOMMENTS" After="CostFinalize">Not Installed</Custom>
+      <Custom Action="JpSetARPCONTACT" After="CostFinalize">Not Installed</Custom>
+      <Custom Action="JpSetARPSIZE" After="CostFinalize">Not Installed</Custom>
+      <?ifdef JpHelpURL ?>
+        <Custom Action="JpSetARPHELPLINK" After="CostFinalize">Not Installed</Custom>
+      <?endif?>
+      <?ifdef JpAboutURL ?>
+        <Custom Action="JpSetARPURLINFOABOUT" After="CostFinalize">Not Installed</Custom>
+      <?endif?>
+      <?ifdef JpUpdateURL ?>
+        <Custom Action="JpSetARPURLUPDATEINFO" After="CostFinalize">Not Installed</Custom>
+      <?endif?>
+
+      <?ifndef JpAllowUpgrades ?>
+      <Custom Action="JpDisallowUpgrade" After="JpFindRelatedProducts">JP_UPGRADABLE_FOUND</Custom>
+      <?endif?>
+      <?ifndef JpAllowDowngrades ?>
+      <Custom Action="JpDisallowDowngrade" After="JpFindRelatedProducts">JP_DOWNGRADABLE_FOUND</Custom>
+      <?endif?>
+      <RemoveExistingProducts Before="CostInitialize"/>
+      <Custom Action="JpFindRelatedProducts" After="FindRelatedProducts"/>
+    </InstallExecuteSequence>
+
+    <InstallUISequence>
+      <Custom Action="JpFindRelatedProducts" After="FindRelatedProducts"/>
+    </InstallUISequence>
+
+  </Product>
+
+  <!--
+    Ndalamo (SPEC chunk 20): adds Ndalamo to Explorer's "Open with" menu for the files it works
+    with, without becoming the default program for any of them. "OpenWithProgids" only adds
+    to the list; the default stays whatever the person chose. Opening a file this way shows the
+    "What do you want to do?" suggestions. Removed again when Ndalamo is uninstalled.
+  -->
+  <Fragment>
+    <ComponentGroup Id="NdalamoOpenWith">
+      <Component Id="NdalamoOpenWithEntries" Directory="INSTALLDIR" Guid="7d2e4c1a-5b8f-4e3a-9c6d-2f1b0a8e4d55">
+        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File" Type="string" Value="File for Ndalamo" KeyPath="yes"/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File\DefaultIcon" Type="string" Value="[INSTALLDIR]Ndalamo.exe,0"/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Ndalamo.exe" Name="FriendlyAppName" Type="string" Value="Ndalamo"/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Ndalamo.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.pdf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.doc\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.docx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.odt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.rtf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.xls\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.xlsx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.ods\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.csv\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.ppt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.pptx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.odp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.jpg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.jpeg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.png\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.bmp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.gif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.tif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.tiff\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKLM" Key="Software\Classes\.md\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

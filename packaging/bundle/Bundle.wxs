@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The full Ndalamo setup (decision 009): installs Ndalamo, and LibreOffice too when the
+  "Also install LibreOffice" box is ticked (it is by default). Built by build-installer.ps1
+  only when a LibreOffice .msi is in packaging\libreoffice. Both installs share one admin prompt.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
+  <Bundle Name="Ndalamo"
+          Version="$(var.Version)"
+          Manufacturer="Ndalamo"
+          IconSourceFile="$(var.Icon)"
+          DisableModify="yes"
+          UpgradeCode="9e4b2c7d-1f3a-4b6e-8d5c-7a2f0e9b3c41">
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
+      <bal:WixStandardBootstrapperApplication LicenseUrl="" ThemeFile="Theme.xml" LocalizationFile="Theme.wxl"
+                                              LogoFile="logo.png" SuppressOptionsUI="yes" />
+    </BootstrapperApplicationRef>
+
+    <!-- Set by the checkbox of the same name on the first page. -->
+    <Variable Name="InstallLibreOffice" Type="numeric" Value="1" />
+
+    <Chain>
+      <MsiPackage Id="Ndalamo" SourceFile="$(var.NdalamoMsi)" DisplayInternalUI="no" Vital="yes" />
+
+      <!--
+        LibreOffice's official, unchanged installer, run silently. Permanent: removing Ndalamo
+        leaves it (people may use it on its own); it's removed separately in Windows' Apps list.
+        Its own options: don't take over Office file types, no update checks (Ndalamo's offline
+        promise), no desktop icon, no tray quick-starter, never restart Windows by itself.
+      -->
+      <MsiPackage Id="LibreOffice" SourceFile="$(var.LibreOfficeMsi)" InstallCondition="InstallLibreOffice = 1"
+                  Vital="no" Permanent="yes" DisplayInternalUI="no">
+        <MsiProperty Name="REGISTER_ALL_MSO_TYPES" Value="0" />
+        <MsiProperty Name="REGISTER_NO_MSO_TYPES" Value="1" />
+        <MsiProperty Name="ISCHECKFORPRODUCTUPDATES" Value="0" />
+        <MsiProperty Name="CREATEDESKTOPLINK" Value="0" />
+        <MsiProperty Name="QUICKSTART" Value="0" />
+        <MsiProperty Name="REBOOTYESNO" Value="No" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>

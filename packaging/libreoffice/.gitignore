@@ -1,0 +1,2 @@
+# LibreOffice's installer is large (~370 MB) and comes from LibreOffice, so it's never committed.
+*.msi

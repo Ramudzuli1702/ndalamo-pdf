@@ -121,9 +121,10 @@ public class SuggestScreen extends BorderPane {
                 Node card = option(s, false);
                 others.getChildren().add(card);
             }
-            // Two cards to a row, filling the width (like the mockup's grid).
+            // Two cards to a row, filling the width (like the mockup's grid). Rounded down with a pixel
+            // to spare: with Windows display scaling, two exact halves can come out a hair too wide and wrap.
             others.widthProperty().addListener((obs, was, now) -> others.getChildren().forEach(n ->
-                    ((VBox) n).setPrefWidth((now.doubleValue() - 10) / 2)));
+                    ((VBox) n).setPrefWidth(Math.floor((now.doubleValue() - 10) / 2) - 1)));
             Node pipelineCard = pipelineOption();
             if (pipelineCard != null) {
                 // Four other suggestions at most (two rows), like the mockup: the pipeline takes the last place.
@@ -229,6 +230,7 @@ public class SuggestScreen extends BorderPane {
     private Node pipelineOption() {
         List<Pipeline> fitting = pipelines.stream()
                 .filter(PipelineValidator::canRun)
+                .filter(p -> new PipelineTool(p).minFiles() <= files.size())     // Merge-first pipelines need two files
                 .filter(p -> files.stream().anyMatch(f -> new PipelineTool(p).fileTypes().contains(FileInspector.extension(f))))
                 .toList();
         if (fitting.isEmpty()) return null;

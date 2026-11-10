@@ -9,6 +9,7 @@ import com.ndalamo.screens.PipelinesScreen;
 import com.ndalamo.screens.Toast;
 import com.ndalamo.models.Pipeline;
 import com.ndalamo.services.PipelineService;
+import com.ndalamo.services.SingleInstance;
 import com.ndalamo.services.WatchFolderService;
 import com.ndalamo.screens.WatchFoldersScreen;
 import com.ndalamo.screens.Tray;
@@ -75,6 +76,7 @@ public class NdalamoApp extends Application {
     private JobService jobService;
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
     private final PipelineService pipelineService = new PipelineService();
+    private static SingleInstance instance;  // null when started another way (tests, mvn javafx:run without it)
     private Tray tray;                      // null when Windows has no notification area for us
     private boolean toldAboutTray;
     // Read by the watch-folder threads too, so a list that's safe to read while it changes.
@@ -183,6 +185,17 @@ public class NdalamoApp extends Application {
             });
         }
         stage.show();
+        openFromOutside(getParameters().getRaw().stream().map(Path::of).toList());
+        if (instance != null) {
+            try {
+                instance.listen(files -> Platform.runLater(() -> {
+                    showWindow();
+                    openFromOutside(files);
+                }));
+            } catch (IOException e) {
+                log.warn("Files opened while Ndalamo runs will start a second window", e);
+            }
+        }
     }
 
     // ── Quitting, and the tray ───────────────────────────────────────────
@@ -267,6 +280,7 @@ public class NdalamoApp extends Application {
     public void stop() {
         watchFolders.stop(java.time.Duration.ofSeconds(10));
         if (jobService != null) jobService.shutdown();
+        if (instance != null) instance.release();
         log.info("Ndalamo closed");
     }
 
@@ -475,9 +489,26 @@ public class NdalamoApp extends Application {
     }
 
     public static void main(String[] args) {
+        // One copy at a time: a second one (say, "Open with" on a PDF) hands its files to the running one.
+        SingleInstance only = new SingleInstance(SettingsService.appDataFolder());
+        if (!only.claim()) {
+            try {
+                only.handOver(List.of(args));
+            } catch (IOException e) {
+                log.warn("Could not pass files to the running Ndalamo", e);
+            }
+            return;
+        }
+        instance = only;
         // Apache POI (PDF to Excel) logs through Log4j, which isn't set up in this app. Without this
         // it writes "could not find a logging provider" as an error; Log4j's own simple logger is enough.
         System.setProperty("log4j2.loggerContextFactory", "org.apache.logging.log4j.simple.SimpleLoggerContextFactory");
         launch(args);
+    }
+
+    /** Files given when starting (Explorer's "Open with Ndalamo"), or by a second copy later. */
+    private void openFromOutside(List<Path> files) {
+        List<File> existing = files.stream().filter(java.nio.file.Files::isRegularFile).map(Path::toFile).toList();
+        if (!existing.isEmpty()) filesChosen(existing);
     }
 }
