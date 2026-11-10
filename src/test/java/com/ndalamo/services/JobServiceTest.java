@@ -65,6 +65,28 @@ class JobServiceTest {
     }
 
     @Test
+    void runningJobsCanBeListedCancelledAndWaitedFor() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        start(fakeTool(p -> {
+            p.update(0.4, "Compressing images");
+            started.countDown();
+            while (!p.isCancelled()) Thread.sleep(5);
+            return List.of();
+        }));
+        assertTrue(started.await(10, TimeUnit.SECONDS));
+        assertTrue(jobs.isBusy());
+        JobService.Running running = jobs.running().get(0);
+        assertEquals("Fake tool", running.tool());
+        assertEquals(0.4, running.fraction(), 0.001);
+        assertEquals("Compressing images", running.status());
+
+        jobs.cancelAll();
+        assertTrue(jobs.awaitIdle(10_000), "the job stopped after Cancel");
+        assertFalse(jobs.isBusy());
+        assertTrue(jobs.running().isEmpty());
+    }
+
+    @Test
     void cancelStopsARunningTool() throws Exception {
         CountDownLatch started = new CountDownLatch(1);
         AtomicInteger pagesDone = new AtomicInteger();

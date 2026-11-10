@@ -11,6 +11,10 @@ import com.ndalamo.models.Pipeline;
 import com.ndalamo.services.PipelineService;
 import com.ndalamo.services.WatchFolderService;
 import com.ndalamo.screens.WatchFoldersScreen;
+import com.ndalamo.screens.Tray;
+import com.ndalamo.screens.ChoiceDialog;
+import com.ndalamo.utils.Format;
+import javafx.scene.image.Image;
 import com.ndalamo.services.PipelineTool;
 import com.ndalamo.screens.SuggestScreen;
 import com.ndalamo.screens.LibreOfficeDialog;
@@ -71,6 +75,8 @@ public class NdalamoApp extends Application {
     private JobService jobService;
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
     private final PipelineService pipelineService = new PipelineService();
+    private Tray tray;                      // null when Windows has no notification area for us
+    private boolean toldAboutTray;
     // Read by the watch-folder threads too, so a list that's safe to read while it changes.
     private final List<Pipeline> pipelines = new CopyOnWriteArrayList<>();
     private final WatchFolderService watchFolders =
@@ -85,9 +91,19 @@ public class NdalamoApp extends Application {
         settings = settingsService.load();
         pipelines.addAll(pipelineService.load());
         watchFolders.load();
-        watchFolders.setListener(entry -> Platform.runLater(() -> {
-            if (window.current() instanceof WatchFoldersScreen screen) screen.refresh();
-        }));
+        watchFolders.setListener(new WatchFolderService.Listener() {
+            @Override
+            public void activity(com.ndalamo.models.Activity entry) {
+                Platform.runLater(() -> {
+                    if (window.current() instanceof WatchFoldersScreen screen) screen.refresh();
+                });
+            }
+
+            @Override
+            public void burstFinished(int done, int failed) {
+                Platform.runLater(() -> notifyWatchResults(done, failed));
+            }
+        });
         watchFolders.start();
         LibreOffice.setChosenLocation(settings.getLibreOfficePath());
         jobService = new JobService(settings.workerThreads());
@@ -150,7 +166,101 @@ public class NdalamoApp extends Application {
         Platform.getPreferences().colorSchemeProperty().addListener((obs, old, now) -> {
             if (settings.getAppearance() == Settings.Appearance.FOLLOW_SYSTEM) applyAppearance(settings.getAppearance());
         });
+        // Closing the window goes through the quit checks; with a tray icon, the app can keep watching folders.
+        stage.setOnCloseRequest(e -> {
+            e.consume();
+            requestQuit();
+        });
+        if (Tray.supported()) {
+            Platform.setImplicitExit(false);
+            Image[] icons = LogoMark.windowIcons();
+            tray = new Tray(icons[2], this::showWindow, () -> {
+                showWindow();
+                showWatchFolders();
+            }, () -> {
+                showWindow();
+                requestQuit();
+            });
+        }
         stage.show();
+    }
+
+    // ── Quitting, and the tray ───────────────────────────────────────────
+
+    /**
+     * Closing the window or Quit (SPEC §6.3): unsaved workspace edits are asked about first; a task
+     * still running gets "Cancel task and quit · Minimise to tray"; watch folders keep running in the
+     * tray; otherwise the app quits.
+     */
+    private void requestQuit() {
+        Runnable afterWorkspace = () -> {
+            if (jobService.isBusy() || watchFolders.isBusy()) askAboutRunningTasks();
+            else if (tray != null && watchFolders.folders().stream().anyMatch(com.ndalamo.models.WatchFolder::isEnabled)) hideToTray();
+            else quitNow();
+        };
+        if (workspace != null) workspace.leave(afterWorkspace);
+        else afterWorkspace.run();
+    }
+
+    private void askAboutRunningTasks() {
+        List<String> lines = new java.util.ArrayList<>();
+        for (JobService.Running job : jobService.running()) {
+            lines.add(job.tool() + " \u00b7 " + Math.round(job.fraction() * 100) + "% \u00b7 " + job.status());
+        }
+        int waiting = watchFolders.waitingOrWorking();
+        if (waiting > 0) lines.add(Format.count(waiting, "file", "files") + " in watch folders, waiting or being done");
+        String message = String.join("\n", lines) + "\n\nQuitting now stops "
+                         + (lines.size() == 1 ? "it" : "them") + ". Nothing half-finished is saved, and your original files are not changed.";
+        ChoiceDialog dialog = new ChoiceDialog(window, "A task is still running", message, null);
+        dialog.button("Keep working", ChoiceDialog.Style.PLAIN, x -> {});
+        if (tray != null) dialog.button("Minimise to tray", ChoiceDialog.Style.PLAIN, x -> hideToTray());
+        dialog.button("Cancel task and quit", ChoiceDialog.Style.DANGER, x -> cancelAndQuit());
+        dialog.width(600).show();
+    }
+
+    private void cancelAndQuit() {
+        jobService.cancelAll();
+        window.toast(Toast.info("Stopping\u2026", "Ndalamo closes as soon as the task has stopped."));
+        Thread waiter = new Thread(() -> {
+            try {
+                jobService.awaitIdle(15_000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            Platform.runLater(this::quitNow);
+        }, "ndalamo-quit");
+        waiter.setDaemon(true);
+        waiter.start();
+    }
+
+    private void quitNow() {
+        if (tray != null) tray.remove();
+        Platform.exit();
+    }
+
+    private void hideToTray() {
+        stage.hide();
+        if (!toldAboutTray) {
+            toldAboutTray = true;
+            long watching = watchFolders.folders().stream().filter(com.ndalamo.models.WatchFolder::isEnabled).count();
+            tray.notify("Ndalamo is still running", (watching > 0 ? "Watching " + Format.count((int) watching, "folder", "folders") + ". " : "")
+                    + "Right-click the icon to open Ndalamo or quit.");
+        }
+    }
+
+    private void showWindow() {
+        stage.show();
+        stage.setIconified(false);
+        stage.toFront();
+    }
+
+    /** After a burst of watch-folder files: a Windows notification, but only if the window isn't in front. */
+    private void notifyWatchResults(int done, int failed) {
+        if (tray == null || (stage.isShowing() && stage.isFocused() && !stage.isIconified())) return;
+        List<String> parts = new java.util.ArrayList<>();
+        if (done > 0) parts.add(Format.count(done, "file", "files") + " processed");
+        if (failed > 0) parts.add(failed + " failed");
+        tray.notify("Watch folder", String.join(" \u00b7 ", parts) + (failed > 0 ? ". Click to see why." : ""));
     }
 
     @Override

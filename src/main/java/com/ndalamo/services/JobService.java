@@ -31,6 +31,11 @@ public class JobService {
     private final ExecutorService workers;
     private final Executor uiThread;
 
+    /** A job that's running or waiting: its tool's name and its latest progress (for the quit dialog). */
+    public record Running(String tool, double fraction, String status) {}
+
+    private final Map<Progress, Running> running = new java.util.concurrent.ConcurrentHashMap<>();
+
     /** @param threads how many jobs may run at once — from Settings.workerThreads() */
     public JobService(int threads) {
         this(threads, Platform::runLater);
@@ -59,9 +64,11 @@ public class JobService {
                           Progress.Listener onProgress,
                           Consumer<List<FileResult>> onDone,
                           Consumer<Throwable> onError) {
+        Progress[] self = new Progress[1];
         Progress progress = new Progress(new Progress.Listener() {
             @Override
             public void overall(double fraction, String status) {
+                if (self[0] != null) running.computeIfPresent(self[0], (k, v) -> new Running(v.tool(), fraction, status));
                 uiThread.execute(() -> onProgress.overall(fraction, status));
             }
 
@@ -71,7 +78,21 @@ public class JobService {
             }
         });
 
+        self[0] = progress;
+        running.put(progress, new Running(tool.name(), 0, "Waiting to start"));
         workers.execute(() -> {
+            try {
+                runJob(tool, inputs, options, saveTo, progress, onDone, onError);
+            } finally {
+                running.remove(progress);
+            }
+        });
+        return progress;
+    }
+
+    private void runJob(PdfTool tool, List<Path> inputs, Map<String, Object> options, SaveTo saveTo, Progress progress,
+                        Consumer<List<FileResult>> onDone, Consumer<Throwable> onError) {
+        {
             if (progress.isCancelled()) {          // cancelled while still waiting in the queue
                 uiThread.execute(() -> onDone.accept(List.of()));
                 return;
@@ -91,8 +112,28 @@ public class JobService {
                 log.error("{} failed", tool.id(), e);
                 uiThread.execute(() -> onError.accept(e));
             }
-        });
-        return progress;
+        }
+    }
+
+    /** The jobs running or waiting now. */
+    public List<Running> running() {
+        return List.copyOf(running.values());
+    }
+
+    public boolean isBusy() {
+        return !running.isEmpty();
+    }
+
+    /** Asks every job to stop (each finishes its current page and leaves nothing half-written). */
+    public void cancelAll() {
+        running.keySet().forEach(Progress::cancel);
+    }
+
+    /** Waits until no job is running, up to {@code millis}. True if they all finished. */
+    public boolean awaitIdle(long millis) throws InterruptedException {
+        long end = System.currentTimeMillis() + millis;
+        while (isBusy() && System.currentTimeMillis() < end) Thread.sleep(50);
+        return !isBusy();
     }
 
     /** Stops taking new jobs. Called when the app closes. */
