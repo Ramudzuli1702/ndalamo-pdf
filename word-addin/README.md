@@ -17,6 +17,13 @@ From the Ndalamo app: Settings → Word add-in → Install add-in. While develop
 picks up the build output above; a packaged app ships the DLL in `word-addin/` next to its
 files. Restart Word afterwards.
 
+## Guide in the app
+
+Settings → Word add-in → "How to use it in Word" (also offered after installing) walks through
+the ribbon group, Delete Page, Delete Pages and the right-click menu, with screenshots of Word
+in `src/main/resources/help/word`. Retake them if the buttons change: crop below Word's title
+bar (it shows the signed-in account) and ring the part each step is about in brand blue.
+
 ## Files
 
 - `Connect.cs`: the COM entry point Word loads, the ribbon and its button callbacks.

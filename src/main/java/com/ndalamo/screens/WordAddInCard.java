@@ -2,8 +2,10 @@ package com.ndalamo.screens;
 
 import com.ndalamo.services.WordAddIn;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -36,7 +38,10 @@ public final class WordAddInCard extends VBox {
         Label note = new Label("In Word: Home tab › Ndalamo › Delete Page, or right-click a page. Ctrl+Z brings a deleted page back.");
         note.getStyleClass().add("small-muted");
         note.setWrapText(true);
-        getChildren().addAll(about, row, note);
+        Hyperlink guide = new Hyperlink("How to use it in Word (with pictures)");
+        guide.setOnAction(e -> WordAddInGuide.show(window));
+        guide.setPadding(Insets.EMPTY);
+        getChildren().addAll(about, row, note, guide);
         refresh();
     }
 
@@ -87,7 +92,8 @@ public final class WordAddInCard extends VBox {
                 if (install) WordAddIn.install();
                 else WordAddIn.remove();
                 Platform.runLater(() -> window.toast(install
-                        ? Toast.success("Word add-in installed", "Open (or restart) Word: Delete Page is on the Home tab.")
+                        ? Toast.success("Word add-in installed", "Open (or restart) Word: Delete Page is on the Home tab.",
+                                new Toast.Action("Show me how", () -> WordAddInGuide.show(window)))
                         : Toast.success("Word add-in removed", "Restart Word if it's open to finish removing it.")));
             } catch (IOException ex) {
                 String title = install ? "The add-in wasn't installed" : "The add-in wasn't removed";

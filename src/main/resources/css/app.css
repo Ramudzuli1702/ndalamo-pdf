@@ -734,3 +734,4 @@
 .tour-progress { -fx-pref-height: 4; -fx-accent: -nd-accent; }
 .tour-progress > .track { -fx-background-color: -nd-chip; -fx-background-radius: 2; -fx-background-insets: 0; }
 .tour-progress > .bar { -fx-background-radius: 2; -fx-background-insets: 0; -fx-padding: 2; }
+.word-guide-picture { -fx-background-color: -nd-chip; -fx-background-radius: 8; }
