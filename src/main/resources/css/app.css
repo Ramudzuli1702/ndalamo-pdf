@@ -698,3 +698,39 @@
 
 .badge-success { -fx-background-color: -nd-success-soft; -fx-text-fill: -nd-success; }
 .log-row { -fx-padding: 10 0; -fx-border-color: transparent transparent -nd-border transparent; -fx-font-size: 13px; }
+
+/* ── Recent files and tools (Home sidebar), History ─────────────────── */
+
+.recent-file { -fx-padding: 6 8; -fx-background-radius: 8; -fx-cursor: hand; }
+.recent-file:hover, .recent-file:focused { -fx-background-color: -nd-bg; }
+.recent-name { -fx-font-size: 13px; -fx-font-family: "IBM Plex Sans Medium"; -fx-text-fill: -nd-text; }
+.recent-detail { -fx-font-size: 12px; -fx-text-fill: -nd-text-muted; }
+.tool-chip {
+    -fx-background-color: -nd-surface;
+    -fx-border-color: -nd-border-strong;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-padding: 4 10;
+    -fx-font-size: 12px;
+    -fx-text-fill: -nd-text;
+    -fx-cursor: hand;
+}
+.tool-chip:hover { -fx-border-color: -nd-accent; }
+.sidebar-link { -fx-font-size: 13px; -fx-padding: 2 8; }
+.history-day { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 13px; -fx-text-fill: -nd-text-muted; -fx-padding: 8 0 0 0; }
+.history-row { -fx-padding: 12 16; -fx-border-color: transparent transparent -nd-border transparent; }
+
+/* ── Welcome tour ───────────────────────────────────────────────────── */
+
+.tour-ring { -fx-fill: transparent; -fx-stroke: -nd-accent; -fx-effect: dropshadow(gaussian, -nd-accent, 18, 0.35, 0, 0); }
+.tour-card {
+    -fx-background-color: -nd-surface;
+    -fx-background-radius: 14;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 28, 0.1, 0, 8);
+}
+.tour-counter { -fx-font-size: 12px; -fx-text-fill: -nd-accent; -fx-font-family: "IBM Plex Sans SmBld"; }
+.tour-title { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 18px; -fx-text-fill: -nd-text; }
+.tour-text { -fx-font-size: 14px; -fx-text-fill: -nd-text-soft; -fx-line-spacing: 2; }
+.tour-progress { -fx-pref-height: 4; -fx-accent: -nd-accent; }
+.tour-progress > .track { -fx-background-color: -nd-chip; -fx-background-radius: 2; -fx-background-insets: 0; }
+.tour-progress > .bar { -fx-background-radius: 2; -fx-background-insets: 0; -fx-padding: 2; }

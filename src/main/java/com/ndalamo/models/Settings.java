@@ -33,6 +33,7 @@ public class Settings {
     private boolean lowMemoryMode;
     private Appearance appearance = Appearance.LIGHT;
     private boolean rememberRecentFiles = true;
+    private boolean tourSeen;            // the welcome tour has been shown (or skipped) once
     private boolean askBeforeDeletingPages = true;
     private String libreOfficePath;
     private Map<String, String> toolDefaults = new HashMap<>();
@@ -61,6 +62,8 @@ public class Settings {
     public void setAppearance(Appearance appearance) { this.appearance = appearance; }
 
     public boolean isRememberRecentFiles() { return rememberRecentFiles; }
+    public boolean isTourSeen() { return tourSeen; }
+    public void setTourSeen(boolean tourSeen) { this.tourSeen = tourSeen; }
     public void setRememberRecentFiles(boolean rememberRecentFiles) { this.rememberRecentFiles = rememberRecentFiles; }
 
     /** Page workspace: show "Delete 2 pages?" before deleting, until the user ticks "Don't ask again". */

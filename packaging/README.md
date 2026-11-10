@@ -24,10 +24,20 @@ LibreOffice is installed silently with: no Office file types taken over, no upda
 desktop icon, no quick-starter. It stays installed if Ndalamo is removed, and has its own entry
 in Windows' Apps list. Ship a current LibreOffice with each Ndalamo release for its security fixes.
 
+## What installing looks like
+
+Welcome (with the terms of use to accept, from `terms.txt`), then Install, then Finish with
+"Open Ndalamo now" ticked. Ndalamo installs for the current Windows user (no administrator
+prompt) and adds Start-menu and desktop shortcuts. The first time it opens, a short tour shows
+Home and every tool. The installer's pictures (`wix\ndalamo-banner.bmp`, `wix\ndalamo-dialog.bmp`)
+are drawn from the logo.
+
 ## What's in here
 
 - `build-installer.ps1`: the build (Maven, the Word add-in, `jpackage`, and the setup bundle).
-- `ndalamo.ico`: the app icon at 16 to 256 px, drawn from the same shapes as `LogoMark`.
+- `ndalamo.ico`: the app icon at 16 to 256 px, drawn from the same shapes as `LogoMark` (the app's window
+  and tray use the same pictures, in `src/main/resources/brand/icons`).
+- `terms.txt`: the terms of use shown by both setups.
 - `wix\main.wxs`: `jpackage`'s own installer template plus one addition at the end: Ndalamo in
   Explorer's "Open with" menu for PDFs, Office files, pictures and Markdown. It uses
   `OpenWithProgids`, which adds to the list without changing anyone's default program.

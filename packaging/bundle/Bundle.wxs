@@ -13,8 +13,10 @@
           DisableModify="yes"
           UpgradeCode="9e4b2c7d-1f3a-4b6e-8d5c-7a2f0e9b3c41">
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
-      <bal:WixStandardBootstrapperApplication LicenseUrl="" ThemeFile="Theme.xml" LocalizationFile="Theme.wxl"
+      <!-- The terms of use, opened from the first page; "I agree" must be ticked before Install. -->
+      <bal:WixStandardBootstrapperApplication LicenseUrl="terms.txt" ThemeFile="Theme.xml" LocalizationFile="Theme.wxl"
                                               LogoFile="logo.png" SuppressOptionsUI="yes" />
+      <Payload SourceFile="$(var.Terms)" Name="terms.txt" />
     </BootstrapperApplicationRef>
 
     <!-- Set by the checkbox of the same name on the first page. -->

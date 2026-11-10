@@ -23,6 +23,8 @@ public class Header extends HBox {
     private static final double BRAND_WIDTH = 252;
 
     private final TextField search = new TextField();
+    private HBox searchBox;
+    private Button pipelinesButton, settingsButton;
 
     public Header(Runnable onPipelines, Runnable onSettings) {
         getStyleClass().add("app-header");
@@ -43,7 +45,7 @@ public class Header extends HBox {
         HBox.setHgrow(search, Priority.ALWAYS);
         Label keyHint = new Label("Ctrl K");
         keyHint.getStyleClass().add("key-hint");
-        HBox searchBox = new HBox(Icons.search(16, Theme.TEXT_MUTED), search, keyHint);
+        searchBox = new HBox(Icons.search(16, Theme.TEXT_MUTED), search, keyHint);
         searchBox.getStyleClass().add("search-box");
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setMaxWidth(560);
@@ -66,6 +68,8 @@ public class Header extends HBox {
         HBox.setHgrow(spacer, Priority.SOMETIMES);
 
         getChildren().addAll(brand, searchBox, spacer, new HBox(8, pipelines, settings));
+        pipelinesButton = pipelines;
+        settingsButton = settings;
     }
 
     /**
@@ -84,6 +88,11 @@ public class Header extends HBox {
         brand.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         return brand;
     }
+
+    /** For the welcome tour, which points at them. */
+    public HBox searchBox() { return searchBox; }
+    public Button pipelinesButton() { return pipelinesButton; }
+    public Button settingsButton() { return settingsButton; }
 
     /** The search box, so the home screen can filter tools as the user types. */
     public TextField getSearchField() {

@@ -72,6 +72,21 @@
     <!-- Standard required root -->
     <Directory Id="TARGETDIR" Name="SourceDir"/>
 
+    <!--
+      Ndalamo: the last page of the installer has "Open Ndalamo now", ticked, which starts the app
+      (its welcome tour shows on first opening).
+    -->
+    <!-- Ndalamo's own pictures on the installer pages instead of WiX's (drawn from the logo; folder set by the build script). -->
+    <WixVariable Id="WixUIBannerBmp" Value="$(env.NDALAMO_WIX)\ndalamo-banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(env.NDALAMO_WIX)\ndalamo-dialog.bmp" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Ndalamo now" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <Property Id="WixShellExecTarget" Value="[INSTALLDIR]Ndalamo.exe" />
+    <CustomAction Id="NdalamoOpenAfterInstall" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="NdalamoOpenAfterInstall">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+    </UI>
+
     <Feature Id="DefaultFeature" Title="!(loc.MainFeatureTitle)" Level="1">
       <ComponentGroupRef Id="Shortcuts"/>
       <ComponentGroupRef Id="Files"/>
@@ -144,31 +159,31 @@
   <Fragment>
     <ComponentGroup Id="NdalamoOpenWith">
       <Component Id="NdalamoOpenWithEntries" Directory="INSTALLDIR" Guid="7d2e4c1a-5b8f-4e3a-9c6d-2f1b0a8e4d55">
-        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File" Type="string" Value="File for Ndalamo" KeyPath="yes"/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File\DefaultIcon" Type="string" Value="[INSTALLDIR]Ndalamo.exe,0"/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\Ndalamo.File\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Ndalamo.exe" Name="FriendlyAppName" Type="string" Value="Ndalamo"/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\Ndalamo.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.pdf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.doc\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.docx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.odt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.rtf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.xls\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.xlsx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.ods\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.csv\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.ppt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.pptx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.odp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.jpg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.jpeg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.png\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.bmp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.gif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.tif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.tiff\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
-        <RegistryValue Root="HKLM" Key="Software\Classes\.md\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File" Type="string" Value="File for Ndalamo" KeyPath="yes"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\DefaultIcon" Type="string" Value="[INSTALLDIR]Ndalamo.exe,0"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\Ndalamo.exe" Name="FriendlyAppName" Type="string" Value="Ndalamo"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\Ndalamo.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.pdf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.doc\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.docx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.odt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.rtf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.xls\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.xlsx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.ods\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.csv\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.ppt\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.pptx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.odp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.jpg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.jpeg\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.png\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.bmp\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.gif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tif\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.tiff\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\.md\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
       </Component>
     </ComponentGroup>
   </Fragment>

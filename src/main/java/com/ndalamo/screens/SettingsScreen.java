@@ -63,6 +63,18 @@ public class SettingsScreen extends BorderPane {
     private final VBox cards = new VBox(20);
     private final ScrollPane scroll = new ScrollPane();
     private final Map<String, Node> sections = new LinkedHashMap<>();
+    private Runnable onClearRecent = () -> {};
+    private Runnable onShowTour = () -> {};
+
+    /** Also empties History (the recent files and tools come from it). */
+    public void setOnClearRecent(Runnable action) {
+        this.onClearRecent = action;
+    }
+
+    /** "Take the tour" in Help. */
+    public void setOnShowTour(Runnable action) {
+        this.onShowTour = action;
+    }
     private final Map<Node, Button> navItems = new LinkedHashMap<>();
     /** The section last picked in the list, so it stays highlighted when it can't scroll to the top. */
     private Node picked;
@@ -88,6 +100,7 @@ public class SettingsScreen extends BorderPane {
         add("Keyboard shortcuts", shortcuts());
         add("Privacy", privacy());
         add("Word add-in", wordAddIn);
+        add("Help", help());
         add("About", about(version));
 
         cards.setPadding(new Insets(28, 32, 40, 32));
@@ -442,6 +455,7 @@ public class SettingsScreen extends BorderPane {
             if (!now) {
                 settings.getRecentFiles().clear();
                 settings.getRecentTools().clear();
+                onClearRecent.run();
             }
             save.run();
         });
@@ -450,10 +464,25 @@ public class SettingsScreen extends BorderPane {
         clear.setOnAction(e -> {
             settings.getRecentFiles().clear();
             settings.getRecentTools().clear();
+            onClearRecent.run();
             save.run();
-            window.toast(Toast.info("Recent files and tools cleared", "Your files themselves were not touched."));
+            window.toast(Toast.info("Recent files, tools and history cleared", "Your files themselves were not touched."));
         });
         return new VBox(12, statement, remember, clear);
+    }
+
+    // ── Help ─────────────────────────────────────────────────────────────
+
+    private VBox help() {
+        Label about = new Label("A short tour of Home and every tool, the same one shown the first time Ndalamo opens.");
+        about.setWrapText(true);
+        Button tour = new Button("Take the tour");
+        tour.getStyleClass().add("button-secondary");
+        tour.setOnAction(e -> onShowTour.run());
+        Label shortcuts = new Label("Keyboard shortcuts are listed above. Drop files anywhere on the window to start.");
+        shortcuts.getStyleClass().add("small-muted");
+        shortcuts.setWrapText(true);
+        return new VBox(10, about, tour, shortcuts);
     }
 
     // ── About ────────────────────────────────────────────────────────────

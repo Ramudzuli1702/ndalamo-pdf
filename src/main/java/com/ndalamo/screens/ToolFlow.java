@@ -64,6 +64,12 @@ public class ToolFlow {
     private List<Pipeline.Step> chain = new ArrayList<>();
     private Set<Path> lastOutputs = Set.of();
     private Consumer<List<Pipeline.Step>> onSaveAsPipeline = steps -> {};
+    private Consumer<com.ndalamo.models.HistoryEntry> onFinished = entry -> {};
+
+    /** Told about each finished run (for History and the recent files and tools on Home). */
+    public void onFinished(Consumer<com.ndalamo.models.HistoryEntry> handler) {
+        this.onFinished = handler;
+    }
 
     /** What "Save as pipeline" on the results does with the steps just used. */
     public void onSaveAsPipeline(Consumer<List<Pipeline.Step>> handler) {
@@ -114,6 +120,12 @@ public class ToolFlow {
                 results -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();
                     chain = steps;
+                    if (!(job[0].isCancelled() && results.isEmpty())) {
+                        onFinished.accept(new com.ndalamo.models.HistoryEntry(System.currentTimeMillis(), tool.id(), tool.name(),
+                                files.stream().map(f -> f.toAbsolutePath().toString()).toList(),
+                                results.stream().map(FileResult::getOutput).filter(p -> p != null)
+                                        .map(p -> p.toAbsolutePath().toString()).toList()));
+                    }
                     lastOutputs = results.stream().map(FileResult::getOutput).filter(p -> p != null)
                             .map(p -> p.toAbsolutePath().normalize()).collect(Collectors.toSet());
                     if (job[0].isCancelled() && results.isEmpty()) {

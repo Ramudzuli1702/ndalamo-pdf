@@ -4,6 +4,8 @@ import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
+import com.ndalamo.screens.HistoryScreen;
+import com.ndalamo.screens.WelcomeTour;
 import com.ndalamo.screens.PipelineBuilderScreen;
 import com.ndalamo.screens.PipelinesScreen;
 import com.ndalamo.screens.Toast;
@@ -76,6 +78,7 @@ public class NdalamoApp extends Application {
     private JobService jobService;
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
     private final PipelineService pipelineService = new PipelineService();
+    private com.ndalamo.services.HistoryService history;
     private static SingleInstance instance;  // null when started another way (tests, mvn javafx:run without it)
     private Tray tray;                      // null when Windows has no notification area for us
     private boolean toldAboutTray;
@@ -91,6 +94,7 @@ public class NdalamoApp extends Application {
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
         settings = settingsService.load();
+        history = new com.ndalamo.services.HistoryService();
         pipelines.addAll(pipelineService.load());
         watchFolders.load();
         watchFolders.setListener(new WatchFolderService.Listener() {
@@ -114,7 +118,13 @@ public class NdalamoApp extends Application {
         Theme.loadFonts();   // must happen before any screen is built
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
         home.showPinned(pipelines, p -> runPipeline(p, List.of()));
+        refreshRecent();
         toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), () -> settings.getToolDefaults(), this::showHome);
+        toolFlow.onFinished(entry -> {
+            if (!settings.isRememberRecentFiles()) return;        // Settings › Privacy: keep no history
+            history.add(entry);
+            refreshRecent();
+        });
         // "Save as pipeline" on the results: the builder opens with the tools just used, named after them.
         toolFlow.onSaveAsPipeline(steps -> editPipeline(new Pipeline(String.join(" + ", steps.stream()
                 .map(s -> Tools.find(s.getToolId()).map(PdfTool::name).orElse(s.getToolId()).replace(" PDF", "")).toList()), steps)));
@@ -186,6 +196,8 @@ public class NdalamoApp extends Application {
         }
         stage.show();
         openFromOutside(getParameters().getRaw().stream().map(Path::of).toList());
+        // The first time Ndalamo opens (just after installing), the welcome tour shows Home and every tool.
+        if (!settings.isTourSeen() && getParameters().getRaw().isEmpty()) Platform.runLater(this::startTour);
         if (instance != null) {
             try {
                 instance.listen(files -> Platform.runLater(() -> {
@@ -372,8 +384,69 @@ public class NdalamoApp extends Application {
     }
 
     private void showSettings() {
-        window.show(new SettingsScreen(window, settings, this::saveSettings, this::applyAppearance, new WordAddInCard(window),
-                version(), this::showHome));
+        SettingsScreen screen = new SettingsScreen(window, settings, this::saveSettings, this::applyAppearance, new WordAddInCard(window),
+                version(), this::showHome);
+        screen.setOnClearRecent(() -> {
+            history.clear();
+            refreshRecent();
+        });
+        screen.setOnShowTour(() -> {
+            showHome();
+            Platform.runLater(this::startTour);
+        });
+        window.show(screen);
+    }
+
+    // ── The welcome tour ─────────────────────────────────────────────────
+
+    private void startTour() {
+        if (window.current() != home) showHome();
+        new WelcomeTour(window, home, () -> {
+            settings.setTourSeen(true);
+            saveSettings();
+        }).start();
+    }
+
+    // ── History and recent files ─────────────────────────────────────────
+
+    /** Fills Home's recent files and tools from History. */
+    private void refreshRecent() {
+        if (home == null) return;
+        List<PdfTool> tools = history.recentTools(6).stream()
+                .map(Tools::find).filter(java.util.Optional::isPresent).map(java.util.Optional::get).toList();
+        home.showRecent(history.recentFiles(6), tools, path -> {
+            if (java.nio.file.Files.isRegularFile(path)) filesChosen(List.of(path.toFile()));
+            else window.toast(Toast.info(path.getFileName() + " isn't there any more",
+                    "It was moved, renamed or deleted. Nothing else was changed."));
+        }, this::showHistory);
+    }
+
+    private void showHistory() {
+        window.show(new HistoryScreen(window, history.entries(), settings.isRememberRecentFiles(), new HistoryScreen.Actions() {
+            @Override public void home() { showHome(); }
+
+            @Override public void clear() {
+                history.clear();
+                refreshRecent();
+                showHistory();
+                window.toast(Toast.success("History cleared", "Your files themselves were not touched."));
+            }
+
+            @Override public void useAgain(com.ndalamo.models.HistoryEntry entry) {
+                List<Path> files = entry.inputs().stream().map(Path::of).filter(java.nio.file.Files::isRegularFile).toList();
+                if (files.isEmpty()) {
+                    window.toast(Toast.info("The files aren't there any more", "They were moved, renamed or deleted."));
+                    return;
+                }
+                if (entry.toolId().equals("pipeline")) {
+                    pipelines.stream().filter(p -> p.getName().equals(entry.toolName())).findFirst()
+                            .ifPresentOrElse(p -> runPipeline(p, files),
+                                    () -> window.toast(Toast.info("That pipeline is gone", "It was deleted or renamed.")));
+                    return;
+                }
+                Tools.find(entry.toolId()).ifPresent(tool -> openToolWith(tool, files));
+            }
+        }));
     }
 
     /**
@@ -394,6 +467,7 @@ public class NdalamoApp extends Application {
         boolean showing = window.current() == home;
         home = new HomeScreen(this::showPipelines, this::showSettings, this::chooseFiles, this::openTool);
         home.showPinned(pipelines, p -> runPipeline(p, List.of()));
+        refreshRecent();
         if (showing) window.show(home);
     }
 

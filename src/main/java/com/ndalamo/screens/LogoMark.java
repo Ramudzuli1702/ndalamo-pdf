@@ -61,14 +61,20 @@ public final class LogoMark {
         return icon;
     }
 
-    /** The app icon rendered at the sizes Windows uses for the title bar and taskbar. */
+    /**
+     * The app icon at the sizes Windows uses for the title bar, taskbar and tray. They're the same
+     * pictures as the installed program's icon (brand/icons, drawn from appIcon once and kept as
+     * files): drawn afresh while the app starts, before its theme is in place, they came out muddled
+     * in the title bar. Drawn here only if a file is missing.
+     */
     public static Image[] windowIcons() {
         int[] sizes = {16, 24, 32, 48, 64, 128, 256};
         Image[] images = new Image[sizes.length];
         SnapshotParameters transparent = new SnapshotParameters();
         transparent.setFill(Color.TRANSPARENT);
         for (int i = 0; i < sizes.length; i++) {
-            images[i] = appIcon(sizes[i]).snapshot(transparent, null);
+            var file = LogoMark.class.getResource("/brand/icons/ndalamo-" + sizes[i] + ".png");
+            images[i] = file != null ? new Image(file.toExternalForm()) : appIcon(sizes[i]).snapshot(transparent, null);
         }
         return images;
     }

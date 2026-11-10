@@ -46,6 +46,8 @@ Write-Host '3/4 Adding the licences'
 Copy-Item -Recurse 'src\main\resources\licenses' (Join-Path $content 'licenses')
 
 Write-Host '4/4 Making the installer (this takes a minute or two)'
+# Where main.wxs finds the installer's pictures (ndalamo-banner.bmp, ndalamo-dialog.bmp).
+$env:NDALAMO_WIX = Join-Path $root 'packaging\wix'
 function Invoke-Jpackage([string]$type) {
     $jpackageArgs = @(
         '--type', $type,
@@ -59,9 +61,12 @@ function Invoke-Jpackage([string]$type) {
         '--icon', 'packaging\ndalamo.ico',
         '--app-content', ((Join-Path $content 'word-addin') + ',' + (Join-Path $content 'licenses')),
         '--resource-dir', 'packaging\wix',
+        # A smooth install: for this Windows user (no administrator prompt), the terms to accept,
+        # Start-menu and desktop shortcuts without extra questions, and "Open Ndalamo now" at the end.
+        '--win-per-user-install',
+        '--license-file', 'packaging\terms.txt',
         '--win-menu', '--win-menu-group', 'Ndalamo',
-        '--win-shortcut', '--win-shortcut-prompt',
-        '--win-dir-chooser',
+        '--win-shortcut',
         # Never change this: it's how Windows knows a newer installer upgrades the installed Ndalamo.
         '--win-upgrade-uuid', '3b1f6f0e-6a2c-4d7e-9f5b-0d1c8a4e2b77',
         '--dest', $out
@@ -90,7 +95,7 @@ $msi = Get-ChildItem $out -Filter 'Ndalamo-*.msi' | Select-Object -First 1
 $wix = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
 $bundle = Join-Path $root 'packaging\bundle'
 $obj = Join-Path $out 'bundle.wixobj'
-& (Join-Path $wix 'candle.exe') -nologo -ext WixBalExtension "-dVersion=$version" "-dIcon=$root\packaging\ndalamo.ico" `
+& (Join-Path $wix 'candle.exe') -nologo -ext WixBalExtension "-dVersion=$version" "-dIcon=$root\packaging\ndalamo.ico" "-dTerms=$root\packaging\terms.txt" `
     "-dNdalamoMsi=$($msi.FullName)" "-dLibreOfficeMsi=$LibreOfficeMsi" -out $obj (Join-Path $bundle 'Bundle.wxs')
 if ($LASTEXITCODE -ne 0) { throw 'candle (setup bundle) failed' }
 $setup = Join-Path $out "Ndalamo-$version-with-LibreOffice.exe"
