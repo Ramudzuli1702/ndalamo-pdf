@@ -4,7 +4,11 @@ import com.ndalamo.models.Progress;
 import com.ndalamo.tools.PageText.TextWord;
 import com.ndalamo.tools.WordLayout.Paragraph;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
 import java.io.IOException;
@@ -50,7 +54,38 @@ final class DocumentReader {
     /** The whole document as read. */
     record Reading(List<List<Item>> pages, Map<Paragraph, Integer> headings, Map<Paragraph, Integer> listLevels,
                    List<Paragraph> paragraphs, PageFurniture.Result furniture, WordLayout.Margins margins,
-                   float pageWidth, float pageHeight, float top, int scans, int scansRead, int tables, int pictures) {}
+                   float pageWidth, float pageHeight, float top, int scans, int scansRead, int tables, int pictures,
+                   List<List<Link>> links) {}
+
+    /** A web link on a page: where it is (points from the top-left) and where it goes. */
+    record Link(float left, float top, float right, float bottom, String uri) {
+        boolean covers(TextWord w) {
+            float x = (w.left() + w.right()) / 2, y = w.baseline() - w.size() * 0.3f;
+            return x >= left && x <= right && y >= top - 1 && y <= bottom + 1;
+        }
+    }
+
+    /** The web links on a page. Turned pages give none, as their words are measured the turned way. */
+    static List<Link> links(PDPage page) {
+        List<Link> links = new ArrayList<>();
+        if (page.getRotation() % 360 != 0) return links;
+        PDRectangle crop = page.getCropBox();
+        try {
+            for (PDAnnotation annotation : page.getAnnotations()) {
+                if (annotation instanceof PDAnnotationLink link && link.getAction() instanceof PDActionURI action
+                        && action.getURI() != null && !action.getURI().isBlank()) {
+                    PDRectangle r = link.getRectangle();
+                    if (r == null) continue;
+                    links.add(new Link(r.getLowerLeftX() - crop.getLowerLeftX(), crop.getUpperRightY() - r.getUpperRightY(),
+                            r.getUpperRightX() - crop.getLowerLeftX(), crop.getUpperRightY() - r.getLowerLeftY(),
+                            action.getURI().strip()));
+                }
+            }
+        } catch (IOException e) {
+            // Unreadable annotations: the words come through without their links.
+        }
+        return links;
+    }
 
     private DocumentReader() {}
 
@@ -180,7 +215,7 @@ final class DocumentReader {
             ordered.add(items);
         }
         return new Reading(ordered, headings, listLevels, allParagraphs, furniture, margins, pageWidth, pageHeight, top,
-                scans, scansRead, tableCount, pictureCount);
+                scans, scansRead, tableCount, pictureCount, pages.stream().map(p -> links(doc.getPage(p - 1))).toList());
     }
 
     /**

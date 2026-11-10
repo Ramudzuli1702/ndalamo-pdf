@@ -87,6 +87,10 @@ final class MarkdownRenderer {
     private PDPage page;
     private PDPageContentStream out;
     private float y;                           // from the top of the page
+
+    /** An HTML page break, as PDF to Markdown writes it between pages. */
+    private static final java.util.regex.Pattern PAGE_BREAK =
+            java.util.regex.Pattern.compile("page-break-(after|before)\\s*:\\s*always", java.util.regex.Pattern.CASE_INSENSITIVE);
     private int missingPictures;
 
     MarkdownRenderer(PDDocument doc, Path folder, PDRectangle pageSize) throws IOException {
@@ -166,6 +170,10 @@ final class MarkdownRenderer {
         } else if (node instanceof TableBlock table) {
             table(table, x, width);
             space(BODY * 0.8f);
+        } else if (node instanceof HtmlBlock html && PAGE_BREAK.matcher(html.getLiteral()).find()) {
+            // <div style="page-break-after: always"></div>: PDF to Markdown writes one between pages,
+            // and browsers and Markdown editors break the page there when printing.
+            if (y > margin + 0.5f) newPage();
         } else if (node instanceof HtmlBlock html) {
             // Raw HTML can't be drawn; keep its words so nothing is lost.
             String words = html.getLiteral().replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").strip();

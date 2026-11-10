@@ -93,7 +93,10 @@ final class WordLayout {
                 boolean listItem = marker(line.words()) != null;
                 // A line with a tab-like gap inside it ("Name:      Thabo") is a form or tabbed line, not prose.
                 boolean tabbed = hasTabGap(previous) || hasTabGap(line);
-                if (biggerGap || sizeChanged || previousEndedShort || indented || listItem || tabbed) {
+                // "Networking | TCP/IP…" then "Windows | …": lines that each start with a bold label are
+                // separate entries, even when the line before nearly reaches the margin.
+                boolean labelled = startsWithLabel(current.get(0)) && startsWithLabel(line);
+                if (biggerGap || sizeChanged || previousEndedShort || indented || listItem || tabbed || labelled) {
                     paragraphs.add(paragraph(current, margins, edge, spaceBefore));
                     spaceBefore = Math.max(0, gap - line.size() * 1.25f);
                     current = new ArrayList<>();
@@ -125,6 +128,12 @@ final class WordLayout {
             if (words.get(i).left() - words.get(i - 1).right() > line.size() * 2) return true;
         }
         return false;
+    }
+
+    /** A line that opens with bold words followed by plain ones, like "Tools | Git, Maven". */
+    private static boolean startsWithLabel(Line line) {
+        List<TextWord> words = line.words();
+        return words.size() > 1 && words.get(0).bold() && words.stream().anyMatch(w -> !w.bold());
     }
 
     /** Where the paragraph's lines after the first start. */

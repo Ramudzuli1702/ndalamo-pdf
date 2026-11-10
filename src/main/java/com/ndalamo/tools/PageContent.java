@@ -42,6 +42,15 @@ final class PageContent {
     static List<Box> words(PDDocument doc, int pageIndex) throws IOException {
         List<Box> words = new ArrayList<>();
         PDFTextStripper stripper = new PDFTextStripper() {
+            { PageClip.track(this); }
+
+            private final PageText.Visibility visibility = new PageText.Visibility();
+
+            @Override
+            protected void processTextPosition(TextPosition letter) {
+                if (!visibility.skip(getGraphicsState(), letter)) super.processTextPosition(letter);   // hidden text skipped
+            }
+
             @Override
             protected void writeString(String text, List<TextPosition> letters) {
                 // This can be a whole line with real spaces in it (PDFBox only splits where it adds

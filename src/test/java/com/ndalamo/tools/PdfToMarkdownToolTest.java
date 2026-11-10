@@ -4,6 +4,14 @@ import com.ndalamo.models.FileResult;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.AbstractVisitor;
@@ -115,6 +123,115 @@ class PdfToMarkdownToolTest {
         assertTrue(md.contains("\n\nI am writing to apply for the bursary for the next academic year. I am a second-year "
                 + "undergraduate student in information technology"), md);
         assertTrue(md.contains("My results are *attached* to this letter"), "italics kept: " + md);
+    }
+
+    /**
+     * A two-page CV-like PDF with the things real PDFs do: a hidden copy of some text clipped
+     * out of view (as pages put together by pypdf have), a heading with wide letter spacing
+     * drawn in two pieces, lines starting with bold labels, a web link, and a second page.
+     */
+    private Path cvPdf() throws Exception {
+        Path file = dir.resolve("Cv.pdf");
+        PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+            try (PDPageContentStream c = new PDPageContentStream(doc, page)) {
+                c.saveGraphicsState();                                     // the hidden copy: clipped to a corner
+                c.addRect(0, 0, 10, 10);
+                c.clip();
+                write(c, regular, 11, 72, 600, "Hidden duplicate words");
+                c.restoreGraphicsState();
+
+                write(c, bold, 28, 72, 770, "Thabo Mokoena");
+
+                c.beginText();                                             // "PROFILE" spaced out, in two pieces
+                c.setFont(regular, 14);
+                c.setCharacterSpacing(3);
+                c.newLineAtOffset(72, 730);
+                c.showText("PROFIL");
+                c.newLineAtOffset(regular.getStringWidth("PROFIL") / 1000 * 14 + 6 * 3, 0);
+                c.showText("E");
+                c.setCharacterSpacing(0);
+                c.endText();
+
+                String[][] skills = {
+                        {"Networking", " | TCP/IP, subnetting, DHCP and DNS fundamentals; basic connectivity troubleshooting"},
+                        {"Windows", " | Windows 10/11 setup and troubleshooting; basic Microsoft 365 and Directory"},
+                        {"Tools", " | Git, Maven"}};
+                float y = 705;
+                for (String[] line : skills) {
+                    c.beginText();
+                    c.newLineAtOffset(72, y);
+                    c.setFont(bold, 11);
+                    c.showText(line[0]);
+                    c.setFont(regular, 11);
+                    c.showText(line[1]);
+                    c.endText();
+                    y -= 14;
+                }
+
+                write(c, regular, 11, 72, 640, "Code on GitHub");
+            }
+            PDAnnotationLink link = new PDAnnotationLink();
+            float left = 72 + regular.getStringWidth("Code on ") / 1000 * 11;
+            link.setRectangle(new PDRectangle(left, 637, regular.getStringWidth("GitHub") / 1000 * 11, 13));
+            PDActionURI action = new PDActionURI();
+            action.setURI("https://github.com/example");
+            link.setAction(action);
+            page.getAnnotations().add(link);
+
+            PDPage second = new PDPage(PDRectangle.A4);
+            doc.addPage(second);
+            try (PDPageContentStream c = new PDPageContentStream(doc, second)) {
+                write(c, regular, 11, 72, 770, "Second page text.");
+            }
+            doc.save(file.toFile());
+        }
+        return file;
+    }
+
+    private static void write(PDPageContentStream c, PDType1Font font, float size, float x, float y, String text) throws Exception {
+        c.beginText();
+        c.setFont(font, size);
+        c.newLineAtOffset(x, y);
+        c.showText(text);
+        c.endText();
+    }
+
+    @Test
+    void textHiddenByClippingIsLeftOut() throws Exception {
+        String md = convert(cvPdf());
+
+        assertFalse(md.contains("Hidden"), "a clipped-away copy isn't shown, so it isn't converted: " + md);
+        assertTrue(md.startsWith("# Thabo Mokoena\n"), md);
+    }
+
+    @Test
+    void letterSpacedHeadingsLabelLinesAndLinksComeOutAsShown() throws Exception {
+        String md = convert(cvPdf());
+
+        assertTrue(md.contains("PROFILE\n"), "the spaced-out heading is one word: " + md);
+        assertTrue(md.contains("**Networking** | TCP/IP, subnetting, DHCP and DNS fundamentals; basic connectivity troubleshooting\\\n"
+                + "**Windows** | Windows 10/11"), "each label line on its own line: " + md);
+        assertTrue(md.contains("Code on [GitHub](https://github.com/example)"), md);
+    }
+
+    @Test
+    void pagesStayPagesThroughMarkdownAndBack() throws Exception {
+        Path pdf = cvPdf();
+        FileResult toMd = new PdfToMarkdownTool().run(List.of(pdf), options(), sameFolder, new Progress()).get(0);
+        String md = Files.readString(toMd.getOutput());
+        assertTrue(md.indexOf(PdfToMarkdownTool.PAGE_BREAK) > md.indexOf("GitHub")
+                && md.indexOf(PdfToMarkdownTool.PAGE_BREAK) < md.indexOf("Second page text."), md);
+
+        Map<String, Object> toPdf = new HashMap<>();
+        toPdf.put(MarkdownToPdfTool.PAGE_SIZE, MarkdownToPdfTool.A4);
+        toPdf.put(MarkdownToPdfTool.PAGE_NUMBERS, false);
+        FileResult back = new MarkdownToPdfTool().run(List.of(toMd.getOutput()), toPdf, sameFolder, new Progress()).get(0);
+        assertEquals(2, TestFiles.pageCount(back.getOutput()), "the page break starts page 2 again");
+        assertFalse(TestFiles.text(back.getOutput()).contains("page-break"), "the tag itself isn't printed");
     }
 
     @Test

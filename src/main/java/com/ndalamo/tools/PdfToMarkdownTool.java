@@ -34,6 +34,9 @@ public class PdfToMarkdownTool implements PdfTool {
     static final String LANGUAGE = "language";
     static final String PAGES = "pages";
 
+    /** Written between pages; MarkdownRenderer starts a new page on it. */
+    static final String PAGE_BREAK = "<div style=\"page-break-after: always;\"></div>";
+
     @Override public String id() { return "pdf-to-markdown"; }
     @Override public String name() { return "PDF to Markdown"; }
     @Override public String description() { return "Plain-text .md"; }
@@ -136,30 +139,55 @@ public class PdfToMarkdownTool implements PdfTool {
         String base = output.getFileName().toString().replaceFirst("\\.md$", "");
         Path pictureFolder = output.resolveSibling(base + "_pictures");
 
+        List<TextWord> allWords = new ArrayList<>();
+        reading.paragraphs().forEach(p -> allWords.addAll(p.words()));
+        float bodySize = allWords.isEmpty() ? 11 : WordLayout.mostCommonSize(allWords);
+
         StringBuilder md = new StringBuilder();
         int paragraphs = 0, pictures = 0;
-        for (List<DocumentReader.Item> page : reading.pages()) {
+        for (int n = 0; n < reading.pages().size(); n++) {
+            List<DocumentReader.Item> page = reading.pages().get(n);
+            List<DocumentReader.Link> links = reading.links().get(n);
+            // Pages stay pages: browsers and Markdown editors break the page here when printing, and so
+            // does Ndalamo's Markdown to PDF. The tag shows nothing when the Markdown is read on screen.
+            if (n > 0) md.append(PAGE_BREAK).append("\n\n");
+            Paragraph previousLine = null;                    // a one-line paragraph that the next line may join
             for (DocumentReader.Item item : page) {
                 if (item.paragraph() != null) {
                     Paragraph p = item.paragraph();
                     Integer heading = reading.headings().get(p);
                     Integer level = reading.listLevels().get(p);
+                    // A bold line in body size stays bold text: "###" would print it bigger than in the PDF.
+                    if (heading != null && Math.abs(p.size() - bodySize) < 1) heading = null;
                     if (heading != null) {
                         List<TextWord> words = new ArrayList<>(p.words());
                         if (p.marker() != null) words.add(0, p.marker().word());   // "1. Contributions" keeps its number
                         // A heading is already a heading: its bold isn't marked again.
-                        md.append("#".repeat(heading)).append(' ').append(inline(words, false, true)).append("\n\n");
+                        md.append("#".repeat(heading)).append(' ').append(inline(words, links, false, true)).append("\n\n");
+                        previousLine = null;
                     } else if (level != null) {
-                        md.append("    ".repeat(level)).append(listMarker(p)).append(inline(p.words(), false, false)).append('\n');
+                        md.append("    ".repeat(level)).append(listMarker(p)).append(inline(p.words(), links, false, false)).append('\n');
                         // A blank line ends the list unless the next item carries on.
                         if (!nextIsListItem(page, item, reading)) md.append('\n');
+                        previousLine = null;
                     } else {
-                        md.append(escapeLineStart(inline(p.words(), false, false))).append("\n\n");
+                        List<TextWord> words = new ArrayList<>(p.words());
+                        if (p.marker() != null) words.add(0, p.marker().word());
+                        // Lines set one under the other with no gap ("University of Johannesburg" under the
+                        // degree) stay together, with a line break, instead of becoming spaced paragraphs.
+                        if (previousLine != null && oneLine(p) && p.spaceBefore() < p.size() * 0.3f) {
+                            md.setLength(md.length() - 2);
+                            md.append("\\\n");
+                        }
+                        md.append(escapeLineStart(inline(words, links, false, false))).append("\n\n");
+                        previousLine = oneLine(p) ? p : null;
                     }
                     paragraphs++;
                 } else if (item.table() != null) {
-                    md.append(table(item.table())).append('\n');
+                    md.append(table(item.table(), links)).append('\n');
+                    previousLine = null;
                 } else {
+                    previousLine = null;
                     pictures++;
                     String name = "picture-" + pictures + (item.picture().jpeg() ? ".jpg" : ".png");
                     Files.createDirectories(pictureFolder);
@@ -201,18 +229,27 @@ public class PdfToMarkdownTool implements PdfTool {
         return "- " + escape(marker.word().text()) + " ";
     }
 
+    /** One paragraph on a single line. */
+    private static boolean oneLine(Paragraph p) {
+        float first = p.words().get(0).baseline();
+        return p.words().stream().allMatch(w -> Math.abs(w.baseline() - first) < p.size() * 0.5f);
+    }
+
     /**
-     * Words as Markdown text: **bold**, *italic*, ***both***, with Markdown's own characters
-     * escaped. In a heading, bold isn't marked, since a heading is bold anyway.
+     * Words as Markdown text: **bold**, *italic*, ***both***, [linked](https://…), with
+     * Markdown's own characters escaped. In a heading, bold isn't marked, since a heading
+     * is bold anyway.
      */
-    static String inline(List<TextWord> words, boolean inTable, boolean inHeading) {
+    static String inline(List<TextWord> words, List<DocumentReader.Link> links, boolean inTable, boolean inHeading) {
         StringBuilder out = new StringBuilder();
         int i = 0;
         while (i < words.size()) {
             TextWord first = words.get(i);
+            String uri = linkOf(first, links);
             StringBuilder run = new StringBuilder();
             int j = i;
-            while (j < words.size() && (inHeading || words.get(j).bold() == first.bold()) && words.get(j).italic() == first.italic()) {
+            while (j < words.size() && (inHeading || words.get(j).bold() == first.bold()) && words.get(j).italic() == first.italic()
+                    && java.util.Objects.equals(linkOf(words.get(j), links), uri)) {
                 if (j > i) run.append(' ');
                 String text = escape(words.get(j).text());
                 run.append(inTable ? text.replace("|", "\\|") : text);
@@ -220,11 +257,27 @@ public class PdfToMarkdownTool implements PdfTool {
             }
             boolean bold = first.bold() && !inHeading;
             String mark = bold && first.italic() ? "***" : bold ? "**" : first.italic() ? "*" : "";
-            if (out.length() > 0) out.append(' ');
-            out.append(mark).append(run).append(mark);
+            String styled = mark + run + mark;
+            if (uri != null) styled = "[" + styled + "](" + linkTarget(uri) + ")";
+            // Next to a link, a new run starts at a link's edge, not at a space: keep the words apart
+            // only where the PDF has a gap.
+            TextWord before = i > 0 ? words.get(i - 1) : null;
+            if (out.length() > 0 && (Math.abs(first.baseline() - before.baseline()) > 1
+                    || first.left() - before.right() > first.size() * 0.1f)) out.append(' ');
+            out.append(styled);
             i = j;
         }
         return out.toString();
+    }
+
+    private static String linkOf(TextWord word, List<DocumentReader.Link> links) {
+        for (DocumentReader.Link link : links) if (link.covers(word)) return link.uri();
+        return null;
+    }
+
+    /** A link address as Markdown needs it: in angle brackets when it has spaces or brackets. */
+    private static String linkTarget(String uri) {
+        return uri.matches(".*[\\s()<>].*") ? "<" + uri.replace("<", "%3C").replace(">", "%3E") + ">" : uri;
     }
 
     /** Backslashes before characters that would otherwise change the text's meaning in Markdown. */
@@ -240,7 +293,7 @@ public class PdfToMarkdownTool implements PdfTool {
     }
 
     /** A pipe table; the first row is the header, as Markdown needs one. */
-    private static String table(TableFinder.Table<TextWord> table) {
+    private static String table(TableFinder.Table<TextWord> table, List<DocumentReader.Link> links) {
         StringBuilder out = new StringBuilder();
         List<List<List<TextWord>>> rows = table.cells();
         for (int r = 0; r < rows.size(); r++) {
@@ -248,7 +301,7 @@ public class PdfToMarkdownTool implements PdfTool {
             for (List<TextWord> cell : rows.get(r)) {
                 List<TextWord> words = new ArrayList<>(cell);
                 words.sort(java.util.Comparator.comparingDouble(TextWord::baseline).thenComparingDouble(TextWord::left));
-                out.append(' ').append(inline(words, true, false)).append(" |");
+                out.append(' ').append(inline(words, links, true, false)).append(" |");
             }
             out.append('\n');
             if (r == 0) out.append('|').append(" --- |".repeat(table.columns())).append('\n');
