@@ -91,7 +91,16 @@ final class DocumentReader {
             List<PageContent.Rule> rules = PageContent.rules(doc.getPage(page - 1));
             pageRules.add(rules);
             pageWords.add(PageText.markUnderlines(words, rules));
-            pagePictures.add(settings.pictures() ? PageImages.pictures(doc.getPage(page - 1)) : List.of());
+            List<PageImages.Picture> pictures = settings.pictures() ? PageImages.pictures(doc.getPage(page - 1)) : List.of();
+            if (settings.pictures()) {
+                // Icons and other drawings made of lines and curves come along as pictures too.
+                List<PageImages.Picture> drawings = PageDrawings.pictures(doc, page - 1, words, pictures);
+                if (!drawings.isEmpty()) {
+                    pictures = new ArrayList<>(pictures);
+                    pictures.addAll(drawings);
+                }
+            }
+            pagePictures.add(pictures);
         }
 
         // Page numbers and lines repeated at the top or bottom of every page belong in a header or

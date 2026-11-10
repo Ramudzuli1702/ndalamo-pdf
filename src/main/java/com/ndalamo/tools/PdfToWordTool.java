@@ -155,19 +155,50 @@ public class PdfToWordTool implements PdfTool {
         int paragraphCount = 0, pictureCount = 0;
         long sizeBefore = Files.size(input);
         Path output = saveTo.outputFor(input, outputSuffix(), outputExtension(), doc.getNumberOfPages());
+        WordFonts fonts = WordFonts.of(doc, pages);
         try (XWPFDocument word = new XWPFDocument()) {
             setPage(word, reading.pageWidth(), reading.pageHeight(), margins.left(),
                     reading.pageWidth() - margins.right(), reading.top());
             addHeaderAndFooter(word, reading.furniture());
             if (!headings.isEmpty()) WordStyles.addHeadingStyles(word);
             Map<Paragraph, WordStyles.ListPlace> lists = WordStyles.lists(word, reading.paragraphs(), headings);
+            float leading = typicalLeading(reading.paragraphs());
+            float pageTop = clamp(reading.top());
+            float wordLeft = clamp(margins.left());
+            float wordRight = reading.pageWidth() - clamp(reading.pageWidth() - margins.right());
             XWPFParagraph last = null;
             Paragraph lastParagraph = null;
             for (int n = 0; n < reading.pages().size(); n++) {
                 if (progress.isCancelled()) return null;
                 boolean pageStarted = false;          // has anything from this page been written yet?
                 float pictureBottom = -1;             // the bottom of a picture or table just written, for the space under it
-                for (DocumentReader.Item item : reading.pages().get(n)) {
+                List<DocumentReader.Item> items = reading.pages().get(n);
+                // The page's boxes and lines: backgrounds, quote bars, dividers, table shading (WordShapes).
+                List<TableFinder.Table<TextWord>> pageTables = new ArrayList<>();
+                for (DocumentReader.Item item : items) if (item.table() != null) pageTables.add(item.table());
+                WordShapes shapes = n < pages.size()
+                        ? WordShapes.of(PageShapes.of(doc.getPage(pages.get(n) - 1)), pageTables, margins.right() - margins.left())
+                        : WordShapes.NONE;
+                List<WordShapes.Divider> dividers = new ArrayList<>(shapes.dividers());
+                WordShapes.Block lastBlock = null;    // the background the last paragraph sat on
+                float lastBlockBelow = 0;             // the padding and border under it, which takes up space
+                for (DocumentReader.Item item : items) {
+                    // Dividing lines above this item come first, each as a line of its own at its height.
+                    float itemTop = item.paragraph() != null ? firstBaseline(item.paragraph()) - item.paragraph().size()
+                            : item.picture() != null ? item.picture().top() : item.table().top();
+                    while (!dividers.isEmpty() && dividers.get(0).top() < itemTop) {
+                        WordShapes.Divider d = dividers.remove(0);
+                        float above = pictureBottom >= 0 ? pictureBottom
+                                : lastParagraph != null && pageStarted ? lastBaseline(lastParagraph) + descent(lastParagraph.size()) + lastBlockBelow
+                                : pageTop;
+                        last = writeDivider(word, d, d.top() - above - 1, wordLeft, wordRight);
+                        if (!pageStarted && n > 0 && pageBreaks) last.setPageBreak(true);
+                        pageStarted = true;
+                        pictureBottom = d.top() + d.thickness();
+                        lastParagraph = null;
+                        lastBlock = null;
+                        lastBlockBelow = 0;
+                    }
                     boolean firstOnPage = !pageStarted && n > 0;
                     if (item.paragraph() == null) {
                         if (item.picture() != null) {
@@ -176,13 +207,21 @@ public class PdfToWordTool implements PdfTool {
                             if (firstOnPage && pageBreaks) last.setPageBreak(true);
                             pictureCount++;
                         } else {
-                            if (firstOnPage && pageBreaks) word.createParagraph().setPageBreak(true);   // a table can't start a page itself
-                            writeTable(word, item.table(), margins);
+                            if (firstOnPage && pageBreaks) {
+                                // A table can't start a page itself: an empty paragraph does, one point high so it takes no room.
+                                XWPFParagraph breakBefore = word.createParagraph();
+                                breakBefore.setPageBreak(true);
+                                breakBefore.setSpacingAfter(0);
+                                breakBefore.setSpacingBetween(1, org.apache.poi.xwpf.usermodel.LineSpacingRule.EXACT);
+                            }
+                            writeTable(word, item.table(), margins, fonts, shapes, leading);
                             last = null;
                         }
                         pageStarted = true;
                         pictureBottom = item.bottom();
                         lastParagraph = null;
+                        lastBlock = null;
+                        lastBlockBelow = 0;
                         continue;
                     }
                     Paragraph paragraph = item.paragraph();
@@ -190,19 +229,60 @@ public class PdfToWordTool implements PdfTool {
                     if (firstOnPage && !pageBreaks && last != null && lastParagraph != null && !lastParagraph.endsSentence()
                             && flowing(lastParagraph) && flowing(paragraph) && paragraph.marker() == null
                             && !headings.containsKey(paragraph) && !headings.containsKey(lastParagraph)) {
-                        addRuns(last, paragraph.words(), true);
+                        addRuns(last, paragraph.words(), true, fonts, shapes, Float.NaN);
                         lastParagraph = paragraph;
                         pageStarted = true;
                         continue;
                     }
-                    // Under a picture, measure the space from the picture, not from the text above it.
-                    float spaceBefore = pictureBottom >= 0 ? Math.max(0, paragraph.top() - pictureBottom) : paragraph.spaceBefore();
-                    last = write(word, paragraph, headings.get(paragraph), lists.get(paragraph), spaceBefore);
+                    // Place the first line's baseline where the PDF has it: measured from the last line above
+                    // (or the picture or table above, or the top of the page), less this paragraph's line height.
+                    float lineHeight = lineHeight(paragraph, leading);
+                    float firstLine = lineHeight - descent(paragraph.size());       // box top to first baseline
+                    float spaceBefore;
+                    if (pictureBottom >= 0) spaceBefore = firstBaseline(paragraph) - pictureBottom - firstLine;
+                    else if (lastParagraph != null && pageStarted) {
+                        spaceBefore = firstBaseline(paragraph) - lastBaseline(lastParagraph) - descent(lastParagraph.size()) - firstLine;
+                    } else if (!pageStarted) spaceBefore = firstBaseline(paragraph) - pageTop - firstLine;
+                    else spaceBefore = paragraph.spaceBefore();
+                    if (lastBlock != null) spaceBefore -= lastBlockBelow;       // the padding under the block above
+                    // A background behind this paragraph (a code block): shading with the PDF's padding.
+                    Look look = new Look();
+                    float textLeft = left(paragraph), textRight = right(paragraph);
+                    float textTop = firstBaseline(paragraph) - paragraph.size() * 0.8f;
+                    float textBottom = lastBaseline(paragraph) + descent(paragraph.size());
+                    WordShapes.Block block = shapes.blockBehind(textLeft, textTop, textRight, textBottom);
+                    if (block != null) {
+                        look.block = block;
+                        look.blockTextLeft = blockTextLeft(block, items, shapes);
+                        look.padTop = Math.max(0, Math.min(31, firstTextTop(block, items, shapes) - block.top()));
+                        look.padBottom = Math.max(0, Math.min(31, block.bottom() - lastTextBottom(block, items, shapes)));
+                        look.wordLeft = wordLeft;
+                        look.wordRight = wordRight;
+                        if (block != lastBlock) spaceBefore -= look.padTop + 0.5f;
+                    }
+                    WordShapes.Bar bar = shapes.barBeside(textLeft, textTop, textBottom);
+                    if (bar != null) look.bar = bar;
+                    look.textLeft = textLeft;
+                    look.wordLeft = wordLeft;
+                    last = write(word, paragraph, headings.get(paragraph), lists.get(paragraph), spaceBefore, lineHeight, fonts, shapes, look);
+                    lastBlock = block;
+                    lastBlockBelow = block != null ? look.padBottom + 0.5f : 0;
                     if (firstOnPage && pageBreaks) last.setPageBreak(true);
                     pageStarted = true;
                     pictureBottom = -1;
                     lastParagraph = paragraph;
                     paragraphCount++;
+                }
+                // Dividing lines below the last item on the page.
+                for (WordShapes.Divider d : dividers) {
+                    float above = pictureBottom >= 0 ? pictureBottom
+                            : lastParagraph != null && pageStarted ? lastBaseline(lastParagraph) + descent(lastParagraph.size()) + lastBlockBelow
+                            : pageTop;
+                    last = writeDivider(word, d, d.top() - above - 1, wordLeft, wordRight);
+                    if (!pageStarted && n > 0 && pageBreaks) last.setPageBreak(true);
+                    pageStarted = true;
+                    pictureBottom = d.top() + d.thickness();
+                    lastParagraph = null;
                 }
                 if (!pageStarted && n > 0 && pageBreaks) {
                     last = word.createParagraph();                   // keep an empty page where the PDF had one
@@ -210,11 +290,11 @@ public class PdfToWordTool implements PdfTool {
                 }
             }
             if (word.getParagraphs().isEmpty()) word.createParagraph();
-            SafeSave.write(output, temp -> {
-                try (OutputStream out = Files.newOutputStream(temp)) {
-                    word.write(out);
-                }
-            });
+            // Written to memory first, so the PDF's fonts can be added to the Word file (see WordFonts).
+            java.io.ByteArrayOutputStream written = new java.io.ByteArrayOutputStream();
+            word.write(written);
+            byte[] docx = fonts.embedInto(written.toByteArray());
+            SafeSave.write(output, temp -> Files.write(temp, docx));
         }
 
         String note = Format.count(pages.size(), "page", "pages") + " · " + Format.count(paragraphCount, "paragraph", "paragraphs")
@@ -234,10 +314,53 @@ public class PdfToWordTool implements PdfTool {
      * fit between the margins), borders only if the PDF drew them. Each cell keeps its
      * words' look and sits left, centred or right in its cell as it does in the PDF.
      */
-    private static void writeTable(XWPFDocument word, TableFinder.Table<TextWord> table, WordLayout.Margins margins) {
+    private static void writeTable(XWPFDocument word, TableFinder.Table<TextWord> table, WordLayout.Margins margins,
+                                   WordFonts fonts, WordShapes shapes, float leading) {
         int rows = table.cells().size(), columns = table.columns();
         XWPFTable t = word.createTable(rows, columns);
-        if (!table.ruled()) t.removeBorders();
+        WordShapes.Borders look = shapes.borders(table);
+        if (!table.ruled()) {
+            t.removeBorders();
+        } else if (look != null) {
+            // The PDF's own border colour and thickness, not Word's default black.
+            String colour = String.format("%06X", look.rgb());
+            int eighths = Math.max(2, Math.round(look.thickness() * 8));
+            t.setTopBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+            t.setBottomBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+            t.setLeftBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+            t.setRightBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+            t.setInsideHBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+            t.setInsideVBorder(XWPFTable.XWPFBorderType.SINGLE, eighths, 0, colour);
+        }
+        // The space between a cell's edge and its text, as in the PDF (first column's words from the table's edge).
+        float padLeft = 5.4f;
+        for (List<List<TextWord>> row : table.cells()) {
+            for (TextWord w : row.get(0)) padLeft = Math.min(padLeft == 5.4f ? Float.MAX_VALUE : padLeft, w.left() - table.left());
+        }
+        if (padLeft == Float.MAX_VALUE || padLeft < 0 || padLeft > 20) padLeft = 5.4f;
+        // And above the text: from the table's top edge to the top of the first row's letters.
+        float padTop = 0;
+        if (table.ruled()) {
+            float firstTop = Float.MAX_VALUE;
+            for (List<TextWord> cellWords : table.cells().get(0)) {
+                for (TextWord w : cellWords) firstTop = Math.min(firstTop, w.baseline() - w.size() * 0.8f);
+            }
+            if (firstTop != Float.MAX_VALUE) padTop = Math.max(0, Math.min(15, firstTop - table.top()));
+        }
+        // And below: what's left of the first row's height in the PDF under its lines of text. Padding,
+        // not a fixed row height, so Word and LibreOffice (which count row heights differently) agree.
+        List<Float> rowHeights = shapes.rowHeights(table);
+        float padBottom = 0;
+        if (!rowHeights.isEmpty()) {
+            int lines = 1;
+            float size = 0;
+            for (List<TextWord> cellWords : table.cells().get(0)) {
+                lines = Math.max(lines, (int) cellWords.stream().map(w -> Math.round(w.baseline())).distinct().count());
+                for (TextWord w : cellWords) size = Math.max(size, w.size());
+            }
+            if (size > 0) padBottom = Math.max(0, Math.min(15, rowHeights.get(0) - padTop - lines * size * leading));
+        }
+        t.setCellMargins(twips(padTop), twips(padLeft), twips(padBottom), twips(padLeft));
 
         // A table without borders is measured from its text to its text; Word adds about 6 points of
         // padding inside each side of a cell, so add that back or every column would wrap.
@@ -260,9 +383,17 @@ public class PdfToWordTool implements PdfTool {
                 XWPFParagraph p = cell.getParagraphs().get(0);
                 p.setSpacingAfter(0);
                 List<TextWord> words = new ArrayList<>(table.cells().get(r).get(c));
+                if (!words.isEmpty()) {
+                    // The cell's background (a header row's shading), found by a point inside its text.
+                    TextWord first = words.get(0);
+                    int behind = shapes.cellBackground((cellLeft + cellRight) / 2, first.baseline() - first.size() * 0.3f);
+                    if (behind >= 0) cell.setColor(String.format("%06X", behind));
+                    // Lines in a cell as far apart as the document's lines.
+                    p.setSpacingBetween(first.size() * leading, org.apache.poi.xwpf.usermodel.LineSpacingRule.EXACT);
+                }
                 words.sort(java.util.Comparator.comparingDouble(TextWord::baseline).thenComparingDouble(TextWord::left));
                 if (!words.isEmpty() && table.ruled()) p.setAlignment(alignmentIn(words, cellLeft, cellRight));
-                addRuns(p, words, false);
+                addRuns(p, words, false, fonts, shapes, Float.NaN);
                 cellLeft = cellRight;
             }
         }
@@ -343,13 +474,79 @@ public class PdfToWordTool implements PdfTool {
         }
     }
 
+    /** The baselines of a paragraph's lines, top to bottom (words within half a letter count as one line). */
+    private static List<Float> baselines(Paragraph paragraph) {
+        List<Float> all = new ArrayList<>();
+        for (TextWord w : paragraph.words()) all.add(w.baseline());
+        all.sort(Float::compare);
+        List<Float> lines = new ArrayList<>();
+        for (float b : all) {
+            if (lines.isEmpty() || b - lines.get(lines.size() - 1) > paragraph.size() * 0.5f) lines.add(b);
+        }
+        return lines;
+    }
+
+    private static float firstBaseline(Paragraph paragraph) {
+        List<Float> lines = baselines(paragraph);
+        return lines.isEmpty() ? paragraph.top() : lines.get(0);
+    }
+
+    private static float lastBaseline(Paragraph paragraph) {
+        List<Float> lines = baselines(paragraph);
+        return lines.isEmpty() ? paragraph.bottom() : lines.get(lines.size() - 1);
+    }
+
+    /**
+     * The distance between a paragraph's lines in the PDF (the middle value, so one odd gap
+     * doesn't count); for a single line, the document's usual line height for its text size.
+     */
+    private static float lineHeight(Paragraph paragraph, float leading) {
+        List<Float> lines = baselines(paragraph);
+        List<Float> gaps = new ArrayList<>();
+        for (int i = 1; i < lines.size(); i++) gaps.add(lines.get(i) - lines.get(i - 1));
+        if (!gaps.isEmpty()) {
+            gaps.sort(Float::compare);
+            float middle = gaps.get(gaps.size() / 2);
+            if (middle > paragraph.size() * 0.9f && middle < paragraph.size() * 3) return middle;
+        }
+        return paragraph.size() * leading;
+    }
+
+    /** The document's usual line height as a multiple of the text size, from its paragraphs of several lines. */
+    private static float typicalLeading(List<Paragraph> paragraphs) {
+        List<Float> ratios = new ArrayList<>();
+        for (Paragraph paragraph : paragraphs) {
+            List<Float> lines = baselines(paragraph);
+            for (int i = 1; i < lines.size(); i++) {
+                float ratio = (lines.get(i) - lines.get(i - 1)) / Math.max(1, paragraph.size());
+                if (ratio > 0.9f && ratio < 3) ratios.add(ratio);
+            }
+        }
+        if (ratios.isEmpty()) return 1.2f;
+        ratios.sort(Float::compare);
+        return ratios.get(ratios.size() / 2);
+    }
+
+    /** How far letters reach below the baseline, roughly, for a text size (Word puts a line's extra space above it). */
+    private static float descent(float size) {
+        return size * 0.27f;
+    }
+
     /** Left-aligned or justified body text, which can run on from one page to the next. */
     private static boolean flowing(Paragraph paragraph) {
         return paragraph.alignment() == WordLayout.Alignment.LEFT || paragraph.alignment() == WordLayout.Alignment.JUSTIFIED;
     }
 
+    /** How a paragraph is decorated: a background block or a quote bar, and where things are on the page. */
+    private static final class Look {
+        WordShapes.Block block;
+        WordShapes.Bar bar;
+        float blockTextLeft, padTop, padBottom, wordLeft, wordRight, textLeft;
+    }
+
     private static XWPFParagraph write(XWPFDocument word, Paragraph paragraph, Integer headingLevel,
-                                       WordStyles.ListPlace listPlace, float spaceBefore) {
+                                       WordStyles.ListPlace listPlace, float spaceBefore, float lineHeight, WordFonts fonts,
+                                       WordShapes shapes, Look look) {
         XWPFParagraph p = word.createParagraph();
         if (headingLevel != null) p.setStyle("Heading" + headingLevel);
         if (listPlace != null) {
@@ -363,17 +560,50 @@ public class PdfToWordTool implements PdfTool {
             case LEFT -> ParagraphAlignment.LEFT;
         });
         p.setSpacingAfter(0);
-        p.setSpacingBefore(twips(Math.min(spaceBefore, 48)));
-        if (paragraph.indent() > 2) p.setIndentationLeft(twips(paragraph.indent()));
-        if (paragraph.firstLineIndent() > 2) p.setIndentationFirstLine(twips(paragraph.firstLineIndent()));
-        else if (paragraph.firstLineIndent() < -2) p.setIndentationHanging(twips(-paragraph.firstLineIndent()));
+        p.setSpacingBefore(twips(Math.max(0, Math.min(spaceBefore, 200))));
+        // Exactly the PDF's distance between lines, so text sits as tall on the page as in the PDF.
+        p.setSpacingBetween(lineHeight, org.apache.poi.xwpf.usermodel.LineSpacingRule.EXACT);
+        if (look.block != null) {
+            // Every line of a block gets the same indents and borders, so Word draws one box around them all;
+            // a line indented further in (code) keeps its place with a first-line indent.
+            WordShapes.Block b = look.block;
+            p.setIndentationLeft(twips(look.blockTextLeft - look.wordLeft));
+            p.setIndentationRight(twips(look.wordRight - b.right() + 4));
+            float further = look.textLeft - look.blockTextLeft;
+            if (further > 1) p.setIndentationFirstLine(twips(further));
+            String colour = String.format("%06X", b.rgb());
+            var borders = p.getCTP().isSetPPr() && p.getCTP().getPPr().isSetPBdr() ? p.getCTP().getPPr().getPBdr()
+                    : (p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr()).addNewPBdr();
+            border(borders.addNewTop(), colour, 4, look.padTop);
+            border(borders.addNewBottom(), colour, 4, look.padBottom);
+            border(borders.addNewLeft(), colour, 4, Math.min(31, look.blockTextLeft - b.left()));
+            border(borders.addNewRight(), colour, 4, 4);
+            var shading = p.getCTP().getPPr().isSetShd() ? p.getCTP().getPPr().getShd() : p.getCTP().getPPr().addNewShd();
+            shading.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STShd.CLEAR);
+            shading.setColor("auto");
+            shading.setFill(colour);
+        } else {
+            if (paragraph.indent() > 2) p.setIndentationLeft(twips(paragraph.indent()));
+            if (paragraph.firstLineIndent() > 2) p.setIndentationFirstLine(twips(paragraph.firstLineIndent()));
+            else if (paragraph.firstLineIndent() < -2) p.setIndentationHanging(twips(-paragraph.firstLineIndent()));
+        }
+        if (look.bar != null) {
+            // The bar beside a quote: a left border as thick as the bar, as far from the text.
+            WordShapes.Bar bar = look.bar;
+            var ppr = p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr();
+            var borders = ppr.isSetPBdr() ? ppr.getPBdr() : ppr.addNewPBdr();
+            if (!borders.isSetLeft()) {
+                border(borders.addNewLeft(), String.format("%06X", bar.rgb()), Math.round((bar.right() - bar.left()) * 8),
+                        Math.min(31, look.textLeft - bar.right()));
+            }
+        }
         List<TextWord> words = paragraph.words();
         if (paragraph.marker() != null && listPlace == null) {
             // A numbered heading ("1. Contributions"): the number stays as text in the heading.
             words = new ArrayList<>(words);
             words.add(0, paragraph.marker().word());
         }
-        addRuns(p, words, false);
+        addRuns(p, words, false, fonts, shapes, look.wordLeft);
         return p;
     }
 
@@ -407,36 +637,167 @@ public class PdfToWordTool implements PdfTool {
         return p;
     }
 
-    /** Adds the words as runs: one run per stretch of words that look the same. */
-    private static void addRuns(XWPFParagraph p, List<TextWord> words, boolean afterExistingText) {
+    /**
+     * Adds the words as runs: one run per stretch of words that look the same (and have the same
+     * background). A space goes between words only where the PDF has a gap or a new line, so
+     * "PDF" in bold followed by a plain "." stays "PDF.".
+     */
+    private static void addRuns(XWPFParagraph p, List<TextWord> words, boolean afterExistingText, WordFonts fonts,
+                                WordShapes shapes, float tabOrigin) {
         StringBuilder text = new StringBuilder();
-        TextWord look = null;
+        TextWord look = null, previous = null;
+        int background = -1;
         boolean spaceFirst = afterExistingText;
         for (TextWord w : words) {
-            if (look != null && !w.looksLike(look)) {
-                // The space between two runs goes with whichever isn't underlined, so no underlined gap shows.
-                if (!look.underline()) text.append(' ');
-                addRun(p, text.toString(), look);
+            int behind = shapes.highlightBehind(w);
+            boolean sameLine = previous != null && Math.abs(w.baseline() - previous.baseline()) <= previous.size() * 0.5f;
+            boolean gap = previous != null && (!sameLine || w.left() - previous.right() > previous.size() * 0.12f);
+            if (sameLine && !Float.isNaN(tabOrigin) && w.left() - previous.right() > previous.size() * 0.9f) {
+                // A wide gap on one line (a form's answer, a column of a folder tree): a tab to a tab stop
+                // where the PDF has the next word, so it lines up there exactly.
+                if (look != null && text.length() > 0) addRun(p, text.toString(), look, fonts, background);
                 text.setLength(0);
-                spaceFirst = look.underline();
+                XWPFRun tab = p.createRun();
+                tab.setFontSize(w.size());
+                tab.addTab();
+                addTabStop(p, w.left() - tabOrigin);
+                spaceFirst = false;
+                text.append(w.text());
+                look = w;
+                background = behind;
+                previous = w;
+                continue;
             }
-            if (text.length() > 0 || spaceFirst) text.append(' ');
+            if (look != null && (!w.looksLike(look) || behind != background)) {
+                // The space between two runs goes with whichever isn't underlined or shaded, so no stray mark shows.
+                boolean spaceAfter = gap && !look.underline() && background < 0;
+                if (spaceAfter) text.append(' ');
+                addRun(p, text.toString(), look, fonts, background);
+                text.setLength(0);
+                spaceFirst = gap && !spaceAfter;
+            } else if (gap) {
+                text.append(spacesFor(previous, w));
+            }
+            if (spaceFirst) text.append(' ');
             spaceFirst = false;
             text.append(w.text());
             look = w;
+            background = behind;
+            previous = w;
         }
-        if (look != null) addRun(p, text.toString(), look);
+        if (look != null) addRun(p, text.toString(), look, fonts, background);
     }
 
-    private static void addRun(XWPFParagraph p, String text, TextWord look) {
+    /** A left tab stop at this distance (points) from the left margin, unless the paragraph has one there. */
+    private static void addTabStop(XWPFParagraph p, float position) {
+        if (position <= 0) return;
+        var ppr = p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr();
+        var tabs = ppr.isSetTabs() ? ppr.getTabs() : ppr.addNewTabs();
+        BigInteger at = BigInteger.valueOf(twips(position));
+        for (var existing : tabs.getTabArray()) {
+            if (existing.getPos() instanceof BigInteger pos && pos.subtract(at).abs().intValue() < 40) return;
+        }
+        var tab = tabs.addNewTab();
+        tab.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTabJc.LEFT);
+        tab.setPos(at);
+    }
+
+    /**
+     * The spaces for the gap before a word on the same line: one, or for a gap far wider than a
+     * space (columns lined up with spaces, as in code or a folder tree) as many as fill it.
+     * Justified text never stretches a gap this far, so it isn't affected.
+     */
+    private static String spacesFor(TextWord previous, TextWord next) {
+        if (Math.abs(next.baseline() - previous.baseline()) > previous.size() * 0.5f) return " ";
+        float gap = next.left() - previous.right();
+        if (gap <= previous.size() * 0.9f) return " ";
+        String font = previous.font().toLowerCase(java.util.Locale.ROOT);
+        float space = previous.size() * (font.contains("mono") || font.contains("courier") || font.contains("consol") ? 0.6f : 0.26f);
+        return " ".repeat(Math.max(2, Math.min(80, Math.round(gap / space))));
+    }
+
+    private static void addRun(XWPFParagraph p, String text, TextWord look, WordFonts fonts, int background) {
         XWPFRun run = p.createRun();
         run.setText(text);
-        run.setFontFamily(look.font());
+        // The PDF's font where possible: embedded in the Word file, installed, or a close match (WordFonts).
+        run.setFontFamily(fonts.name(look.font(), look.bold(), look.italic()));
         run.setFontSize(look.size());
         if (look.bold()) run.setBold(true);
         if (look.italic()) run.setItalic(true);
         if (look.colour() != 0) run.setColor(String.format("%06X", look.colour()));
         if (look.underline()) run.setUnderline(UnderlinePatterns.SINGLE);
+        if (background >= 0) {
+            var rpr = run.getCTR().isSetRPr() ? run.getCTR().getRPr() : run.getCTR().addNewRPr();
+            var shading = rpr.addNewShd();
+            shading.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STShd.CLEAR);
+            shading.setColor("auto");
+            shading.setFill(String.format("%06X", background));
+        }
+    }
+
+    /** A dividing line: an empty paragraph one point high, its bottom border drawn like the PDF's line. */
+    private static XWPFParagraph writeDivider(XWPFDocument word, WordShapes.Divider d, float spaceBefore,
+                                              float wordLeft, float wordRight) {
+        XWPFParagraph p = word.createParagraph();
+        p.setSpacingAfter(0);
+        p.setSpacingBefore(twips(Math.max(0, Math.min(spaceBefore, 200))));
+        p.setSpacingBetween(1, org.apache.poi.xwpf.usermodel.LineSpacingRule.EXACT);
+        p.setIndentationLeft(twips(d.left() - wordLeft));
+        p.setIndentationRight(twips(wordRight - d.right()));
+        var ppr = p.getCTP().isSetPPr() ? p.getCTP().getPPr() : p.getCTP().addNewPPr();
+        border(ppr.addNewPBdr().addNewBottom(), String.format("%06X", d.rgb()), Math.max(2, Math.round(d.thickness() * 8)), 0);
+        return p;
+    }
+
+    /** Fills in one paragraph border: single line, size in eighths of a point, gap to the text in points. */
+    private static void border(org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder border, String colour,
+                               int eighths, float space) {
+        border.setVal(org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder.SINGLE);
+        border.setSz(BigInteger.valueOf(Math.max(2, Math.min(96, eighths))));
+        border.setSpace(BigInteger.valueOf(Math.round(Math.max(0, Math.min(31, space)))));
+        border.setColor(colour);
+    }
+
+    private static float left(Paragraph paragraph) {
+        float left = Float.MAX_VALUE;
+        for (TextWord w : paragraph.words()) left = Math.min(left, w.left());
+        return left;
+    }
+
+    private static float right(Paragraph paragraph) {
+        float right = -Float.MAX_VALUE;
+        for (TextWord w : paragraph.words()) right = Math.max(right, w.right());
+        return right;
+    }
+
+    /** The paragraphs on the page that sit on this background. */
+    private static List<Paragraph> onBlock(WordShapes.Block block, List<DocumentReader.Item> items, WordShapes shapes) {
+        List<Paragraph> on = new ArrayList<>();
+        for (DocumentReader.Item item : items) {
+            Paragraph q = item.paragraph();
+            if (q == null) continue;
+            if (shapes.blockBehind(left(q), firstBaseline(q) - q.size() * 0.8f, right(q), lastBaseline(q) + descent(q.size())) == block) on.add(q);
+        }
+        return on;
+    }
+
+    /** Where the block's least indented text starts: its left padding ends there. */
+    private static float blockTextLeft(WordShapes.Block block, List<DocumentReader.Item> items, WordShapes shapes) {
+        float left = Float.MAX_VALUE;
+        for (Paragraph q : onBlock(block, items, shapes)) left = Math.min(left, left(q));
+        return left == Float.MAX_VALUE ? block.left() : left;
+    }
+
+    private static float firstTextTop(WordShapes.Block block, List<DocumentReader.Item> items, WordShapes shapes) {
+        List<Paragraph> on = onBlock(block, items, shapes);
+        return on.isEmpty() ? block.top() : firstBaseline(on.get(0)) - on.get(0).size() * 0.8f;
+    }
+
+    private static float lastTextBottom(WordShapes.Block block, List<DocumentReader.Item> items, WordShapes shapes) {
+        List<Paragraph> on = onBlock(block, items, shapes);
+        if (on.isEmpty()) return block.bottom();
+        Paragraph q = on.get(on.size() - 1);
+        return lastBaseline(q) + descent(q.size());
     }
 
     /** Page size and margins like the PDF's, so lines break in about the same places. */

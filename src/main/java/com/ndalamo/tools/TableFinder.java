@@ -117,19 +117,28 @@ final class TableFinder {
         return -1;
     }
 
-    /** Borders are often drawn as many short pieces (one per cell); join pieces on the same line. */
-    private static List<Rule> joinBrokenLines(List<Rule> rules) {
+    /**
+     * Borders are often drawn as many short pieces (one per cell); join pieces on the same line.
+     * A piece joins a line only where they overlap or touch: two tables of the same width, one
+     * above the other, have borders at nearly the same x, and joining by position alone once let
+     * the lower table's border swallow the upper one's (which then lost its right edge).
+     */
+    static List<Rule> joinBrokenLines(List<Rule> rules) {
         List<Rule> sorted = new ArrayList<>(rules);
-        sorted.sort(Comparator.comparing(Rule::horizontal).thenComparingDouble(Rule::position).thenComparingDouble(Rule::from));
+        sorted.sort(Comparator.comparing(Rule::horizontal).thenComparingDouble(Rule::from));
         List<Rule> joined = new ArrayList<>();
         for (Rule rule : sorted) {
-            Rule last = joined.isEmpty() ? null : joined.get(joined.size() - 1);
-            if (last != null && last.horizontal() == rule.horizontal()
-                    && Math.abs(last.position() - rule.position()) <= TOUCHING && rule.from() <= last.to() + TOUCHING) {
-                joined.set(joined.size() - 1, new Rule(last.horizontal(), last.position(), last.from(), Math.max(last.to(), rule.to())));
-            } else {
-                joined.add(rule);
+            boolean merged = false;
+            for (int i = 0; i < joined.size() && !merged; i++) {
+                Rule line = joined.get(i);
+                if (line.horizontal() == rule.horizontal() && Math.abs(line.position() - rule.position()) <= TOUCHING
+                        && rule.from() <= line.to() + TOUCHING && rule.to() >= line.from() - TOUCHING) {
+                    joined.set(i, new Rule(line.horizontal(), line.position(), Math.min(line.from(), rule.from()),
+                            Math.max(line.to(), rule.to())));
+                    merged = true;
+                }
             }
+            if (!merged) joined.add(rule);
         }
         return joined;
     }

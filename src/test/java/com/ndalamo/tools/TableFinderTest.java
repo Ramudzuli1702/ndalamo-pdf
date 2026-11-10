@@ -33,6 +33,49 @@ class TableFinderTest {
         return words;
     }
 
+    /** A ruled table's lines, drawn one cell at a time as browsers and Ndalamo's own PDFs do. */
+    private static List<Rule> grid(float left, float middle, float right, float... rowEdges) {
+        List<Rule> rules = new ArrayList<>();
+        for (int r = 0; r + 1 < rowEdges.length; r++) {
+            float top = rowEdges[r], bottom = rowEdges[r + 1];
+            rules.add(new Rule(true, top, left, right));
+            rules.add(new Rule(true, bottom, left, right));
+            for (float x : new float[] {left, middle, right}) rules.add(new Rule(false, x, top, bottom));
+        }
+        return rules;
+    }
+
+    @Test
+    void twoTablesOfTheSameWidthOneAboveTheOtherAreBothFound() {
+        // The lower table's right border is a hair to the left of the upper one's (531.29 vs 531.30):
+        // joining border pieces by position alone once let it swallow the upper table's border.
+        List<Rule> rules = new ArrayList<>(grid(64, 120.8f, 531.30f, 91, 115, 155, 194));
+        rules.addAll(grid(64, 120.8f, 531.29f, 475, 499, 538));
+        List<Box> words = new ArrayList<>();
+        for (float y : new float[] {108, 140, 180}) {
+            words.add(word("Tool", 70, y));
+            words.addAll(sentence("A note about the tool", 130, y));
+        }
+        for (float y : new float[] {492, 520}) {
+            words.add(word("Compare", 70, y));
+            words.addAll(sentence("Text differences per page", 130, y));
+        }
+
+        List<Table<Box>> tables = TableFinder.find(words, rules);
+
+        assertEquals(2, tables.size());
+        assertEquals(3, tables.get(0).cells().size());
+        assertEquals(2, tables.get(0).columns());
+        assertEquals("A note about the tool", tables.get(0).rows().get(0).get(1));
+        assertEquals(2, tables.get(1).cells().size());
+    }
+
+    @Test
+    void ligaturesBecomePlainLetters() {
+        assertEquals("first flat office", PageText.plainLetters("ﬁrst ﬂat oﬃce"));
+        assertEquals("plain", PageText.plainLetters("plain"));
+    }
+
     @Test
     void rightAlignedAmountsOfDifferentWidthsStayInOneColumn() {
         List<Box> words = new ArrayList<>();

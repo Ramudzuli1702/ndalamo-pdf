@@ -376,7 +376,9 @@ class PdfToWordToolTest {
             doc.save(form.toFile());
         }
         try (XWPFDocument word = open(convert(form, true))) {
-            assertEquals("Name: Thabo Nkosi", texts(word).get(0));
+            // Label and answer stay together, in order; the answer sits at a tab stop where the PDF has it.
+            assertEquals("Name:\tThabo Nkosi", texts(word).get(0));
+            assertTrue(word.getParagraphs().get(0).getCTP().getPPr().isSetTabs(), "a tab stop at the answer's column");
         }
     }
 

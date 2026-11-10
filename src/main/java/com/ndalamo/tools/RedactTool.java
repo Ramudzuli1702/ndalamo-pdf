@@ -277,7 +277,7 @@ public class RedactTool implements PdfTool {
                         text.append(unicode.charAt(k));
                         // From the font size, not PDFBox's letter height, which runs short of tall letters' tops:
                         // a box that low would leave the top of the words readable.
-                        float size = Math.max(p.getFontSizeInPt(), p.getHeightDir());
+                        float size = Math.max(PageText.sizeInPoints(p), p.getHeightDir());
                         boxes.add(unicode.isBlank() ? null : new float[]{p.getXDirAdj(), p.getYDirAdj() - size * 0.95f,
                                 p.getXDirAdj() + p.getWidthDirAdj(), p.getYDirAdj() + size * 0.25f});
                     }

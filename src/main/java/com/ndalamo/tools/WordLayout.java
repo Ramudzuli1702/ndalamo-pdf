@@ -134,6 +134,15 @@ final class WordLayout {
         return left;
     }
 
+    /** The average space between a line's words, in points; 0 for a line of one word. */
+    private static float meanGap(Line line) {
+        List<TextWord> words = line.words();
+        if (words.size() < 2) return 0;
+        float total = 0;
+        for (int i = 1; i < words.size(); i++) total += Math.max(0, words.get(i).left() - words.get(i - 1).right());
+        return total / (words.size() - 1);
+    }
+
     private static Paragraph paragraph(List<Line> lines, Margins margins, float edge, float spaceBefore) {
         List<TextWord> words = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
@@ -163,10 +172,17 @@ final class WordLayout {
         }
 
         Alignment alignment = Alignment.LEFT;
-        // Justified: every line but the last reaches the right edge. Uneven text never lines up that exactly.
+        // Justified: every line but the last ends at the right edge (not short of it, and not past it, as
+        // the longest lines of ragged text do). Uneven text never lines up that exactly.
         boolean fullLines = lines.size() >= 2;
         for (int i = 0; i < lines.size() - 1; i++) {
-            if (edge - lines.get(i).right() > 1.5f) fullLines = false;
+            if (Math.abs(edge - lines.get(i).right()) > 1.5f) fullLines = false;
+        }
+        if (fullLines && lines.size() == 2) {
+            // With only one full line it could be chance, so its spaces must also be stretched: wider than
+            // the last line's (which justified text leaves natural), or wider than a normal space.
+            float full = meanGap(lines.get(0)), last = meanGap(lines.get(1));
+            fullLines = last > 0 && lines.get(1).words().size() >= 3 ? full > last * 1.12f : full > first.size() * 0.33f;
         }
         if (fullLines) {
             alignment = Alignment.JUSTIFIED;

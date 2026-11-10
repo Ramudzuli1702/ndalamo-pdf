@@ -101,15 +101,15 @@ final class PageText {
 
     private static void addWord(List<TextWord> words, List<TextPosition> letters, Map<TextPosition, Integer> colours) {
         StringBuilder text = new StringBuilder();
-        for (TextPosition letter : letters) text.append(letter.getUnicode());
+        for (TextPosition letter : letters) text.append(plainLetters(letter.getUnicode()));
         if (text.toString().isBlank()) return;
         TextPosition first = letters.get(0), last = letters.get(letters.size() - 1);
         PDFont font = first.getFont();
         String name = font == null || font.getName() == null ? "" : font.getName();
         words.add(new TextWord(text.toString().strip(),
                 first.getXDirAdj(), last.getXDirAdj() + last.getWidthDirAdj(), first.getYDirAdj(),
-                Math.round(first.getFontSizeInPt() * 2) / 2f,          // to the nearest half point, like Word
-                familyName(name), isBold(font, name), isItalic(font, name),
+                Math.round(sizeInPoints(first) * 2) / 2f,              // to the nearest half point, like Word
+                family(font, name), isBold(font, name), isItalic(font, name),
                 colours.getOrDefault(first, 0), false));
     }
 
@@ -142,7 +142,7 @@ final class PageText {
     }
 
     private static boolean sameLook(TextPosition a, TextPosition b, Map<TextPosition, Integer> colours) {
-        return a.getFont() == b.getFont() && Math.abs(a.getFontSizeInPt() - b.getFontSizeInPt()) < 0.6f
+        return a.getFont() == b.getFont() && Math.abs(sizeInPoints(a) - sizeInPoints(b)) < 0.6f
                 && colours.getOrDefault(a, 0).equals(colours.getOrDefault(b, 0));
     }
 
@@ -154,7 +154,65 @@ final class PageText {
         }
     }
 
-    private static boolean isBold(PDFont font, String name) {
+    /**
+     * Typesetting ligatures ("ﬁ" as one character) as the letters they stand for, so the text can
+     * be searched and edited ("first", not "ﬁrst"). Only the ligature block is touched.
+     */
+    static String plainLetters(String text) {
+        if (text == null) return "";
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= 'ﬀ' && c <= 'ﬆ') return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFKC);
+        }
+        return text;
+    }
+
+    /**
+     * A letter's size in points. PDFBox's getFontSizeInPt() drops the fraction (10.5 pt comes
+     * back as 10), so the size is taken from the text's scaling, which also covers PDFs that set
+     * size 1 and scale the text up.
+     */
+    static float sizeInPoints(TextPosition letter) {
+        float size = Math.abs(letter.getYScale());
+        if (size <= 0.01f) size = Math.abs(letter.getXScale());
+        return size > 0.01f ? size : letter.getFontSizeInPt();
+    }
+
+    /** Family names already read, per font (reading a font's name table for every word would be slow). */
+    private static final Map<PDFont, String> FAMILIES = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    /**
+     * The font's family for Word: the name the font program inside the PDF gives itself
+     * ("IBM Plex Sans"), which Word matches against installed and embedded fonts; otherwise one
+     * made from the PDF's own label for it (see familyName).
+     */
+    static String family(PDFont font, String pdfName) {
+        if (font == null) return familyName(pdfName);
+        return FAMILIES.computeIfAbsent(font, f -> {
+            String embedded = embeddedFamily(f);
+            return embedded != null ? embedded : familyName(pdfName);
+        });
+    }
+
+    /** The family named inside an embedded TrueType font ("IBM Plex Sans"), or null if there's none to read. */
+    static String embeddedFamily(PDFont font) {
+        try {
+            org.apache.fontbox.ttf.TrueTypeFont ttf = null;
+            if (font instanceof org.apache.pdfbox.pdmodel.font.PDType0Font type0
+                && type0.getDescendantFont() instanceof org.apache.pdfbox.pdmodel.font.PDCIDFontType2 cid) {
+                ttf = cid.getTrueTypeFont();
+            } else if (font instanceof org.apache.pdfbox.pdmodel.font.PDTrueTypeFont trueType && trueType.isEmbedded()) {
+                ttf = trueType.getTrueTypeFont();
+            }
+            if (ttf == null || ttf.getNaming() == null) return null;
+            String family = ttf.getNaming().getFontFamily();
+            return family == null || family.isBlank() || family.contains("+") ? null : family.strip();
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    static boolean isBold(PDFont font, String name) {
         String lower = name.toLowerCase();
         if (lower.contains("bold") || lower.contains("black") || lower.contains("heavy") || lower.contains("semibold")
                 || lower.contains("demi")) return true;
@@ -162,7 +220,7 @@ final class PageText {
         return descriptor != null && (descriptor.isForceBold() || descriptor.getFontWeight() >= 600);
     }
 
-    private static boolean isItalic(PDFont font, String name) {
+    static boolean isItalic(PDFont font, String name) {
         String lower = name.toLowerCase();
         if (lower.contains("italic") || lower.contains("oblique")) return true;
         PDFontDescriptor descriptor = font == null ? null : font.getFontDescriptor();
