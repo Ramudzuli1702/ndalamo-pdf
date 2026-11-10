@@ -5,8 +5,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
@@ -55,8 +53,9 @@ import java.util.List;
  * and a new page starts when a page is full.
  *
  * Fonts: IBM Plex Sans (Noto Sans for letters Plex lacks, decision 006); italics are
- * Plex slanted, as no italic font is bundled; code uses Courier, which every PDF
- * reader has built in. Pictures are drawn only from files on this PC; a picture on
+ * Plex slanted, as no italic font is bundled; code uses Liberation Mono (bundled, the
+ * same letter widths as Courier), which also has the box-drawing characters of folder
+ * trees (├── └──) that Courier lacks. Pictures are drawn only from files on this PC; a picture on
  * the web shows its description instead, because Ndalamo never goes online.
  */
 final class MarkdownRenderer {
@@ -82,8 +81,7 @@ final class MarkdownRenderer {
     private final Path folder;                 // the Markdown file's folder, for pictures given by relative path
     private final PDRectangle pageSize;
     private final float margin = 64;
-    private final PDFont plex, plexBold, noto, notoBold;
-    private final PDFont courier = new PDType1Font(Standard14Fonts.FontName.COURIER);
+    private final PDFont plex, plexBold, noto, notoBold, mono;
     private final List<Float> quoteBars = new ArrayList<>();   // x of each quote bar currently open
 
     private PDPage page;
@@ -99,6 +97,7 @@ final class MarkdownRenderer {
         plexBold = PageCanvas.load(doc, "/fonts/IBMPlexSans-Bold.ttf");
         noto = PageCanvas.load(doc, "/fonts/NotoSans-Regular.ttf");
         notoBold = PageCanvas.load(doc, "/fonts/NotoSans-Bold.ttf");
+        mono = PageCanvas.load(doc, "/fonts/liberation/LiberationMono-Regular.ttf");
     }
 
     /** Pictures that couldn't be drawn: on the web, missing, or in a format Java can't read. */
@@ -246,7 +245,7 @@ final class MarkdownRenderer {
 
     private void codeBlock(String literal, float x, float width) throws IOException {
         float size = BODY * 0.88f, leading = size * 1.45f, pad = 7;
-        float charWidth = courier.getStringWidth("m") / 1000 * size;
+        float charWidth = mono.getStringWidth("m") / 1000 * size;
         int perLine = Math.max(10, (int) ((width - 2 * pad) / charWidth));
         List<String> lines = new ArrayList<>();
         for (String line : literal.replace("\t", "    ").stripTrailing().split("\n", -1)) {
@@ -606,9 +605,9 @@ final class MarkdownRenderer {
         return canWrite(first, p.text()) ? first : p.look().bold() ? notoBold : noto;
     }
 
-    /** Courier for code, unless the text has letters only a full font has (e.g. Tshivenda ṱ). */
+    /** Liberation Mono for code, unless the text has letters it lacks (e.g. Tshivenda ṱ). */
     private PDFont codeFont(String text) {
-        return canWrite(courier, text) ? courier : canWrite(plex, text) ? plex : noto;
+        return canWrite(mono, text) ? mono : canWrite(plex, text) ? plex : noto;
     }
 
     private static boolean canWrite(PDFont font, String text) {

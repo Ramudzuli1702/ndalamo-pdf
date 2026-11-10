@@ -106,6 +106,18 @@ class MarkdownToPdfToolTest {
     }
 
     @Test
+    void folderTreesInCodeKeepTheirLines() throws Exception {
+        // Courier has no box-drawing characters, so trees once came out as "???"; Liberation Mono has them.
+        String md = "```\nndalamo/\n├── pom.xml\n├── core/\n│   └── SPEC.md\n└── docs/\n```\n";
+        Path file = Files.writeString(dir.resolve("Tree.md"), md, StandardCharsets.UTF_8);
+        FileResult result = new MarkdownToPdfTool().run(List.of(file), options(false), sameFolder, new Progress()).get(0);
+
+        String text = TestFiles.text(result.getOutput());
+        assertTrue(text.contains("├── pom.xml") && text.contains("│   └── SPEC.md") && text.contains("└── docs/"), text);
+        assertFalse(text.contains("?"), "no character replaced by a question mark");
+    }
+
+    @Test
     void linksPicturesAndTitleWork() throws Exception {
         FileResult result = new MarkdownToPdfTool().run(List.of(notes()), options(false), sameFolder, new Progress()).get(0);
 
