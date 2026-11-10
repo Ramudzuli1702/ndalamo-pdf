@@ -60,6 +60,7 @@ public class PipelineBuilderScreen extends BorderPane {
     private final Label inputLine = new Label();
     private final Label outputLine = new Label();
     private final TextField nameField = new TextField();
+    private Consumer<Pipeline> onLinkWatchFolder = p -> {};
 
     /**
      * @param pipeline an editable copy (see Pipeline.editableCopy) or a new pipeline
@@ -67,6 +68,13 @@ public class PipelineBuilderScreen extends BorderPane {
      */
     public PipelineBuilderScreen(MainWindow window, Pipeline pipeline, SaveTo saveTo, Runnable onBack,
                                  Consumer<Pipeline> onSave) {
+        this(window, pipeline, saveTo, onBack, p -> {}, onSave);
+    }
+
+    /** @param onLinkWatchFolder "Link to a watch folder": sets up a folder that runs this pipeline */
+    public PipelineBuilderScreen(MainWindow window, Pipeline pipeline, SaveTo saveTo, Runnable onBack,
+                                 Consumer<Pipeline> onLinkWatchFolder, Consumer<Pipeline> onSave) {
+        this.onLinkWatchFolder = onLinkWatchFolder;
         this.window = window;
         this.pipeline = pipeline;
         this.saveTo = saveTo;
@@ -314,10 +322,8 @@ public class PipelineBuilderScreen extends BorderPane {
         CheckBox pin = new CheckBox("Pin to home screen");
         pin.setSelected(pipeline.isPinned());
         pin.selectedProperty().addListener((obs, was, now) -> pipeline.setPinned(now));
-        Label watch = new Label("Link to a watch folder: comes with watch folders in the next update.");
-        watch.getStyleClass().add("small-muted");
-        watch.setWrapText(true);
-        watch.setMinHeight(Region.USE_PREF_SIZE);
+        javafx.scene.control.Hyperlink watch = new javafx.scene.control.Hyperlink("Link to a watch folder");
+        watch.setOnAction(e -> onLinkWatchFolder.accept(pipeline));
         VBox aside = new VBox(12, title, search, tools, handWork, new VBox(8, pin, watch));
         aside.getStyleClass().add("builder-aside");
         aside.setPrefWidth(300);

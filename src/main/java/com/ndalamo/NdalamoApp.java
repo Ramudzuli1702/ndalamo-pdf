@@ -2,7 +2,6 @@ package com.ndalamo;
 
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
-import com.ndalamo.screens.ComingSoonScreen;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
 import com.ndalamo.screens.PipelineBuilderScreen;
@@ -10,6 +9,8 @@ import com.ndalamo.screens.PipelinesScreen;
 import com.ndalamo.screens.Toast;
 import com.ndalamo.models.Pipeline;
 import com.ndalamo.services.PipelineService;
+import com.ndalamo.services.WatchFolderService;
+import com.ndalamo.screens.WatchFoldersScreen;
 import com.ndalamo.services.PipelineTool;
 import com.ndalamo.screens.SuggestScreen;
 import com.ndalamo.screens.LibreOfficeDialog;
@@ -45,7 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Path;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 
 /**
@@ -70,7 +71,10 @@ public class NdalamoApp extends Application {
     private JobService jobService;
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
     private final PipelineService pipelineService = new PipelineService();
-    private List<Pipeline> pipelines = new ArrayList<>();
+    // Read by the watch-folder threads too, so a list that's safe to read while it changes.
+    private final List<Pipeline> pipelines = new CopyOnWriteArrayList<>();
+    private final WatchFolderService watchFolders =
+            new WatchFolderService(() -> pipelines, () -> SaveTo.from(settings));
 
     @Override
     public void start(Stage stage) {
@@ -79,7 +83,12 @@ public class NdalamoApp extends Application {
                 log.error("Uncaught exception on {}", thread.getName(), e));
 
         settings = settingsService.load();
-        pipelines = pipelineService.load();
+        pipelines.addAll(pipelineService.load());
+        watchFolders.load();
+        watchFolders.setListener(entry -> Platform.runLater(() -> {
+            if (window.current() instanceof WatchFoldersScreen screen) screen.refresh();
+        }));
+        watchFolders.start();
         LibreOffice.setChosenLocation(settings.getLibreOfficePath());
         jobService = new JobService(settings.workerThreads());
         log.info("Ndalamo started with {} worker thread(s)", settings.workerThreads());
@@ -146,6 +155,7 @@ public class NdalamoApp extends Application {
 
     @Override
     public void stop() {
+        watchFolders.stop(java.time.Duration.ofSeconds(10));
         if (jobService != null) jobService.shutdown();
         log.info("Ndalamo closed");
     }
@@ -159,14 +169,23 @@ public class NdalamoApp extends Application {
     // ── Pipelines ────────────────────────────────────────────────────────
 
     private void showPipelines() {
-        window.show(new PipelinesScreen(window, pipelines, new PipelinesScreen.Actions() {
+        window.show(new PipelinesScreen(window, pipelines, watchedPipelineIds(), pipelineActions()));
+    }
+
+    private void showWatchFolders() {
+        window.show(new WatchFoldersScreen(window, watchFolders, pipelines, pipelineActions()));
+    }
+
+    private java.util.Set<String> watchedPipelineIds() {
+        return watchFolders.folders().stream().map(com.ndalamo.models.WatchFolder::getPipelineId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private PipelinesScreen.Actions pipelineActions() {
+        return new PipelinesScreen.Actions() {
             @Override public void home() { showHome(); }
             @Override public void pipelines() { showPipelines(); }
-            @Override public void watchFolders() {
-                window.show(new ComingSoonScreen("Watch folders",
-                        "Folders that run a pipeline on every file put in them come in the next update (chunk 17).",
-                        List.of(), NdalamoApp.this::showPipelines));
-            }
+            @Override public void watchFolders() { showWatchFolders(); }
             @Override public void create() { editPipeline(new Pipeline()); }
             @Override public void edit(Pipeline pipeline) { editPipeline(pipeline.editableCopy()); }
             @Override public void run(Pipeline pipeline) { runPipeline(pipeline, List.of()); }
@@ -181,12 +200,12 @@ public class NdalamoApp extends Application {
                 showPipelines();
                 window.toast(Toast.success("Pipeline deleted", "\u201c" + pipeline.getName() + "\u201d was removed."));
             }
-        }));
+        };
     }
 
     /** Opens the builder on a copy; saving puts it in the list (replacing the one with the same id). */
     private void editPipeline(Pipeline copy) {
-        window.show(new PipelineBuilderScreen(window, copy, SaveTo.from(settings), this::showPipelines, saved -> {
+        window.show(new PipelineBuilderScreen(window, copy, SaveTo.from(settings), this::showPipelines, this::linkWatchFolder, saved -> {
             int at = -1;
             for (int i = 0; i < pipelines.size(); i++) if (pipelines.get(i).getId().equals(saved.getId())) at = i;
             if (at >= 0) pipelines.set(at, saved);
@@ -195,6 +214,18 @@ public class NdalamoApp extends Application {
             showPipelines();
             window.toast(Toast.success("Pipeline saved", "\u201c" + saved.getName() + "\u201d is ready to run."));
         }));
+    }
+
+    /** "Link to a watch folder" in the builder: the pipeline has to be saved first, so the folder can find it. */
+    private void linkWatchFolder(Pipeline pipeline) {
+        boolean saved = pipelines.stream().anyMatch(p -> p.getId().equals(pipeline.getId()));
+        if (!saved) {
+            window.toast(Toast.info("Save the pipeline first", "Then a folder can be set to run it."));
+            return;
+        }
+        WatchFoldersScreen screen = new WatchFoldersScreen(window, watchFolders, pipelines, pipelineActions());
+        window.show(screen);
+        screen.add(pipeline);
     }
 
     /** Runs a pipeline through the usual tool screens; each finished run is counted. */

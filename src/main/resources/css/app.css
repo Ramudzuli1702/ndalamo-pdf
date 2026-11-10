@@ -695,3 +695,6 @@
     -fx-padding: 14 16;
     -fx-font-size: 14px;
 }
+
+.badge-success { -fx-background-color: -nd-success-soft; -fx-text-fill: -nd-success; }
+.log-row { -fx-padding: 10 0; -fx-border-color: transparent transparent -nd-border transparent; -fx-font-size: 13px; }

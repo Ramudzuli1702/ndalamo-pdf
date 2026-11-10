@@ -45,11 +45,18 @@ public class PipelinesScreen extends BorderPane {
 
     private final MainWindow window;
     private final Actions actions;
+    private java.util.Set<String> watched = java.util.Set.of();
 
     public PipelinesScreen(MainWindow window, List<Pipeline> pipelines, Actions actions) {
+        this(window, pipelines, java.util.Set.of(), actions);
+    }
+
+    /** @param watched ids of pipelines a watch folder runs (they get a "Watching a folder" badge) */
+    public PipelinesScreen(MainWindow window, List<Pipeline> pipelines, java.util.Set<String> watched, Actions actions) {
+        this.watched = watched;
         this.window = window;
         this.actions = actions;
-        setTop(header(true, actions));
+        setTop(header(true, actions, "+ New pipeline", actions::create));
 
         Label title = new Label("Pipelines");
         title.getStyleClass().add("page-title");
@@ -71,8 +78,8 @@ public class PipelinesScreen extends BorderPane {
         setCenter(scroll);
     }
 
-    /** The header shared with the Watch folders screen: Home, then Pipelines | Watch folders, then + New pipeline. */
-    static HBox header(boolean pipelinesShowing, Actions actions) {
+    /** The header shared with the Watch folders screen: Home, then Pipelines | Watch folders, then the screen's main button. */
+    static HBox header(boolean pipelinesShowing, Actions actions, String mainLabel, Runnable mainAction) {
         Button home = new Button("Home", Icons.back(16, Theme.TEXT));
         home.getStyleClass().add("button-secondary");
         home.setGraphicTextGap(6);
@@ -90,10 +97,10 @@ public class PipelinesScreen extends BorderPane {
         nav.setAccessibleText("Automation");
         Region push = new Region();
         HBox.setHgrow(push, Priority.ALWAYS);
-        Button create = new Button("+ New pipeline");
-        create.getStyleClass().add("button-primary");
-        create.setOnAction(e -> actions.create());
-        HBox header = new HBox(16, Header.brand(), home, nav, push, create);
+        Button main = new Button(mainLabel);
+        main.getStyleClass().add("button-primary");
+        main.setOnAction(e -> mainAction.run());
+        HBox header = new HBox(16, Header.brand(), home, nav, push, main);
         header.getStyleClass().add("screen-header");
         header.setAlignment(Pos.CENTER_LEFT);
         return header;
@@ -123,6 +130,7 @@ public class PipelinesScreen extends BorderPane {
         HBox titleRow = new HBox(8, name);
         titleRow.setAlignment(Pos.CENTER_LEFT);
         if (pipeline.isPinned()) titleRow.getChildren().add(badge("Pinned", "badge-accent"));
+        if (watched.contains(pipeline.getId())) titleRow.getChildren().add(badge("Watching a folder", "badge-success"));
         if (!PipelineValidator.canRun(pipeline)) titleRow.getChildren().add(badge("Needs fixing", "badge-warning"));
 
         FlowPane steps = new FlowPane(6, 6);
