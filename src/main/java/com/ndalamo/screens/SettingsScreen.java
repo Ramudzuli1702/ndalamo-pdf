@@ -287,10 +287,21 @@ public class SettingsScreen extends BorderPane {
         });
         VBox ifExists = group("If a file with that name exists", number, askMe, replace);
 
+        CheckBox previewFirst = new CheckBox("Preview results before saving");
+        previewFirst.setSelected(settings.isPreviewBeforeSaving());
+        previewFirst.selectedProperty().addListener((obs, old, now) -> {
+            settings.setPreviewBeforeSaving(now);
+            save.run();
+        });
+        Label previewNote = new Label("Check every result page by page first. Nothing reaches your folders until you choose Save.");
+        previewNote.getStyleClass().add("small-muted");
+        previewNote.setWrapText(true);
+        VBox previewGroup = new VBox(4, previewFirst, previewNote);
+
         CheckBox never = new CheckBox("Never overwrite the original file (always on)");
         never.setSelected(true);
         never.setDisable(true);
-        return new VBox(18, location, naming, ifExists, never);
+        return new VBox(18, location, naming, ifExists, previewGroup, never);
     }
 
     // ── Tool defaults ────────────────────────────────────────────────────

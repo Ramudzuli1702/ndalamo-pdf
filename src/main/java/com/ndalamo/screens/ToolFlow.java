@@ -13,6 +13,8 @@ import com.ndalamo.models.FileResult;
 import com.ndalamo.models.Progress;
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.services.JobService;
+import com.ndalamo.services.StagedResults;
+import javafx.application.Platform;
 import com.ndalamo.tools.PdfTool;
 import com.ndalamo.tools.ToolProblem;
 import com.ndalamo.utils.FileActions;
@@ -26,10 +28,15 @@ import java.util.function.Supplier;
 /**
  * Takes one tool from start to finish:
  *
- *   ToolScreen (files + options) ─run─► ProgressScreen ─done─► ResultScreen
+ *   ToolScreen (files + options) ─run─► ProgressScreen ─done─► PreviewScreen ─save─► ResultScreen
  *                                            │ Run in background
  *                                            └─► Home + a toast with a progress bar,
  *                                                which becomes a result toast at the end
+ *
+ * With "Preview results before saving" on (the default), the tool writes into a private
+ * staging folder (StagedResults) and the preview shows the results; only Save puts them
+ * where Settings say. Discard deletes them and goes back to the tool screen. With it off,
+ * results are saved straight away and the preview is skipped.
  *
  * Cancel goes back to the tool screen with the same files. If the whole run fails,
  * the tool screen comes back with an error dialog and a "Try again" button.
@@ -65,6 +72,12 @@ public class ToolFlow {
     private Set<Path> lastOutputs = Set.of();
     private Consumer<List<Pipeline.Step>> onSaveAsPipeline = steps -> {};
     private Consumer<com.ndalamo.models.HistoryEntry> onFinished = entry -> {};
+    private Supplier<Boolean> previewBeforeSaving = () -> false;
+
+    /** Whether runs show their results before saving them (Settings › Saving), read fresh for each run. */
+    public void previewWhen(Supplier<Boolean> setting) {
+        this.previewBeforeSaving = setting;
+    }
 
     /** Told about each finished run (for History and the recent files and tools on Home). */
     public void onFinished(Consumer<com.ndalamo.models.HistoryEntry> handler) {
@@ -85,6 +98,8 @@ public class ToolFlow {
 
     private void run(PdfTool tool, ToolScreen toolScreen, List<Path> files, Map<String, Object> options, SaveTo target) {
         List<Pipeline.Step> steps = chainWith(tool, files, options);
+        Path stage = previewBeforeSaving.get() ? stagingFolder() : null;
+        SaveTo runTarget = stage != null ? StagedResults.staging(target, stage) : target;
         Progress[] job = new Progress[1];               // filled in once the job starts
         ProgressScreen[] progressScreen = new ProgressScreen[1];
         Toast[] backgroundToast = new Toast[1];
@@ -104,7 +119,7 @@ public class ToolFlow {
                 tool.oneOutput() ? List.of() : files, cancel, runInBackground);
         window.show(progressScreen[0]);
 
-        job[0] = jobs.start(tool, files, options, target,
+        job[0] = jobs.start(tool, files, options, runTarget,
                 new Progress.Listener() {
                     @Override
                     public void overall(double fraction, String status) {
@@ -119,28 +134,39 @@ public class ToolFlow {
                 },
                 results -> {
                     if (backgroundToast[0] != null) backgroundToast[0].dismiss();
-                    chain = steps;
-                    if (!(job[0].isCancelled() && results.isEmpty())) {
-                        onFinished.accept(new com.ndalamo.models.HistoryEntry(System.currentTimeMillis(), tool.id(), tool.name(),
-                                files.stream().map(f -> f.toAbsolutePath().toString()).toList(),
-                                results.stream().map(FileResult::getOutput).filter(p -> p != null)
-                                        .map(p -> p.toAbsolutePath().toString()).toList()));
-                    }
-                    lastOutputs = results.stream().map(FileResult::getOutput).filter(p -> p != null)
-                            .map(p -> p.toAbsolutePath().normalize()).collect(Collectors.toSet());
-                    if (job[0].isCancelled() && results.isEmpty()) {
+                    boolean cancelled = job[0].isCancelled();
+                    boolean anyOutput = results.stream().anyMatch(r -> r.getOutput() != null);
+                    if (cancelled && results.isEmpty()) {
+                        StagedResults.discard(stage);
                         window.show(toolScreen);
                         window.toast(Toast.info(tool.name() + " cancelled",
                                 "Nothing was saved and your files were not changed."));
-                    } else if (job[0].isCancelled()) {
-                        // Stopped partway through a batch: keep what was finished.
-                        showResults(tool, results, files.size(), List.of());
-                        window.toast(Toast.info("Stopped early",
-                                "The files listed were finished and saved; the rest were left as they were."));
-                    } else if (window.current() == progressScreen[0]) {
-                        showResults(tool, results, files.size(), steps);
+                    } else if (stage != null && anyOutput) {
+                        // Check before saving: nothing is in the user's folders yet.
+                        PreviewScreen preview = preview(tool, toolScreen, files, results, stage, target,
+                                cancelled ? List.of() : steps);
+                        if (window.current() == progressScreen[0]) {
+                            window.show(preview);
+                            if (cancelled) window.toast(Toast.info("Stopped early",
+                                    "The finished files are shown. Nothing is saved until you choose Save."));
+                        } else {
+                            window.toast(Toast.success(tool.name() + " is ready to check",
+                                    "Nothing is saved until you choose Save.",
+                                    new Toast.Action("Check and save", () -> window.show(preview))));
+                        }
                     } else {
-                        window.toast(resultToast(tool, results, files.size()));
+                        StagedResults.discard(stage);
+                        finished(tool, files, results, cancelled ? List.of() : steps);
+                        if (cancelled) {
+                            // Stopped partway through a batch: keep what was finished.
+                            showResults(tool, results, files.size(), List.of());
+                            window.toast(Toast.info("Stopped early",
+                                    "The files listed were finished and saved; the rest were left as they were."));
+                        } else if (window.current() == progressScreen[0]) {
+                            showResults(tool, results, files.size(), steps);
+                        } else {
+                            window.toast(resultToast(tool, results, files.size()));
+                        }
                     }
                 },
                 error -> {
@@ -153,6 +179,64 @@ public class ToolFlow {
                     window.showDialog(new ErrorDialog(window, "Couldn’t finish " + tool.name(), message,
                             error, "Try again", () -> run(tool, toolScreen, files, options, target)));
                 });
+    }
+
+    /** A new staging folder, or null (save straight away) if %TEMP% can't be used. */
+    private static Path stagingFolder() {
+        try {
+            return StagedResults.newFolder();
+        } catch (java.io.IOException e) {
+            return null;
+        }
+    }
+
+    /** The preview of staged results, whose Save puts them in place and Discard deletes them. */
+    private PreviewScreen preview(PdfTool tool, ToolScreen toolScreen, List<Path> files, List<FileResult> staged,
+                                  Path stage, SaveTo target, List<Pipeline.Step> steps) {
+        PreviewScreen[] screen = new PreviewScreen[1];
+        Runnable save = () -> {
+            // Copying can take a moment for big files on another drive: off the screen's thread.
+            Thread copier = new Thread(() -> {
+                try {
+                    List<FileResult> saved = StagedResults.save(staged, stage, target, files);
+                    Platform.runLater(() -> {
+                        finished(tool, files, saved, steps);
+                        showResults(tool, saved, files.size(), steps);
+                    });
+                } catch (Exception e) {
+                    Platform.runLater(() -> screen[0].saveFailed("Couldn\u2019t save the results (" + e.getMessage()
+                            + "). They are still here and your originals are unchanged. Try again, or pick another "
+                            + "folder in Settings \u203a Saving."));
+                }
+            }, "ndalamo-save-results");
+            copier.setDaemon(true);
+            copier.start();
+        };
+        Runnable discard = () -> {
+            StagedResults.discard(stage);
+            window.show(toolScreen);
+            window.toast(Toast.info("Nothing was saved",
+                    "The results were discarded. Your original files were not changed."));
+        };
+        Runnable home = () -> {
+            StagedResults.discard(stage);
+            showHome.run();
+        };
+        screen[0] = new PreviewScreen(tool, staged, target.describeFolder(tool.oneOutput()), window, home, save, discard);
+        return screen[0];
+    }
+
+    /** Records a finished run (History, recent files, the chain for "Save as pipeline"). */
+    private void finished(PdfTool tool, List<Path> files, List<FileResult> results, List<Pipeline.Step> steps) {
+        chain = steps;
+        if (!results.isEmpty()) {
+            onFinished.accept(new com.ndalamo.models.HistoryEntry(System.currentTimeMillis(), tool.id(), tool.name(),
+                    files.stream().map(f -> f.toAbsolutePath().toString()).toList(),
+                    results.stream().map(FileResult::getOutput).filter(p -> p != null)
+                            .map(p -> p.toAbsolutePath().toString()).toList()));
+        }
+        lastOutputs = results.stream().map(FileResult::getOutput).filter(p -> p != null)
+                .map(p -> p.toAbsolutePath().normalize()).collect(Collectors.toSet());
     }
 
     private void showResults(PdfTool tool, List<FileResult> results, int inputCount, List<Pipeline.Step> steps) {

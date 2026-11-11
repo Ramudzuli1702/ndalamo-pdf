@@ -752,3 +752,13 @@
 /* ── The welcome question ───────────────────────────────────────────── */
 .question-label { -fx-font-family: "IBM Plex Sans SmBld"; -fx-font-size: 14px; -fx-text-fill: -nd-text; -fx-padding: 4 0 0 0; }
 .welcome-question .radio-button { -fx-font-size: 14px; -fx-text-fill: -nd-text-soft; }
+
+/* ── Check before saving (PreviewScreen) ───────────────────────────── */
+.preview-side { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 0 1 0 0; }
+.preview-file { -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand; }
+.preview-file:hover { -fx-background-color: -nd-bg; }
+.preview-file-selected, .preview-file-selected:hover { -fx-background-color: -nd-accent-soft; }
+.preview-viewer { -fx-background-color: -nd-bg; }
+.preview-bar { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 0 0 1 0; }
+.preview-page { -fx-background-color: white; -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.14), 10, 0, 0, 2); }
+.preview-footer { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 1 0 0 0; }

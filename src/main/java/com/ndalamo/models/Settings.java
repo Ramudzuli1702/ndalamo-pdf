@@ -35,6 +35,7 @@ public class Settings {
     private boolean rememberRecentFiles = true;
     private boolean tourSeen;            // the welcome tour has been shown (or skipped) once
     private boolean askBeforeDeletingPages = true;
+    private boolean previewBeforeSaving = true;   // tools show their results before saving them
     private String libreOfficePath;
     // "Tell us what you think" (FeedbackService): when to offer the review box.
     private int successfulRuns;          // tool runs that made at least one file
@@ -89,6 +90,8 @@ public class Settings {
     /** Page workspace: show "Delete 2 pages?" before deleting, until the user ticks "Don't ask again". */
     public boolean isAskBeforeDeletingPages() { return askBeforeDeletingPages; }
     public void setAskBeforeDeletingPages(boolean ask) { this.askBeforeDeletingPages = ask; }
+    public boolean isPreviewBeforeSaving() { return previewBeforeSaving; }
+    public void setPreviewBeforeSaving(boolean preview) { this.previewBeforeSaving = preview; }
 
     /** soffice.exe picked with "Locate it"; null to look in the usual places. Only Office to PDF uses it. */
     public String getLibreOfficePath() { return libreOfficePath; }

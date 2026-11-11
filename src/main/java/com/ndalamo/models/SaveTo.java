@@ -71,6 +71,11 @@ public class SaveTo {
         return ifExists == Settings.IfExists.ASK;
     }
 
+    /** A result whose name is taken replaces that file (never the original). */
+    public boolean replaces() {
+        return ifExists == Settings.IfExists.REPLACE;
+    }
+
     /**
      * The name a result would get if names already taken were replaced: for checking
      * beforehand whether running would meet a file that's already there. Never the original.

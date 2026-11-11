@@ -127,6 +127,7 @@ public class NdalamoApp extends Application {
         home.showPinned(pipelines, p -> runPipeline(p, List.of()));
         refreshRecent();
         toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), () -> settings.getToolDefaults(), this::showHome);
+        toolFlow.previewWhen(() -> settings.isPreviewBeforeSaving());
         toolFlow.onFinished(entry -> {
             if (!entry.outputs().isEmpty()) {                      // a run that made something
                 settings.setSuccessfulRuns(settings.getSuccessfulRuns() + 1);
