@@ -489,7 +489,7 @@ public class NdalamoApp extends Application {
     /** The version from the app's files, or the one in the pom while running from the build. */
     private static String version() {
         String version = NdalamoApp.class.getPackage().getImplementationVersion();
-        return version != null ? version : "0.1.0";
+        return version != null ? version : "1.0.0";
     }
 
     private void openTool(PdfTool tool) {
