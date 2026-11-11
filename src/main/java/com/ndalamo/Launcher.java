@@ -21,9 +21,25 @@ public final class Launcher {
 
     public static void main(String[] args) {
         if (args.length == 1 && (args[0].equals(INSTALL_WORD_ADDIN) || args[0].equals(REMOVE_WORD_ADDIN))) {
+            closeSplash();
             System.exit(wordAddIn(args[0].equals(INSTALL_WORD_ADDIN)));
         }
         NdalamoApp.main(args);
+    }
+
+    /**
+     * Closes the loading screen: the logo and name Java shows the moment Ndalamo is started
+     * (the installed app starts with -splash:splash.png), before anything else has loaded.
+     * Called once the window is up, or straight away when no window is coming. Does nothing
+     * when there's no loading screen (tests, development runs).
+     */
+    public static void closeSplash() {
+        try {
+            java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
+            if (splash != null) splash.close();
+        } catch (RuntimeException e) {
+            // No screen (headless) or already closed: nothing to do.
+        }
     }
 
     /**

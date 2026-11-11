@@ -194,7 +194,22 @@ public class NdalamoApp extends Application {
                 requestQuit();
             });
         }
+        // Opens filling the screen (the taskbar stays visible); un-maximised it's 1280 × 800.
+        stage.setMaximized(true);
         stage.show();
+        // Windows can swap the first "show" for the way the program was started (a shortcut says
+        // "normal window"), which undoes the maximise. If the window came up smaller than the
+        // screen, maximise it again; this time Windows keeps it.
+        Platform.runLater(() -> {
+            javafx.geometry.Rectangle2D area = javafx.stage.Screen.getScreensForRectangle(
+                    stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight()).stream().findFirst()
+                    .orElse(javafx.stage.Screen.getPrimary()).getVisualBounds();
+            if (stage.getWidth() < area.getWidth() * 0.95 || stage.getHeight() < area.getHeight() * 0.95) {
+                stage.setMaximized(false);
+                stage.setMaximized(true);
+            }
+        });
+        Launcher.closeSplash();                               // the logo shown while Ndalamo loaded
         openFromOutside(getParameters().getRaw().stream().map(Path::of).toList());
         // The first time Ndalamo opens (just after installing), the welcome tour shows Home and every tool.
         if (!settings.isTourSeen() && getParameters().getRaw().isEmpty()) Platform.runLater(this::startTour);
@@ -566,6 +581,7 @@ public class NdalamoApp extends Application {
         // One copy at a time: a second one (say, "Open with" on a PDF) hands its files to the running one.
         SingleInstance only = new SingleInstance(SettingsService.appDataFolder());
         if (!only.claim()) {
+            Launcher.closeSplash();                           // no window from this copy
             try {
                 only.handOver(List.of(args));
             } catch (IOException e) {

@@ -13,7 +13,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -75,7 +74,7 @@ public class HomeScreen extends BorderPane {
         if (shown.isEmpty()) return;
         Label title = new Label("Pinned pipelines");
         title.getStyleClass().add("section-title");
-        javafx.scene.layout.FlowPane cards = new javafx.scene.layout.FlowPane(12, 12);
+        CardGrid cards = new CardGrid(CARD_MIN_WIDTH, GAP);
         for (com.ndalamo.models.Pipeline pipeline : shown) {
             Label name = new Label(pipeline.getName());
             name.getStyleClass().add("tool-name");
@@ -85,7 +84,6 @@ public class HomeScreen extends BorderPane {
             steps.setWrapText(true);
             VBox card = new VBox(4, name, steps);
             card.getStyleClass().addAll("tool-card", "pinned-pipeline");
-            card.setPrefWidth(250);
             card.setFocusTraversable(true);
             card.setAccessibleRole(javafx.scene.AccessibleRole.BUTTON);
             card.setAccessibleText("Run pipeline " + pipeline.getName());
@@ -279,7 +277,7 @@ public class HomeScreen extends BorderPane {
 
             Label title = new Label(category);
             title.getStyleClass().add("section-title");
-            FlowPane grid = cardGrid();
+            CardGrid grid = new CardGrid(CARD_MIN_WIDTH, GAP);
             for (PdfTool tool : inCategory) {
                 HBox card = toolCard(tool);
                 cards.put(tool.id(), card);
@@ -295,21 +293,6 @@ public class HomeScreen extends BorderPane {
         }
     }
 
-    /**
-     * A wrapping grid whose cards stretch to fill each row, like the mockup's CSS
-     * grid. FlowPane can't stretch on its own, so card widths are recalculated
-     * whenever the grid's width changes.
-     */
-    private FlowPane cardGrid() {
-        FlowPane grid = new FlowPane(GAP, GAP);
-        grid.widthProperty().addListener((obs, old, width) -> {
-            double w = width.doubleValue();
-            int columns = Math.max(1, (int) ((w + GAP) / (CARD_MIN_WIDTH + GAP)));
-            double cardWidth = Math.floor((w - (columns - 1) * GAP) / columns);
-            grid.getChildren().forEach(card -> ((Region) card).setPrefWidth(cardWidth));
-        });
-        return grid;
-    }
 
     /**
      * One tool card. It's a plain HBox that acts like a button (click, Enter or Space),

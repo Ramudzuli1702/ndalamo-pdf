@@ -86,15 +86,16 @@
 
     <!--
       Ndalamo: "Delete Page" for Microsoft Word, installed with Ndalamo. The installed app does the
-      work (the same code as Settings › Word add-in): it copies the add-in for this Windows user and
+      work (the same code as Settings › Word add-in) through NdalamoHelper.exe, which is Ndalamo
+      without the loading screen so nothing flashes up: it copies the add-in for this Windows user and
       registers it, or does nothing if Word isn't on the PC. WORDADDIN is 1 unless the full setup's
       "Add Delete Page to Microsoft Word" box was unticked. Uninstalling removes it again (but not
       when a newer Ndalamo is replacing this one: that adds it straight back).
     -->
     <Property Id="WORDADDIN" Value="1" Secure="yes" />
-    <CustomAction Id="NdalamoAddWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]Ndalamo.exe&quot; --install-word-addin"
+    <CustomAction Id="NdalamoAddWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]NdalamoHelper.exe&quot; --install-word-addin"
                   Execute="deferred" Impersonate="yes" Return="ignore" />
-    <CustomAction Id="NdalamoRemoveWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]Ndalamo.exe&quot; --remove-word-addin"
+    <CustomAction Id="NdalamoRemoveWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]NdalamoHelper.exe&quot; --remove-word-addin"
                   Execute="deferred" Impersonate="yes" Return="ignore" />
     <UI>
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="NdalamoOpenAfterInstall">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>

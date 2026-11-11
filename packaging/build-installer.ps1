@@ -31,6 +31,8 @@ if ($LASTEXITCODE -ne 0) { throw 'The Maven build failed' }
 # After the build: "clean" empties target\, this folder included.
 New-Item -ItemType Directory -Force $inputDir, $content | Out-Null
 Copy-Item "target\ndalamo-pdf-$version.jar" $inputDir
+# The loading screen (logo and name), shown by Java the moment Ndalamo starts; @2x for high-DPI screens.
+Copy-Item 'packaging\splash\splash.png', 'packaging\splash\splash@2x.png' $inputDir
 # Every library the app uses, next to it (pinned plugin version, already in the local Maven cache).
 & mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.7.0:copy-dependencies -DincludeScope=runtime "-DoutputDirectory=$inputDir"
 if ($LASTEXITCODE -ne 0) { throw 'Copying the libraries failed' }
@@ -58,6 +60,10 @@ function Invoke-Jpackage([string]$type) {
         '--input', $inputDir,
         '--main-jar', "ndalamo-pdf-$version.jar",
         '--main-class', 'com.ndalamo.Launcher',
+        # $APPDIR is jpackage's own: the folder holding the jar and splash.png once installed.
+        '--java-options', '-splash:$APPDIR\splash.png',
+        # The installer's helper (packaging\NdalamoHelper.properties): Ndalamo without the loading screen.
+        '--add-launcher', 'NdalamoHelper=packaging\NdalamoHelper.properties',
         '--icon', 'packaging\ndalamo.ico',
         '--app-content', ((Join-Path $content 'word-addin') + ',' + (Join-Path $content 'licenses')),
         '--resource-dir', 'packaging\wix',
