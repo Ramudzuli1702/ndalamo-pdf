@@ -35,7 +35,7 @@ public final class WordAddInCard extends VBox {
         action.managedProperty().bind(action.visibleProperty());
         HBox row = new HBox(10, status, action);
         row.setAlignment(Pos.CENTER_LEFT);
-        Label note = new Label("In Word: Home tab › Ndalamo › Delete Page, or right-click a page. Ctrl+Z brings a deleted page back.");
+        Label note = new Label("In Word: Home tab › NdalamoPDF › Delete Page, or right-click a page. Ctrl+Z brings a deleted page back.");
         note.getStyleClass().add("small-muted");
         note.setWrapText(true);
         Hyperlink guide = new Hyperlink("How to use it in Word (with pictures)");

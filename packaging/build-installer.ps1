@@ -1,4 +1,4 @@
-# Builds Ndalamo's Windows installer (SPEC chunk 20): target\installer\Ndalamo-<version>.exe
+# Builds the NdalamoPDF setups (SPEC chunk 20): target\installer\NdalamoPDF-Setup-<version>[-with-LibreOffice].exe
 #
 #   powershell -ExecutionPolicy Bypass -File packaging\build-installer.ps1 [-SkipTests]
 #
@@ -23,7 +23,7 @@ $out = Join-Path $root 'target\installer'
 $inputDir = Join-Path $out 'input'
 $content = Join-Path $out 'content'
 
-Write-Host "1/4 Building Ndalamo $version"
+Write-Host "1/4 Building NdalamoPDF $version"
 $mvnArgs = @('-q', 'clean', 'package')
 if ($SkipTests) { $mvnArgs += '-DskipTests' }
 & mvn @mvnArgs
@@ -47,16 +47,16 @@ Write-Host '3/4 Adding the licences'
 # The licences of everything bundled, readable without opening the app (they're also in Settings > About).
 Copy-Item -Recurse 'src\main\resources\licenses' (Join-Path $content 'licenses')
 
-Write-Host '4/4 Making the installer (this takes a minute or two)'
+Write-Host '4/4 Making the setups (this takes a few minutes)'
 # Where main.wxs finds the installer's pictures (ndalamo-banner.bmp, ndalamo-dialog.bmp).
 $env:NDALAMO_WIX = Join-Path $root 'packaging\wix'
 function Invoke-Jpackage([string]$type) {
     $jpackageArgs = @(
         '--type', $type,
-        '--name', 'Ndalamo',
+        '--name', 'NdalamoPDF',
         '--app-version', $version,
-        '--vendor', 'Ndalamo',
-        '--description', 'Ndalamo PDF: a free, offline PDF toolkit',
+        '--vendor', 'NdalamoPDF',
+        '--description', 'NdalamoPDF: free PDF tools for Windows',
         '--input', $inputDir,
         '--main-jar', "ndalamo-pdf-$version.jar",
         '--main-class', 'com.ndalamo.Launcher',
@@ -67,13 +67,12 @@ function Invoke-Jpackage([string]$type) {
         '--icon', 'packaging\ndalamo.ico',
         '--app-content', ((Join-Path $content 'word-addin') + ',' + (Join-Path $content 'licenses')),
         '--resource-dir', 'packaging\wix',
-        # A smooth install: for this Windows user (no administrator prompt), the terms to accept,
-        # Start-menu and desktop shortcuts without extra questions, and "Open Ndalamo now" at the end.
+        # For this Windows user (no administrator prompt), with a Start-menu shortcut. The setup
+        # program (packaging\bundle) shows the terms and offers the desktop shortcut (main.wxs).
         '--win-per-user-install',
         '--license-file', 'packaging\terms.txt',
-        '--win-menu', '--win-menu-group', 'Ndalamo',
-        '--win-shortcut',
-        # Never change this: it's how Windows knows a newer installer upgrades the installed Ndalamo.
+        '--win-menu', '--win-menu-group', 'NdalamoPDF',
+        # Never change this: it's how Windows knows a newer installer upgrades the installed NdalamoPDF.
         '--win-upgrade-uuid', '3b1f6f0e-6a2c-4d7e-9f5b-0d1c8a4e2b77',
         '--dest', $out
     )
@@ -81,10 +80,59 @@ function Invoke-Jpackage([string]$type) {
     if ($LASTEXITCODE -ne 0) { throw "jpackage ($type) failed" }
 }
 
-# The small "Ndalamo only" setup: always made.
-Invoke-Jpackage 'exe'
-$exe = Get-ChildItem $out -Filter 'Ndalamo-*.exe' | Select-Object -First 1
-Write-Host ("Ndalamo only: {0} ({1:N0} MB)" -f $exe.FullName, ($exe.Length / 1MB))
+# The terms as rich text for the terms box: the title and the numbered headings in bold.
+function ConvertTo-Rtf([string]$text) {
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.Append('{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fswiss Segoe UI;}}{\colortbl;\red22\green24\blue29;\red58\green63\blue73;}')
+    [void]$sb.Append('\viewkind4\uc1\f0\fs19\cf2 ')
+    $first = $true
+    foreach ($line in ($text -split "`r?`n")) {
+        $escaped = New-Object System.Text.StringBuilder
+        foreach ($ch in $line.ToCharArray()) {
+            $code = [int]$ch
+            if ($ch -eq '\' -or $ch -eq '{' -or $ch -eq '}') { [void]$escaped.Append('\' + $ch) }
+            elseif ($code -gt 127) { [void]$escaped.Append('\u' + $(if ($code -gt 32767) { $code - 65536 } else { $code }) + '?') }
+            else { [void]$escaped.Append($ch) }
+        }
+        $body = $escaped.ToString()
+        if ($first -and $line.Trim()) { [void]$sb.Append('\pard\sa160\cf1\b\fs22 ' + $body + '\b0\fs19\cf2\par '); $first = $false }
+        elseif ($line -match '^\d+\.\s+[A-Z][A-Z ]+$') { [void]$sb.Append('\pard\sb120\sa40\cf1\b ' + $body + '\b0\cf2\par ') }
+        elseif ($line.Trim()) { [void]$sb.Append('\pard\sa80 ' + $body + '\par ') }
+    }
+    [void]$sb.Append('}')
+    return $sb.ToString()
+}
+
+# The NdalamoPDF installer itself; both setups carry it.
+Invoke-Jpackage 'msi'
+$msi = Get-ChildItem $out -Filter 'NdalamoPDF-*.msi' | Select-Object -First 1
+$wix = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
+$bundle = Join-Path $root 'packaging\bundle'
+$termsRtf = Join-Path $out 'terms.rtf'
+[System.IO.File]::WriteAllText($termsRtf, (ConvertTo-Rtf (Get-Content 'packaging\terms.txt' -Raw -Encoding UTF8)), [System.Text.Encoding]::ASCII)
+
+# Builds one setup program around the installer. Without LibreOffice its option is left out of the window.
+function New-Setup([string]$file, [string]$upgradeCode, [string]$loMsi, [string]$loVersion) {
+    $theme = Get-Content (Join-Path $bundle 'Theme.xml') -Raw -Encoding UTF8
+    if (-not $loMsi) { $theme = [regex]::Replace($theme, '(?s)\s*<!--LIBREOFFICE-->.*?<!--/LIBREOFFICE-->', '') }
+    $themeFile = Join-Path $out ("theme-" + [IO.Path]::GetFileNameWithoutExtension($file) + ".xml")
+    [System.IO.File]::WriteAllText($themeFile, $theme, (New-Object System.Text.UTF8Encoding $false))
+    $obj = Join-Path $out ([IO.Path]::GetFileNameWithoutExtension($file) + '.wixobj')
+    $candleArgs = @('-nologo', '-ext', 'WixBalExtension', '-ext', 'WixUtilExtension', "-dVersion=$version",
+        "-dIcon=$root\packaging\ndalamo.ico", "-dTermsRtf=$termsRtf", "-dTheme=$themeFile", "-dBundleUpgradeCode=$upgradeCode",
+        "-dNdalamoMsi=$($msi.FullName)")
+    if ($loMsi) { $candleArgs += @("-dLibreOfficeMsi=$loMsi", "-dLibreOfficeVersion=$loVersion") }
+    & (Join-Path $wix 'candle.exe') @candleArgs -out $obj (Join-Path $bundle 'Bundle.wxs')
+    if ($LASTEXITCODE -ne 0) { throw "candle ($file) failed" }
+    $setup = Join-Path $out $file
+    # -b: where Theme.wxl and the window's pictures are found.
+    & (Join-Path $wix 'light.exe') -nologo -ext WixBalExtension -ext WixUtilExtension -b $bundle -out $setup $obj
+    if ($LASTEXITCODE -ne 0) { throw "light ($file) failed" }
+    Write-Host ("{0} ({1:N0} MB)" -f $setup, ((Get-Item $setup).Length / 1MB))
+}
+
+# NdalamoPDF only (for this Windows user): always made.
+New-Setup "NdalamoPDF-Setup-$version.exe" '6a1d8e3f-2b47-4c95-9e0a-5f3c7b2d8e16' $null $null
 
 # The full setup with LibreOffice (decision 009): only when its .msi has been put in packaging\libreoffice.
 if (-not $LibreOfficeMsi) {
@@ -92,15 +140,9 @@ if (-not $LibreOfficeMsi) {
     if ($found) { $LibreOfficeMsi = $found.FullName }
 }
 if (-not $LibreOfficeMsi) {
-    Write-Host 'No LibreOffice .msi in packaging\libreoffice, so only the Ndalamo-only setup was made (see packaging\README.md).'
+    Write-Host 'No LibreOffice .msi in packaging\libreoffice, so only the NdalamoPDF-only setup was made (see packaging\README.md).'
     return
 }
-Write-Host "Making the full setup with $(Split-Path -Leaf $LibreOfficeMsi)"
-Invoke-Jpackage 'msi'
-$msi = Get-ChildItem $out -Filter 'Ndalamo-*.msi' | Select-Object -First 1
-$wix = Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin'
-$bundle = Join-Path $root 'packaging\bundle'
-$obj = Join-Path $out 'bundle.wixobj'
 # The bundled LibreOffice's version, read from its .msi: a PC with this or a newer one skips it.
 $installer = New-Object -ComObject WindowsInstaller.Installer
 $loDb = $installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $installer, @($LibreOfficeMsi, 0))
@@ -111,11 +153,4 @@ $loVersion = $loRow.GetType().InvokeMember('StringData', 'GetProperty', $null, $
 $loView.GetType().InvokeMember('Close', 'InvokeMethod', $null, $loView, $null) | Out-Null
 [System.Runtime.InteropServices.Marshal]::ReleaseComObject($loDb) | Out-Null
 Write-Host "LibreOffice in the full setup: $loVersion"
-& (Join-Path $wix 'candle.exe') -nologo -ext WixBalExtension -ext WixUtilExtension "-dVersion=$version" "-dLibreOfficeVersion=$loVersion" "-dIcon=$root\packaging\ndalamo.ico" "-dTerms=$root\packaging\terms.txt" `
-    "-dNdalamoMsi=$($msi.FullName)" "-dLibreOfficeMsi=$LibreOfficeMsi" -out $obj (Join-Path $bundle 'Bundle.wxs')
-if ($LASTEXITCODE -ne 0) { throw 'candle (setup bundle) failed' }
-$setup = Join-Path $out "Ndalamo-$version-with-LibreOffice.exe"
-# -b: where Theme.xml, Theme.wxl and logo.png are found.
-& (Join-Path $wix 'light.exe') -nologo -ext WixBalExtension -ext WixUtilExtension -b $bundle -out $setup $obj
-if ($LASTEXITCODE -ne 0) { throw 'light (setup bundle) failed' }
-Write-Host ("Full setup: {0} ({1:N0} MB)" -f $setup, ((Get-Item $setup).Length / 1MB))
+New-Setup "NdalamoPDF-Setup-$version-with-LibreOffice.exe" '9e4b2c7d-1f3a-4b6e-8d5c-7a2f0e9b3c41' $LibreOfficeMsi $loVersion

@@ -42,6 +42,7 @@ public class Settings {
     private boolean feedbackNeverAsk;    // "Never show this again"
     private String feedbackLastAsked;    // the date the box was last offered (yyyy-MM-dd)
     private int runsAtLastAsk;
+    private boolean welcomeQuestionAsked;  // "Quick question" (who and what for) shown once, answered or skipped
     private Map<String, String> toolDefaults = new HashMap<>();
     private List<String> recentFiles = new ArrayList<>();
     private List<String> recentTools = new ArrayList<>();
@@ -79,6 +80,8 @@ public class Settings {
     public void setFeedbackNeverAsk(boolean feedbackNeverAsk) { this.feedbackNeverAsk = feedbackNeverAsk; }
     public String getFeedbackLastAsked() { return feedbackLastAsked; }
     public void setFeedbackLastAsked(String feedbackLastAsked) { this.feedbackLastAsked = feedbackLastAsked; }
+    public boolean isWelcomeQuestionAsked() { return welcomeQuestionAsked; }
+    public void setWelcomeQuestionAsked(boolean welcomeQuestionAsked) { this.welcomeQuestionAsked = welcomeQuestionAsked; }
     public int getRunsAtLastAsk() { return runsAtLastAsk; }
     public void setRunsAtLastAsk(int runsAtLastAsk) { this.runsAtLastAsk = runsAtLastAsk; }
     public void setRememberRecentFiles(boolean rememberRecentFiles) { this.rememberRecentFiles = rememberRecentFiles; }

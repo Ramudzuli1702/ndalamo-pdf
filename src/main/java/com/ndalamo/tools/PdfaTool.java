@@ -273,7 +273,7 @@ public class PdfaTool implements PdfTool {
         Calendar now = new GregorianCalendar();
         if (info.getCreationDate() == null) info.setCreationDate(now);
         info.setModificationDate(now);
-        info.setProducer("Ndalamo");
+        info.setProducer("NdalamoPDF");
         // PDF/A wants only what XMP can mirror; drop the old "Trapped" key, which needs special values.
         info.getCOSObject().removeItem(COSName.TRAPPED);
 
@@ -295,7 +295,7 @@ public class PdfaTool implements PdfTool {
                 + "</rdf:li></rdf:Alt></dc:description>\n" : "")
                 + (info.getKeywords() != null ? "   <pdf:Keywords>" + xml(info.getKeywords()) + "</pdf:Keywords>\n" : "")
                 + (info.getCreator() != null ? "   <xmp:CreatorTool>" + xml(info.getCreator()) + "</xmp:CreatorTool>\n" : "")
-                + "   <pdf:Producer>Ndalamo</pdf:Producer>\n"
+                + "   <pdf:Producer>NdalamoPDF</pdf:Producer>\n"
                 + "   <xmp:CreateDate>" + iso(info.getCreationDate()) + "</xmp:CreateDate>\n"
                 + "   <xmp:ModifyDate>" + iso(info.getModificationDate()) + "</xmp:ModifyDate>\n"
                 + "  </rdf:Description>\n"

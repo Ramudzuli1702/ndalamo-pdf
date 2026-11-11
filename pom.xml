@@ -6,7 +6,7 @@
 
     <groupId>com.ndalamo</groupId>
     <artifactId>ndalamo-pdf</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>Ndalamo PDF</name>
 
     <properties>

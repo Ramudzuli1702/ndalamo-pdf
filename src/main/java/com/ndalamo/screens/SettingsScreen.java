@@ -391,7 +391,7 @@ public class SettingsScreen extends BorderPane {
             settings.setLowMemoryMode(now);
             save.run();
         });
-        Label note = new Label("Changes here take effect the next time Ndalamo starts.");
+        Label note = new Label("Changes here take effect the next time NdalamoPDF starts.");
         note.getStyleClass().add("small-muted");
         return new VBox(14, group("Files processed at the same time", automatic, one, two, four), lowMemory, note);
     }
@@ -454,7 +454,7 @@ public class SettingsScreen extends BorderPane {
 
     private VBox privacy() {
         Label statement = new Label("Everything runs on this PC. No files, usage data or crash reports are sent anywhere. "
-                + "The only thing Ndalamo ever sends is a review you write and submit.");
+                + "The only things NdalamoPDF ever sends are a review or answers you choose to send.");
         statement.setWrapText(true);
         statement.getStyleClass().add("status-good");
         CheckBox remember = new CheckBox("Remember recent files");
@@ -483,7 +483,7 @@ public class SettingsScreen extends BorderPane {
     // ── Help ─────────────────────────────────────────────────────────────
 
     private VBox help() {
-        Label about = new Label("A short tour of Home and every tool, the same one shown the first time Ndalamo opens.");
+        Label about = new Label("A short tour of Home and every tool, the same one shown the first time NdalamoPDF opens.");
         about.setWrapText(true);
         Button tour = new Button("Take the tour");
         tour.getStyleClass().add("button-secondary");
@@ -501,7 +501,7 @@ public class SettingsScreen extends BorderPane {
     // ── About ────────────────────────────────────────────────────────────
 
     private VBox about(String version) {
-        Label name = new Label("Ndalamo PDF");
+        Label name = new Label("NdalamoPDF");
         name.getStyleClass().add("section-title");
         Label versionLabel = new Label("Version " + version);
         versionLabel.getStyleClass().add("small-muted");

@@ -747,7 +747,7 @@ public class WorkspaceScreen extends BorderPane {
         if (isASourceFile(current, target)) {
             new ChoiceDialog(window, "Choose another name",
                     target.getFileName() + " is one of the files these pages come from. "
-                            + "Ndalamo never overwrites an original, so the new PDF needs a different name.", null)
+                            + "NdalamoPDF never overwrites an original, so the new PDF needs a different name.", null)
                     .button("OK", ChoiceDialog.Style.PRIMARY, x -> saveName.requestFocus()).show();
             return;
         }

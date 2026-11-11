@@ -475,7 +475,7 @@ public class CompareTool implements PdfTool {
         y -= 18;
         text(cs, fonts, false, 12, MARGIN + 16, y, "New: " + newName + " (" + Format.count(b.pages(), "page", "pages") + ")", Color.DARK_GRAY);
         y -= 18;
-        text(cs, fonts, false, 10, MARGIN + 16, y, "Made by Ndalamo PDF on " + LocalDate.now(), Color.GRAY);
+        text(cs, fonts, false, 10, MARGIN + 16, y, "Made by NdalamoPDF on " + LocalDate.now(), Color.GRAY);
         y -= 34;
         if (changed.isEmpty()) {
             text(cs, fonts, true, 15, MARGIN + 16, y, "No differences found.", Color.BLACK);

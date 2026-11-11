@@ -152,7 +152,7 @@ namespace Ndalamo.WordAddIn
             }
             if (!string.IsNullOrEmpty(message))
             {
-                MessageBox.Show(new WordWindow(word), message, "Ndalamo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(new WordWindow(word), message, "NdalamoPDF", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 

@@ -1,52 +1,62 @@
-# Building Ndalamo's Windows installer
+# Building the NdalamoPDF setups
 
     powershell -ExecutionPolicy Bypass -File packaging\build-installer.ps1
 
 Add `-SkipTests` if the tests have just run. Results go to `target\installer\`:
 
-- `Ndalamo-<version>.exe`: Ndalamo only (about 115 MB). Carries its own Java runtime, so
-  people don't need Java. Office to PDF explains how to add LibreOffice if it's missing.
-- `Ndalamo-<version>-with-LibreOffice.exe`: the full setup (decision 009), made only when a
-  LibreOffice installer is present (below). One Install puts on Ndalamo, the Word add-in and
-  LibreOffice; its first page has a ticked box for each of the last two. LibreOffice installs
+- `NdalamoPDF-Setup-<version>.exe` (about 115 MB): NdalamoPDF and Delete Page for Word, installed
+  for the current Windows user, with no administrator prompt. Carries its own Java runtime.
+- `NdalamoPDF-Setup-<version>-with-LibreOffice.exe` (about 455 MB): the same plus LibreOffice
+  (decision 009), made only when a LibreOffice installer is present (below). LibreOffice installs
   for every user of the PC, so this setup asks for administrator permission once.
 
 Needs JDK 22 (for `jpackage`; set `JPACKAGE_JDK` if it isn't in `C:\Program Files\Java\jdk-22`),
 Maven, WiX Toolset 3.14, and the .NET SDK (for the Word add-in).
 
+## What installing looks like
+
+Both setups use the same window (`bundle\`): the blue brand panel on the left, and on the right:
+
+1. The terms of use (from `terms.txt`, shown as formatted text) with **I accept the terms of use**;
+   Install stays off until it's ticked. Below them, the options, all ticked to begin with:
+   add a shortcut to the desktop, open NdalamoPDF when setup finishes, add Delete Page to
+   Microsoft Word, and (full setup) install LibreOffice.
+2. Progress, with a slim brand-coloured bar.
+3. **NdalamoPDF is ready**, with Open NdalamoPDF and Close.
+
+Running the setup again, or uninstalling from Windows' Apps list, shows "NdalamoPDF is installed"
+with Uninstall. There's one "NdalamoPDF" entry in the Apps list.
+
+The options reach the NdalamoPDF installer (`wix\main.wxs`) as `DESKTOPSHORTCUT`, `LAUNCHAPP` and
+`WORDADDIN` (each compared with "1"). Delete Page is added by the installed app itself:
+`NdalamoHelper.exe --install-word-addin` (the same code as Settings › Word add-in; nothing to do
+without Word), and uninstalling runs `--remove-word-addin`.
+
 ## Adding LibreOffice to the full setup
 
 1. Download LibreOffice's official Windows x64 installer (`LibreOffice_<version>_Win_x86-64.msi`)
-   from libreoffice.org. Use it unchanged: its licence (MPL 2.0) allows passing it on as it is.
+   from libreoffice.org, and check it against the SHA-256 published next to it. Use it unchanged:
+   its licence (MPL 2.0) allows passing it on as it is.
 2. Put it in `packaging\libreoffice\` (it's never committed), or pass `-LibreOfficeMsi <path>`.
 3. Run the build script again.
 
 LibreOffice is installed silently with: no Office file types taken over, no update checks, no
-desktop icon, no quick-starter. It stays installed if Ndalamo is removed, and has its own entry
-in Windows' Apps list. Ship a current LibreOffice with each Ndalamo release for its security fixes.
-
-## What installing looks like
-
-Welcome (with the terms of use to accept, from `terms.txt`), then Install, then Finish with
-"Open Ndalamo now" ticked. Both setups also add "Delete Page" to Microsoft Word when Word is on
-the PC: the installer runs the installed `Ndalamo.exe --install-word-addin` (the same code as
-Settings › Word add-in), and uninstalling runs `--remove-word-addin`. The full setup's
-"Add Delete Page to Microsoft Word" box turns this off (MSI property `WORDADDIN=0`). Ndalamo installs for the current Windows user (no administrator
-prompt) and adds Start-menu and desktop shortcuts. The first time it opens, a short tour shows
-Home and every tool. The installer's pictures (`wix\ndalamo-banner.bmp`, `wix\ndalamo-dialog.bmp`)
-are drawn from the logo.
+desktop icon, no quick-starter. A PC that already has the same or a newer LibreOffice keeps it.
+It stays installed if NdalamoPDF is removed, and has its own entry in Windows' Apps list. Ship a
+current LibreOffice with each release for its security fixes.
 
 ## What's in here
 
-- `build-installer.ps1`: the build (Maven, the Word add-in, `jpackage`, and the setup bundle).
-- `ndalamo.ico`: the app icon at 16 to 256 px, drawn from the same shapes as `LogoMark` (the app's window
-  and tray use the same pictures, in `src/main/resources/brand/icons`).
-- `terms.txt`: the terms of use shown by both setups.
-- `wix\main.wxs`: `jpackage`'s own installer template plus one addition at the end: Ndalamo in
-  Explorer's "Open with" menu for PDFs, Office files, pictures and Markdown. It uses
-  `OpenWithProgids`, which adds to the list without changing anyone's default program.
-- `bundle\`: the full setup (WiX Burn): `Bundle.wxs`, its look (`Theme.xml`, `Theme.wxl`,
-  `logo.png`).
+- `build-installer.ps1`: the build (Maven, the Word add-in, `jpackage` for the installer, the terms
+  as rich text, then both setups).
+- `bundle\`: the setup program (WiX Burn): `Bundle.wxs`, its window (`Theme.xml`, `Theme.wxl`) and
+  pictures (drawn from the logo; colours in `Theme.xml` are written blue-green-red).
+- `wix\main.wxs`: `jpackage`'s installer template plus NdalamoPDF's additions: Explorer's
+  "Open with" entries (`OpenWithProgids`, never changing default programs), the optional desktop
+  shortcut, opening the app when setup finishes, and the Word add-in steps.
+- `splash\`: the loading screen shown while NdalamoPDF starts.
+- `feedback\`: the spreadsheet script that receives reviews and welcome answers (decision 020).
+- `ndalamo.ico`: the app icon at 16 to 256 px. `terms.txt`: the terms of use.
 
-Never change the upgrade codes in `build-installer.ps1` and `bundle\Bundle.wxs`: Windows uses
-them to know that a newer installer replaces the installed Ndalamo.
+Never change the upgrade codes in `build-installer.ps1`: Windows uses them to know that a newer
+setup replaces the installed NdalamoPDF.

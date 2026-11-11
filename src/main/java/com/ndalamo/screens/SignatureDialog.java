@@ -246,7 +246,7 @@ public class SignatureDialog extends VBox {
                 var photo = ImageIO.read(file);
                 photoSignature = photo == null ? null : SignatureMaker.fromPhoto(photo);
                 if (photoSignature == null) {
-                    problem.setText(photo == null ? "That file isn't a picture Ndalamo can read."
+                    problem.setText(photo == null ? "That file isn't a picture NdalamoPDF can read."
                             : "No signature could be found in that photo; it looks like blank paper.");
                     photoPreview.setImage(null);
                 } else {

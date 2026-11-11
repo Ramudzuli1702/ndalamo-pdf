@@ -4,7 +4,7 @@
   <ribbon>
     <tabs>
       <tab idMso="TabHome">
-        <group id="NdalamoGroup" label="Ndalamo">
+        <group id="NdalamoGroup" label="NdalamoPDF">
           <button id="NdalamoDeletePage" label="Delete Page" size="large" getImage="GetImage"
                   screentip="Delete Page" supertip="Deletes the page the cursor is on. Ctrl+Z brings it back."
                   onAction="OnDeletePage" />

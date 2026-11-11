@@ -79,9 +79,9 @@
     <!-- Ndalamo's own pictures on the installer pages instead of WiX's (drawn from the logo; folder set by the build script). -->
     <WixVariable Id="WixUIBannerBmp" Value="$(env.NDALAMO_WIX)\ndalamo-banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="$(env.NDALAMO_WIX)\ndalamo-dialog.bmp" />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Ndalamo now" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open NdalamoPDF now" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
-    <Property Id="WixShellExecTarget" Value="[INSTALLDIR]Ndalamo.exe" />
+    <Property Id="WixShellExecTarget" Value="[INSTALLDIR]NdalamoPDF.exe" />
     <CustomAction Id="NdalamoOpenAfterInstall" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
 
     <!--
@@ -93,6 +93,11 @@
       when a newer Ndalamo is replacing this one: that adds it straight back).
     -->
     <Property Id="WORDADDIN" Value="1" Secure="yes" />
+
+    <!-- NdalamoPDF: the setup program's "Add a shortcut to the desktop" and "Open NdalamoPDF when setup
+         finishes". Compared with "1", since an MSI condition counts any non-empty value, "0" too, as true. -->
+    <Property Id="DESKTOPSHORTCUT" Value="1" Secure="yes" />
+    <Property Id="LAUNCHAPP" Value="0" Secure="yes" />
     <CustomAction Id="NdalamoAddWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]NdalamoHelper.exe&quot; --install-word-addin"
                   Execute="deferred" Impersonate="yes" Return="ignore" />
     <CustomAction Id="NdalamoRemoveWordAddIn" Directory="INSTALLDIR" ExeCommand="&quot;[INSTALLDIR]NdalamoHelper.exe&quot; --remove-word-addin"
@@ -107,6 +112,7 @@
       <ComponentGroupRef Id="FileAssociations"/>
       <!-- Ndalamo: "Open with" entries (see the fragment at the end of this file). -->
       <ComponentGroupRef Id="NdalamoOpenWith"/>
+      <ComponentRef Id="NdalamoDesktopShortcut"/>
     </Feature>
 
     <CustomAction Id="JpSetARPINSTALLLOCATION" Property="ARPINSTALLLOCATION" Value="[INSTALLDIR]" />
@@ -159,6 +165,8 @@
       <!-- Ndalamo: the Word add-in, added once the files are in place and taken out before they go. -->
       <Custom Action="NdalamoAddWordAddIn" After="InstallFiles">NOT REMOVE AND WORDADDIN = "1"</Custom>
       <Custom Action="NdalamoRemoveWordAddIn" Before="RemoveFiles">REMOVE = "ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <!-- NdalamoPDF: opens the app once everything is in place, when the setup program's box was ticked. -->
+      <Custom Action="NdalamoOpenAfterInstall" After="InstallFinalize">LAUNCHAPP = "1" AND NOT REMOVE</Custom>
     </InstallExecuteSequence>
 
     <InstallUISequence>
@@ -174,13 +182,26 @@
     "What do you want to do?" suggestions. Removed again when Ndalamo is uninstalled.
   -->
   <Fragment>
+    <DirectoryRef Id="TARGETDIR">
+      <Directory Id="DesktopFolder" Name="Desktop">
+        <Component Id="NdalamoDesktopShortcut" Guid="4c8e2a71-9d35-4f6b-8a2e-1b7d5c9e3f64">
+          <Condition>DESKTOPSHORTCUT = "1"</Condition>
+          <Shortcut Id="NdalamoDesktopShortcutLink" Name="NdalamoPDF" Description="Free PDF tools for Windows"
+                    Target="[INSTALLDIR]NdalamoPDF.exe" WorkingDirectory="INSTALLDIR" Icon="JpARPPRODUCTICON"/>
+          <RegistryValue Root="HKCU" Key="Software\NdalamoPDF" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes"/>
+        </Component>
+      </Directory>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
     <ComponentGroup Id="NdalamoOpenWith">
       <Component Id="NdalamoOpenWithEntries" Directory="INSTALLDIR" Guid="7d2e4c1a-5b8f-4e3a-9c6d-2f1b0a8e4d55">
-        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File" Type="string" Value="File for Ndalamo" KeyPath="yes"/>
-        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\DefaultIcon" Type="string" Value="[INSTALLDIR]Ndalamo.exe,0"/>
-        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\Ndalamo.exe" Name="FriendlyAppName" Type="string" Value="Ndalamo"/>
-        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\Ndalamo.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]Ndalamo.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File" Type="string" Value="File for NdalamoPDF" KeyPath="yes"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\DefaultIcon" Type="string" Value="[INSTALLDIR]NdalamoPDF.exe,0"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Ndalamo.File\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]NdalamoPDF.exe&quot; &quot;%1&quot;"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\NdalamoPDF.exe" Name="FriendlyAppName" Type="string" Value="NdalamoPDF"/>
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\NdalamoPDF.exe\shell\open\command" Type="string" Value="&quot;[INSTALLDIR]NdalamoPDF.exe&quot; &quot;%1&quot;"/>
         <RegistryValue Root="HKMU" Key="Software\Classes\.pdf\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
         <RegistryValue Root="HKMU" Key="Software\Classes\.doc\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>
         <RegistryValue Root="HKMU" Key="Software\Classes\.docx\OpenWithProgids" Name="Ndalamo.File" Type="string" Value=""/>

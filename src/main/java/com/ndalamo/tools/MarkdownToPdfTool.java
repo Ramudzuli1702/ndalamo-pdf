@@ -107,7 +107,7 @@ public class MarkdownToPdfTool implements PdfTool {
                 }
                 progress.file(i, 1, "Done");
             } catch (MalformedInputException e) {
-                results.add(PdfFiles.failed(input, "It isn't a text file Ndalamo can read (it should be saved as UTF-8)."));
+                results.add(PdfFiles.failed(input, "It isn't a text file NdalamoPDF can read (it should be saved as UTF-8)."));
                 progress.file(i, 1, "Couldn't finish");
             } catch (IOException e) {
                 results.add(PdfFiles.failed(input, "Couldn't read it — " + e.getMessage()));

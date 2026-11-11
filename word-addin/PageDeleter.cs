@@ -220,7 +220,7 @@ namespace Ndalamo.WordAddIn
             string message = which + " part of a table that carries on to another page.\n\n"
                              + "Delete anyway? Only the table rows on the page are removed; the rest of the table stays. "
                              + "Ctrl+Z brings everything back.";
-            return MessageBox.Show(message, "Ndalamo", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+            return MessageBox.Show(message, "NdalamoPDF", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
         }
 
         /// <summary>

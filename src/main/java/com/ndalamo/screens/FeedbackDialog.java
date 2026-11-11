@@ -52,7 +52,7 @@ public final class FeedbackDialog extends VBox {
 
         Label title = new Label("Tell us what you think");
         title.getStyleClass().add("dialog-title");
-        Label ask = new Label("How do you like Ndalamo so far? Your rating and a few words help make it better.");
+        Label ask = new Label("How do you like NdalamoPDF so far? Your rating and a few words help make it better.");
         ask.getStyleClass().add("dialog-text");
         ask.setWrapText(true);
 
@@ -96,7 +96,7 @@ public final class FeedbackDialog extends VBox {
         words.setTextFormatter(new TextFormatter<String>(change ->
                 change.getControlNewText().length() <= FeedbackService.MAX_LENGTH ? change : null));
 
-        Label privacy = new Label("Sends only your stars and words, with Ndalamo's version, to the Ndalamo team. "
+        Label privacy = new Label("Sends only your stars and words, with NdalamoPDF's version, to the NdalamoPDF team. "
                 + "No files or details about your PC. If you're offline, it's sent once you're connected.");
         privacy.getStyleClass().add("small-muted");
         privacy.setWrapText(true);

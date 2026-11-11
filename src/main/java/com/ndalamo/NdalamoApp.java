@@ -6,6 +6,7 @@ import com.ndalamo.screens.FeedbackDialog;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
 import com.ndalamo.screens.HistoryScreen;
+import com.ndalamo.screens.WelcomeQuestionDialog;
 import com.ndalamo.screens.WelcomeTour;
 import com.ndalamo.screens.PipelineBuilderScreen;
 import com.ndalamo.screens.PipelinesScreen;
@@ -178,7 +179,7 @@ public class NdalamoApp extends Application {
             e.consume();
         });
 
-        stage.setTitle("Ndalamo");
+        stage.setTitle("NdalamoPDF");
         stage.getIcons().addAll(LogoMark.windowIcons());
         stage.setMinWidth(1024);
         stage.setMinHeight(700);
@@ -224,6 +225,11 @@ public class NdalamoApp extends Application {
         openFromOutside(getParameters().getRaw().stream().map(Path::of).toList());
         // The first time Ndalamo opens (just after installing), the welcome tour shows Home and every tool.
         if (!settings.isTourSeen() && getParameters().getRaw().isEmpty()) Platform.runLater(this::startTour);
+        else if (!settings.isWelcomeQuestionAsked()) {
+            javafx.animation.PauseTransition wait = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
+            wait.setOnFinished(e -> askWelcomeQuestion());
+            wait.play();
+        }
         if (instance != null) {
             try {
                 instance.listen(files -> Platform.runLater(() -> {
@@ -271,7 +277,7 @@ public class NdalamoApp extends Application {
 
     private void cancelAndQuit() {
         jobService.cancelAll();
-        window.toast(Toast.info("Stopping\u2026", "Ndalamo closes as soon as the task has stopped."));
+        window.toast(Toast.info("Stopping\u2026", "NdalamoPDF closes as soon as the task has stopped."));
         Thread waiter = new Thread(() -> {
             try {
                 jobService.awaitIdle(15_000);
@@ -294,8 +300,8 @@ public class NdalamoApp extends Application {
         if (!toldAboutTray) {
             toldAboutTray = true;
             long watching = watchFolders.folders().stream().filter(com.ndalamo.models.WatchFolder::isEnabled).count();
-            tray.notify("Ndalamo is still running", (watching > 0 ? "Watching " + Format.count((int) watching, "folder", "folders") + ". " : "")
-                    + "Right-click the icon to open Ndalamo or quit.");
+            tray.notify("NdalamoPDF is still running", (watching > 0 ? "Watching " + Format.count((int) watching, "folder", "folders") + ". " : "")
+                    + "Right-click the icon to open NdalamoPDF or quit.");
         }
     }
 
@@ -404,7 +410,7 @@ public class NdalamoApp extends Application {
             pipelineService.save(pipelines);
         } catch (IOException e) {
             log.warn("Could not save pipelines", e);
-            window.toast(Toast.error("Pipelines weren't saved", "Ndalamo couldn't write its pipelines file. Try again; if it keeps "
+            window.toast(Toast.error("Pipelines weren't saved", "NdalamoPDF couldn't write its pipelines file. Try again; if it keeps "
                     + "happening, check that the disk isn't full."));
         }
     }
@@ -468,7 +474,7 @@ public class NdalamoApp extends Application {
             boolean waiting = !feedback.waiting().isEmpty();
             Platform.runLater(() -> window.toast(Toast.success("Thank you for your review",
                     waiting ? "You seem to be offline, so it'll be sent as soon as you're connected."
-                            : "It's on its way to the Ndalamo team.")));
+                            : "It's on its way to the NdalamoPDF team.")));
         });
     }
 
@@ -479,7 +485,31 @@ public class NdalamoApp extends Application {
         new WelcomeTour(window, home, () -> {
             settings.setTourSeen(true);
             saveSettings();
+            Platform.runLater(this::askWelcomeQuestion);           // right after the first tour
         }).start();
+    }
+
+    /**
+     * The welcome question, once: who's using NdalamoPDF and what for. Shown after the first tour;
+     * people who saw the tour in an earlier version get it once, a moment after start-up.
+     */
+    private void askWelcomeQuestion() {
+        if (settings.isWelcomeQuestionAsked() || !feedback.available() || window.hasDialog()) return;
+        settings.setWelcomeQuestionAsked(true);
+        saveSettings();
+        window.showDialog(new WelcomeQuestionDialog(window, (role, uses) -> {
+            FeedbackService.About answers = FeedbackService.about(role, uses, version());
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    feedback.add(answers);
+                } catch (IOException e) {
+                    log.warn("Could not keep the welcome answers", e);
+                    return;
+                }
+                feedback.sendWaiting();
+            });
+            window.toast(Toast.success("Thank you", "That helps make NdalamoPDF better for people like you."));
+        }, () -> {}));
     }
 
     // ── History and recent files ─────────────────────────────────────────
@@ -549,7 +579,7 @@ public class NdalamoApp extends Application {
     /** The version from the app's files, or the one in the pom while running from the build. */
     private static String version() {
         String version = NdalamoApp.class.getPackage().getImplementationVersion();
-        return version != null ? version : "1.0.0";
+        return version != null ? version : "1.0.1";
     }
 
     private void openTool(PdfTool tool) {

@@ -107,7 +107,7 @@ public class SuggestScreen extends BorderPane {
         content.getChildren().setAll(summary(looks));
         List<FileInspector.Suggestion> suggestions = FileInspector.suggest(looks);
         if (suggestions.isEmpty()) {
-            Label none = new Label("Ndalamo works with PDFs, pictures (JPG, PNG, TIFF…), Office documents and Markdown files. "
+            Label none = new Label("NdalamoPDF works with PDFs, pictures (JPG, PNG, TIFF…), Office documents and Markdown files. "
                                    + "None of these is one of those, so there's nothing to suggest. Your files haven't been changed.");
             none.setWrapText(true);
             none.getStyleClass().add("muted");

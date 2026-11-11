@@ -2,6 +2,7 @@ package com.ndalamo.services;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import com.ndalamo.models.Settings;
@@ -54,7 +55,10 @@ public final class FeedbackService {
     static final int DAYS_BETWEEN_ASKS = 7;
 
     /** One review, as stored while it waits and as sent. */
-    public record Review(String id, int rating, String review, String version, String written) {}
+    public record Review(String kind, String id, int rating, String review, String version, String written) {}
+
+    /** Answers to the welcome question: who uses NdalamoPDF and what for (WelcomeQuestionDialog). */
+    public record About(String kind, String id, String role, List<String> uses, String version, String written) {}
 
     private final Path queueFile;
     private final String endpoint;
@@ -110,22 +114,28 @@ public final class FeedbackService {
     public static Review review(int rating, String text, String version) {
         String trimmed = text == null ? "" : text.strip();
         if (trimmed.length() > MAX_LENGTH) trimmed = trimmed.substring(0, MAX_LENGTH);
-        return new Review(UUID.randomUUID().toString(), Math.max(1, Math.min(5, rating)), trimmed, version,
+        return new Review("review", UUID.randomUUID().toString(), Math.max(1, Math.min(5, rating)), trimmed, version,
                 LocalDateTime.now().withNano(0).toString());
     }
 
-    /** Puts a review in the queue, to be sent by {@link #sendWaiting()}. */
-    public synchronized void add(Review review) throws IOException {
-        List<Review> queue = new ArrayList<>(waiting());
-        queue.add(review);
+    /** Answers to the welcome question, with their own id. Null role or no uses are fine. */
+    public static About about(String role, List<String> uses, String version) {
+        return new About("about", UUID.randomUUID().toString(), role, List.copyOf(uses), version,
+                LocalDateTime.now().withNano(0).toString());
+    }
+
+    /** Puts a review or answers in the queue, to be sent by {@link #sendWaiting()}. */
+    public synchronized void add(Object item) throws IOException {
+        List<JsonObject> queue = new ArrayList<>(waiting());
+        queue.add(GSON.toJsonTree(item).getAsJsonObject());
         save(queue);
     }
 
-    /** The reviews not sent yet. */
-    public synchronized List<Review> waiting() {
+    /** What's not sent yet, as the JSON that will be sent. */
+    public synchronized List<JsonObject> waiting() {
         if (!Files.exists(queueFile)) return List.of();
         try {
-            List<Review> saved = GSON.fromJson(Files.readString(queueFile), new TypeToken<List<Review>>() {}.getType());
+            List<JsonObject> saved = GSON.fromJson(Files.readString(queueFile), new TypeToken<List<JsonObject>>() {}.getType());
             return saved == null ? List.of() : saved;
         } catch (IOException | JsonParseException e) {
             log.warn("Could not read {}; no reviews waiting", queueFile, e);
@@ -133,7 +143,7 @@ public final class FeedbackService {
         }
     }
 
-    private void save(List<Review> queue) throws IOException {
+    private void save(List<JsonObject> queue) throws IOException {
         Files.createDirectories(queueFile.getParent());
         if (queue.isEmpty()) {
             Files.deleteIfExists(queueFile);
@@ -149,7 +159,7 @@ public final class FeedbackService {
      */
     public synchronized int sendWaiting() {
         if (endpoint == null) return 0;
-        List<Review> queue = new ArrayList<>(waiting());
+        List<JsonObject> queue = new ArrayList<>(waiting());
         int sent = 0;
         while (!queue.isEmpty() && send(queue.get(0))) {
             queue.remove(0);
@@ -169,7 +179,7 @@ public final class FeedbackService {
      * Posts one review. Google answers a script's POST with a redirect to the reply, which is
      * fetched with GET (followed here by hand: Java's own redirect handling may repeat the POST).
      */
-    private boolean send(Review review) {
+    private boolean send(JsonObject review) {
         try {
             if (http == null) {
                 http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))

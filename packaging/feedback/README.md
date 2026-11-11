@@ -7,12 +7,12 @@ Reviews from the app arrive as rows in a Google Sheet, through a small Apps Scri
 
 ## Setting it up (once, about 5 minutes)
 
-1. In Google Drive, create a new blank spreadsheet, for example "Ndalamo reviews".
+1. In Google Drive, create a new blank spreadsheet, for example "NdalamoPDF reviews".
 2. In it, open **Extensions › Apps Script**. Delete what's in the editor, paste in all of
    `Code.gs`, and save (Ctrl+S).
 3. Click **Deploy › New deployment**. Next to "Select type", click the gear and choose
    **Web app**. Set:
-   - Description: `Ndalamo reviews`
+   - Description: `NdalamoPDF reviews`
    - Execute as: **Me**
    - Who has access: **Anyone** (the app sends reviews without signing in)
 4. Click **Deploy**, allow the access Google asks for (it's your own script writing to your own

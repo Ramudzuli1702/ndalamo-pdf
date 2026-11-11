@@ -1,49 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The full Ndalamo setup (decision 009): installs Ndalamo, the Word add-in and LibreOffice in one
-  go. The add-in and LibreOffice each have a box on the first page, ticked by default. Built by build-installer.ps1
-  only when a LibreOffice .msi is in packaging\libreoffice. Both installs share one admin prompt.
+  The NdalamoPDF setup program (decision 009). Both downloads are built from this file:
+  - NdalamoPDF-Setup-<version>.exe: NdalamoPDF and the Word add-in, for this Windows user only.
+  - NdalamoPDF-Setup-<version>-with-LibreOffice.exe: the same plus LibreOffice (when LibreOfficeMsi
+    is given), which installs for every user, so that one asks for administrator permission once.
+  The window is our own (Theme.xml, Theme.wxl, the pictures in this folder); the terms of use are
+  shown in it (terms.rtf, made from packaging\terms.txt by the build) and must be accepted.
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  <Bundle Name="Ndalamo"
+  <!-- Never change the upgrade codes (build-installer.ps1 passes the one for each setup): Windows uses
+       them to know a newer setup replaces the installed one. -->
+  <Bundle Name="NdalamoPDF"
           Version="$(var.Version)"
-          Manufacturer="Ndalamo"
+          Manufacturer="NdalamoPDF"
           IconSourceFile="$(var.Icon)"
+          AboutUrl="https://github.com/Ramudzuli1702/ndalamo-pdf"
           DisableModify="yes"
-          UpgradeCode="9e4b2c7d-1f3a-4b6e-8d5c-7a2f0e9b3c41">
-    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense">
-      <!-- The terms of use, opened from the first page; "I agree" must be ticked before Install. -->
-      <bal:WixStandardBootstrapperApplication LicenseUrl="terms.txt" ThemeFile="Theme.xml" LocalizationFile="Theme.wxl"
-                                              LogoFile="logo.png" SuppressOptionsUI="yes" />
-      <Payload SourceFile="$(var.Terms)" Name="terms.txt" />
+          UpgradeCode="$(var.BundleUpgradeCode)">
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
+      <bal:WixStandardBootstrapperApplication LicenseFile="$(var.TermsRtf)" ThemeFile="$(var.Theme)" LocalizationFile="Theme.wxl"
+                                              SuppressOptionsUI="yes" SuppressRepair="yes"
+                                              LaunchTarget="[LocalAppDataFolder]NdalamoPDF\NdalamoPDF.exe" />
+      <Payload SourceFile="panel.png" />
+      <Payload SourceFile="setup.ico" />
+      <Payload SourceFile="btn-cancel.png" />
+      <Payload SourceFile="btn-close.png" />
+      <Payload SourceFile="btn-install.png" />
+      <Payload SourceFile="btn-ok.png" />
+      <Payload SourceFile="btn-open.png" />
+      <Payload SourceFile="btn-repair.png" />
+      <Payload SourceFile="btn-restart-primary.png" />
+      <Payload SourceFile="btn-restart.png" />
+      <Payload SourceFile="btn-uninstall.png" />
+      <Payload SourceFile="progress.png" />
+      <Payload SourceFile="terms-frame.png" />
+      <Payload SourceFile="check.png" />
     </BootstrapperApplicationRef>
 
-    <!-- Set by the checkboxes of the same names on the first page. -->
-    <Variable Name="InstallLibreOffice" Type="numeric" Value="1" />
+    <!-- The version as people know it (Windows shows four parts: 1.0.1.0). -->
+    <Variable Name="DisplayVersion" Value="$(var.Version)" />
+    <!-- Set by the checkboxes of the same names on the first page; all ticked to begin with. -->
+    <Variable Name="AddDesktopShortcut" Type="numeric" Value="1" />
+    <Variable Name="LaunchAfterInstall" Type="numeric" Value="1" />
     <Variable Name="InstallWordAddIn" Type="numeric" Value="1" />
-
+<?ifdef LibreOfficeMsi ?>
+    <Variable Name="InstallLibreOffice" Type="numeric" Value="1" />
     <!--
       The LibreOffice already on the PC, if any, found by LibreOffice's own upgrade code (the same
       for every version). The bundled one is installed when there's none, and replaces an older
       one; a PC with the same or a newer LibreOffice keeps it and this step is skipped.
     -->
     <util:ProductSearch Variable="InstalledLibreOffice" UpgradeCode="{4B17E523-5D91-4E69-BD96-7FD81CFA81BB}" Result="version" />
+<?endif ?>
 
     <Chain>
-      <MsiPackage Id="Ndalamo" SourceFile="$(var.NdalamoMsi)" DisplayInternalUI="no" Vital="yes">
-        <!-- The Word add-in (main.wxs): added by the installed app once its files are in place. -->
-        <MsiProperty Name="WORDADDIN" Value="[InstallWordAddIn]" />
-      </MsiPackage>
-
+<?ifdef LibreOfficeMsi ?>
       <!--
-        LibreOffice's official, unchanged installer, run silently. Permanent: removing Ndalamo
-        leaves it (people may use it on its own); it's removed separately in Windows' Apps list.
-        Its own options: don't take over Office file types, no update checks (Ndalamo's offline
-        promise), no desktop icon, no tray quick-starter, never restart Windows by itself.
+        First, so NdalamoPDF opens only when everything is in place. LibreOffice's official, unchanged
+        installer, run silently. Permanent: removing NdalamoPDF leaves it (people may use it on its own).
+        Its own options: don't take over Office file types, no update checks, no desktop icon, no tray
+        quick-starter, never restart Windows by itself.
       -->
-      <MsiPackage Id="LibreOffice" SourceFile="$(var.LibreOfficeMsi)" InstallCondition="InstallLibreOffice = 1 AND (NOT InstalledLibreOffice OR InstalledLibreOffice &lt; v$(var.LibreOfficeVersion))"
+      <MsiPackage Id="LibreOffice" DisplayName="LibreOffice" SourceFile="$(var.LibreOfficeMsi)"
+                  InstallCondition="InstallLibreOffice = 1 AND (NOT InstalledLibreOffice OR InstalledLibreOffice &lt; v$(var.LibreOfficeVersion))"
                   Vital="no" Permanent="yes" DisplayInternalUI="no">
         <MsiProperty Name="REGISTER_ALL_MSO_TYPES" Value="0" />
         <MsiProperty Name="REGISTER_NO_MSO_TYPES" Value="1" />
@@ -51,6 +72,13 @@
         <MsiProperty Name="CREATEDESKTOPLINK" Value="0" />
         <MsiProperty Name="QUICKSTART" Value="0" />
         <MsiProperty Name="REBOOTYESNO" Value="No" />
+      </MsiPackage>
+<?endif ?>
+      <MsiPackage Id="NdalamoPDF" DisplayName="NdalamoPDF" SourceFile="$(var.NdalamoMsi)" DisplayInternalUI="no" Vital="yes">
+        <!-- The choices on the first page (main.wxs reads them). -->
+        <MsiProperty Name="WORDADDIN" Value="[InstallWordAddIn]" />
+        <MsiProperty Name="DESKTOPSHORTCUT" Value="[AddDesktopShortcut]" />
+        <MsiProperty Name="LAUNCHAPP" Value="[LaunchAfterInstall]" />
       </MsiPackage>
     </Chain>
   </Bundle>

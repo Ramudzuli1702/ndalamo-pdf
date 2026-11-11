@@ -81,7 +81,7 @@ public class Header extends HBox {
         tile.setMinSize(32, 32);
         tile.setMaxSize(32, 32);
         tile.setStyle("-fx-background-color: " + Theme.ACCENT + "; -fx-background-radius: " + Theme.RADIUS_SM + ";");
-        Label name = new Label("Ndalamo");
+        Label name = new Label("NdalamoPDF");
         name.getStyleClass().add("brand-name");
         HBox brand = new HBox(10, tile, name);
         brand.setAlignment(Pos.CENTER_LEFT);

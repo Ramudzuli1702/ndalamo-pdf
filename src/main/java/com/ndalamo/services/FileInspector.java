@@ -159,7 +159,7 @@ public class FileInspector {
         if (looks.stream().anyMatch(l -> l.info().isPasswordProtected())) parts.add(one ? "locked with a password" : "some are locked");
         if (looks.stream().anyMatch(l -> l.info().isDamaged())) parts.add(one ? "looks damaged" : "some look damaged");
         if (looks.stream().anyMatch(l -> l.info().isRestricted())) parts.add(one ? "printing or copying limited" : "some have limits");
-        if (looks.stream().anyMatch(l -> l.kind().equals("other"))) parts.add(one ? "not a file Ndalamo works with" : "some can't be used");
+        if (looks.stream().anyMatch(l -> l.kind().equals("other"))) parts.add(one ? "not a file NdalamoPDF works with" : "some can't be used");
         return String.join(" · ", parts);
     }
 

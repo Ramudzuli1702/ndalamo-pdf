@@ -54,7 +54,7 @@ public final class WordAddIn {
     public static String unavailableReason() {
         if (!isWindows()) return "The Word add-in works with Microsoft Word for Windows only.";
         if (!wordInstalled()) return "Microsoft Word isn't installed on this PC.";
-        if (bundledDll().isEmpty()) return "The add-in's files are missing from this copy of Ndalamo. Reinstall Ndalamo to get them back.";
+        if (bundledDll().isEmpty()) return "The add-in's files are missing from this copy of NdalamoPDF. Reinstall NdalamoPDF to get them back.";
         return null;
     }
 
@@ -199,7 +199,7 @@ public final class WordAddIn {
         commands.add(List.of("reg", "add", CLSID_KEY + "\\Implemented Categories\\" + DOTNET_CATEGORY, "/f"));
         commands.add(add(PROG_ID_KEY, null, CLASS_NAME));
         commands.add(add(PROG_ID_KEY + "\\CLSID", null, CLASS_ID));
-        commands.add(add(WORD_KEY, "FriendlyName", "Ndalamo Delete Page"));
+        commands.add(add(WORD_KEY, "FriendlyName", "NdalamoPDF Delete Page"));
         commands.add(add(WORD_KEY, "Description", "Adds Delete Page to the Home tab and the right-click menu."));
         commands.add(List.of("reg", "add", WORD_KEY, "/v", "LoadBehavior", "/t", "REG_DWORD", "/d", "3", "/f"));
         return commands;

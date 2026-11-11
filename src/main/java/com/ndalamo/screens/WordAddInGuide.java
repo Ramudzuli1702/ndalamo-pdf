@@ -31,10 +31,10 @@ public final class WordAddInGuide extends VBox {
     private record Step(String picture, String title, String text, String described) {}
 
     private static final List<Step> STEPS = List.of(
-            new Step("word-ribbon.png", "Find Ndalamo on the Home tab",
-                    "Open your document in Word. At the right end of the Home tab is the Ndalamo group, with "
+            new Step("word-ribbon.png", "Find NdalamoPDF on the Home tab",
+                    "Open your document in Word. At the right end of the Home tab is the NdalamoPDF group, with "
                     + "Delete Page and Delete Pages.",
-                    "Word's ribbon with the Home tab and the Ndalamo group ringed"),
+                    "Word's ribbon with the Home tab and the NdalamoPDF group ringed"),
             new Step("word-delete-page.png", "Delete the page you're on",
                     "Click anywhere in the page you want to remove, then click Delete Page. Made a mistake? "
                     + "Press Ctrl+Z and the page comes back.",
@@ -45,7 +45,7 @@ public final class WordAddInGuide extends VBox {
                     "The Delete Pages box asking which pages to delete, with the Delete Pages button ringed"),
             new Step("word-right-click.png", "Or right-click the page",
                     "Right-click anywhere on the page and choose Delete This Page at the bottom of the menu. "
-                    + "Don't see Ndalamo in Word? Install the add-in in Settings › Word add-in, then restart Word.",
+                    + "Don't see NdalamoPDF in Word? Install the add-in in Settings › Word add-in, then restart Word.",
                     "Word's right-click menu with Delete This Page ringed"));
 
     private final MainWindow window;
@@ -101,7 +101,7 @@ public final class WordAddInGuide extends VBox {
         HBox buttons = new HBox(8, close, push, back, next);
         buttons.setAlignment(Pos.CENTER_LEFT);
 
-        Label heading = new Label("Using Ndalamo in Word");
+        Label heading = new Label("Using NdalamoPDF in Word");
         heading.getStyleClass().add("small-muted");
         getChildren().addAll(heading, frame, counter, title, text, progress, buttons);
 

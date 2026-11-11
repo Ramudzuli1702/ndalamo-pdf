@@ -62,7 +62,7 @@ public class ProtectTool implements PdfTool {
 
     @Override
     public String saveToNote() {
-        return "Keep the password somewhere safe: without it the file can't be opened, and Ndalamo can't recover it.";
+        return "Keep the password somewhere safe: without it the file can't be opened, and NdalamoPDF can't recover it.";
     }
 
     @Override

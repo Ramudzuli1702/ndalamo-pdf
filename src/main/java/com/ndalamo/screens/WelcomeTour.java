@@ -55,7 +55,7 @@ public final class WelcomeTour extends Pane {
             Map.entry("remove-pages", "Take pages out of a PDF, such as blank pages or a cover you don't need."),
             Map.entry("workspace", "See every page as a thumbnail and rearrange, rotate, delete or crop them by hand, across several PDFs."),
             Map.entry("compress", "Make PDFs smaller for email, keeping them readable. Recommended is right for most files."),
-            Map.entry("compress-to-size", "Squeeze a PDF under a limit, like 2 MB for an upload portal. Ndalamo tries gentle settings first."),
+            Map.entry("compress-to-size", "Squeeze a PDF under a limit, like 2 MB for an upload portal. NdalamoPDF tries gentle settings first."),
             Map.entry("repair", "Rescue a PDF that won't open properly, like a download that was cut off, into a clean new copy."),
             Map.entry("pdfa", "Save a copy for long-term keeping (PDF/A), with its fonts embedded, as archives and courts ask for."),
             Map.entry("pdf-to-word", "Turn a PDF into a Word document you can edit, keeping its fonts, spacing, tables and pictures."),
@@ -65,7 +65,7 @@ public final class WelcomeTour extends Pane {
             Map.entry("office-to-pdf", "Turn Word, Excel and PowerPoint files into PDFs. This one uses LibreOffice, which is free."),
             Map.entry("image-to-pdf", "Put photos and scans (JPG, PNG, TIFF) into one PDF, the right way up."),
             Map.entry("pdf-to-jpg", "Save each page as a picture, or take out the pictures inside a PDF."),
-            Map.entry("ocr", "Make a scan searchable: Ndalamo reads the text in the page images so you can search and copy it."),
+            Map.entry("ocr", "Make a scan searchable: NdalamoPDF reads the text in the page images so you can search and copy it."),
             Map.entry("page-numbers", "Number the pages: at the top or bottom, in a few styles, starting where you like."),
             Map.entry("watermark", "Stamp text like DRAFT or CONFIDENTIAL, or your logo, across the pages."),
             Map.entry("crop", "Trim the edges of pages, by margins or by drawing a box on a page."),
@@ -181,11 +181,11 @@ public final class WelcomeTour extends Pane {
     }
 
     private void buildSteps() {
-        steps.add(new Step(null, "Welcome to Ndalamo",
+        steps.add(new Step(null, "Welcome to NdalamoPDF",
                 "A free PDF toolkit that works entirely on this PC: your files never leave it. Here's a quick look around, "
                 + "then every tool in turn. It takes about two minutes, and you can skip it any time.", ""));
         steps.add(new Step(home::dropZoneNode, "Start with your files",
-                "Drop files anywhere on the window, or click Choose files. Ndalamo looks at them and suggests the tool "
+                "Drop files anywhere on the window, or click Choose files. NdalamoPDF looks at them and suggests the tool "
                 + "that fits, like OCR for a scan or Compress for a big file.", ""));
         steps.add(new Step(() -> home.header().searchBox(), "Find a tool quickly",
                 "Type what you want to do, like “compress” or “to Word”. Press Ctrl+K from anywhere to jump here.", ""));
@@ -218,7 +218,7 @@ public final class WelcomeTour extends Pane {
         Step step = steps.get(index);
         Node target = step.target() == null ? null : step.target().get();
         back.setDisable(index == 0);
-        next.setText(index == steps.size() - 1 ? "Start using Ndalamo" : index == 0 ? "Show me around" : "Next");
+        next.setText(index == steps.size() - 1 ? "Start using NdalamoPDF" : index == 0 ? "Show me around" : "Next");
         // Fade the card out, move the spotlight (scrolling Home first if the target is off screen), fade the card back in.
         FadeTransition out = new FadeTransition(Duration.millis(110), card);
         out.setToValue(0);

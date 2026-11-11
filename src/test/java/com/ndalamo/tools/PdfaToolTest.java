@@ -111,8 +111,8 @@ class PdfaToolTest {
             assertEquals(1, doc.getDocumentCatalog().getOutputIntents().size(), "sRGB colour profile");
             String xmp = new String(doc.getDocumentCatalog().getMetadata().toByteArray(), StandardCharsets.UTF_8);
             assertTrue(xmp.contains("<pdfaid:part>2</pdfaid:part>") && xmp.contains("<pdfaid:conformance>B</pdfaid:conformance>"));
-            assertTrue(xmp.contains("<pdf:Producer>Ndalamo</pdf:Producer>"));
-            assertEquals("Ndalamo", doc.getDocumentInformation().getProducer(), "the same in both places, as PDF/A checks");
+            assertTrue(xmp.contains("<pdf:Producer>NdalamoPDF</pdf:Producer>"));
+            assertEquals("NdalamoPDF", doc.getDocumentInformation().getProducer(), "the same in both places, as PDF/A checks");
             assertTrue(PdfaTool.check(doc).isEmpty(), PdfaTool.check(doc).toString());
         }
     }

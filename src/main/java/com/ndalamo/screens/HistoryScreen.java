@@ -53,7 +53,7 @@ public class HistoryScreen extends BorderPane {
         clear.getStyleClass().add("button-secondary");
         clear.setDisable(entries.isEmpty());
         clear.setOnAction(e -> new ChoiceDialog(window, "Clear the history?",
-                "The list of what Ndalamo has done is emptied, along with the recent files on Home. "
+                "The list of what NdalamoPDF has done is emptied, along with the recent files on Home. "
                 + "The files themselves are not touched.", null)
                 .button("Cancel", ChoiceDialog.Style.PLAIN, x -> {})
                 .button("Clear history", ChoiceDialog.Style.DANGER, x -> actions.clear()).show());
@@ -63,8 +63,8 @@ public class HistoryScreen extends BorderPane {
         Label title = new Label("History");
         title.getStyleClass().add("page-title");
         Label subtitle = new Label(remembering
-                ? "What Ndalamo has done lately, on this PC only. Turn it off in Settings › Privacy."
-                : "Ndalamo isn't keeping a history: “Remember recent files” is off in Settings › Privacy.");
+                ? "What NdalamoPDF has done lately, on this PC only. Turn it off in Settings › Privacy."
+                : "NdalamoPDF isn't keeping a history: “Remember recent files” is off in Settings › Privacy.");
         subtitle.getStyleClass().add("muted");
         subtitle.setWrapText(true);
 
@@ -145,7 +145,7 @@ public class HistoryScreen extends BorderPane {
             action.accept(file);
         } else {
             window.toast(Toast.info(file.getFileName() + " isn't there any more",
-                    "It was moved, renamed or deleted after Ndalamo made it."));
+                    "It was moved, renamed or deleted after NdalamoPDF made it."));
         }
     }
 

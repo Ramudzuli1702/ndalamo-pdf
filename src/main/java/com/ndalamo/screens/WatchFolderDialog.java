@@ -43,7 +43,7 @@ public class WatchFolderDialog extends VBox {
         setMaxHeight(USE_PREF_SIZE);
         Label title = new Label("Add a watch folder");
         title.getStyleClass().add("dialog-title");
-        Label about = new Label("Every file put in this folder runs through the pipeline while Ndalamo is open or in the system tray.");
+        Label about = new Label("Every file put in this folder runs through the pipeline while NdalamoPDF is open or in the system tray.");
         about.getStyleClass().add("dialog-text");
         about.setWrapText(true);
 

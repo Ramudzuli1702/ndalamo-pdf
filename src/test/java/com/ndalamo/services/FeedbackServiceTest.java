@@ -77,7 +77,16 @@ class FeedbackServiceTest {
             assertEquals(4, sent.get("rating").getAsInt());
             assertEquals("Compress saved my upload. Please add more languages.", sent.get("review").getAsString());
             assertEquals("1.0.0", sent.get("version").getAsString());
-            assertEquals(5, sent.keySet().size(), "only id, rating, review, version and date: " + sent.keySet());
+            assertEquals("review", sent.get("kind").getAsString());
+            assertEquals(6, sent.keySet().size(), "only kind, id, rating, review, version and date: " + sent.keySet());
+
+            feedback.add(FeedbackService.about("Student", List.of("Studies and assignments", "Applications and forms (jobs, bursaries, IDs)"), "1.0.1"));
+            assertEquals(1, feedback.sendWaiting());
+            JsonObject about = new Gson().fromJson(received.get(1), JsonObject.class);
+            assertEquals("about", about.get("kind").getAsString());
+            assertEquals("Student", about.get("role").getAsString());
+            assertEquals(2, about.getAsJsonArray("uses").size());
+            assertEquals(6, about.keySet().size(), "only kind, id, role, uses, version and date: " + about.keySet());
         } finally {
             server.stop(0);
         }

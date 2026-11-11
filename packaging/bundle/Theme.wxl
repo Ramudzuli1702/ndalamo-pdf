@@ -1,67 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (c) .NET Foundation and contributors. All rights reserved. Licensed under the Microsoft Reciprocal License. See LICENSE.TXT file in the project root for full license information. -->
-
-
+<!-- The words in the NdalamoPDF setup window (Theme.xml). Written for people, not installers. -->
 <WixLocalization Culture="en-us" Language="1033" xmlns="http://schemas.microsoft.com/wix/2006/localization">
-  <String Id="Caption">[WixBundleName] Setup</String>
-  <String Id="Title">[WixBundleName]</String>
-  <String Id="InstallHeader">Welcome</String>
-  <String Id="InstallMessage">Setup will install [WixBundleName], the free offline PDF toolkit, on this PC.</String>
-  <String Id="InstallWordAddInCheckbox">Add &amp;Delete Page to Microsoft Word (if Word is on this PC)</String>
-  <String Id="InstallLibreOfficeCheckbox">Also install &amp;LibreOffice (needed for Word, Excel and PowerPoint to PDF)</String>
-  <String Id="InstallLibreOfficeNote">A separate free program, skipped if this PC already has a current one. It can be removed later from Windows' Apps list.</String>
-  <String Id="InstallVersion">Version [WixBundleVersion]</String>
-  <String Id="ConfirmCancelMessage">Are you sure you want to cancel?</String>
+  <String Id="Caption">NdalamoPDF Setup</String>
+  <String Id="VersionLabel">Version [DisplayVersion]</String>
+  <String Id="ConfirmCancelMessage">Stop installing NdalamoPDF?</String>
   <String Id="ExecuteUpgradeRelatedBundleMessage">Previous version</String>
-  <String Id="HelpHeader">Setup Help</String>
-  <String Id="HelpText">/install | /repair | /uninstall | /layout [directory] - installs, repairs, uninstalls or
-   creates a complete local copy of the bundle in directory. Install is the default.
 
-/passive | /quiet -  displays minimal UI with no prompts or displays no UI and
-   no prompts. By default UI and all prompts are displayed.
-
-/norestart   - suppress any attempts to restart. By default UI will prompt before restart.
-/log log.txt - logs to a specific file. By default a log file is created in %TEMP%.</String>
-  <String Id="HelpCloseButton">&amp;Close</String>
-  <String Id="InstallLicenseLinkText">Please read the &lt;a href="#"&gt;terms of use&lt;/a&gt; before installing.</String>
-  <String Id="InstallAcceptCheckbox">I &amp;agree to the terms of use</String>
-  <String Id="InstallOptionsButton">&amp;Options</String>
+  <String Id="InstallHeader">Install NdalamoPDF</String>
+  <String Id="InstallMessage">Read the terms of use, then choose your options.</String>
+  <String Id="InstallAcceptCheckbox">I accept the terms of use</String>
+  <String Id="OptionsLabel">OPTIONS</String>
+  <String Id="DesktopShortcutCheckbox">Add a shortcut to the desktop</String>
+  <String Id="LaunchCheckbox">Open NdalamoPDF when setup finishes</String>
+  <String Id="WordAddInCheckbox">Add Delete Page to Microsoft Word (if Word is on this PC)</String>
+  <String Id="LibreOfficeCheckbox">Install LibreOffice, for Word, Excel and PowerPoint to PDF</String>
   <String Id="InstallInstallButton">&amp;Install</String>
-  <String Id="InstallCloseButton">&amp;Close</String>
-  <String Id="OptionsHeader">Setup Options</String>
+  <String Id="InstallCloseButton">Cancel</String>
+
+  <String Id="ProgressHeader">Installing NdalamoPDF</String>
+  <String Id="ProgressMessage">This takes about a minute.</String>
+  <String Id="ProgressLabel">NOW INSTALLING</String>
+  <String Id="OverallProgressPackageText">Getting ready...</String>
+  <String Id="ProgressCancelButton">&amp;Cancel</String>
+
+  <String Id="SuccessHeader">All done</String>
+  <String Id="SuccessInstallHeader">NdalamoPDF is ready</String>
+  <String Id="SuccessRepairHeader">NdalamoPDF is repaired</String>
+  <String Id="SuccessUninstallHeader">NdalamoPDF was removed</String>
+  <String Id="SuccessMessage">Thank you for choosing NdalamoPDF. Your files never leave your PC.</String>
+  <String Id="SuccessLaunchButton">&amp;Open NdalamoPDF</String>
+  <String Id="SuccessRestartText">Restart your PC to finish.</String>
+  <String Id="SuccessRestartButton">&amp;Restart</String>
+  <String Id="SuccessCloseButton">&amp;Close</String>
+
+  <String Id="ModifyHeader">NdalamoPDF is installed</String>
+  <String Id="ModifyMessage">You can remove it from this PC. Your own files are not touched.</String>
+  <String Id="ModifyRepairButton">&amp;Repair</String>
+  <String Id="ModifyUninstallButton">&amp;Uninstall</String>
+  <String Id="ModifyCloseButton">&amp;Close</String>
+
+  <String Id="FailureHeader">Setup didn't finish</String>
+  <String Id="FailureInstallHeader">NdalamoPDF wasn't installed</String>
+  <String Id="FailureUninstallHeader">NdalamoPDF wasn't removed</String>
+  <String Id="FailureRepairHeader">NdalamoPDF wasn't repaired</String>
+  <String Id="FailureHyperlinkLogText">Nothing on your PC was changed. Close other programs and try again. The details are in the &lt;a href="#"&gt;setup log&lt;/a&gt;.</String>
+  <String Id="FailureRestartText">Restart your PC to finish undoing the changes.</String>
+  <String Id="FailureRestartButton">&amp;Restart</String>
+  <String Id="FailureCloseButton">&amp;Close</String>
+
+  <String Id="FilesInUseHeader">Close some programs first</String>
+  <String Id="FilesInUseLabel">These programs are using files that setup needs to update:</String>
+  <String Id="FilesInUseCloseRadioButton">Close them for me and open them again afterwards</String>
+  <String Id="FilesInUseDontCloseRadioButton">Leave them open (you'll need to restart your PC)</String>
+  <String Id="FilesInUseOkButton">&amp;OK</String>
+  <String Id="FilesInUseCancelButton">&amp;Cancel</String>
+
+  <String Id="OptionsHeader">Options</String>
   <String Id="OptionsLocationLabel">Install location:</String>
   <String Id="OptionsBrowseButton">&amp;Browse</String>
   <String Id="OptionsOkButton">&amp;OK</String>
   <String Id="OptionsCancelButton">&amp;Cancel</String>
-  <String Id="ProgressHeader">Setup Progress</String>
-  <String Id="ProgressLabel">Processing:</String>
-  <String Id="OverallProgressPackageText">Initializing...</String>
-  <String Id="ProgressCancelButton">&amp;Cancel</String>
-  <String Id="ModifyHeader">Modify Setup</String>
-  <String Id="ModifyRepairButton">&amp;Repair</String>
-  <String Id="ModifyUninstallButton">&amp;Uninstall</String>
-  <String Id="ModifyCloseButton">&amp;Close</String>
-  <String Id="SuccessRepairHeader">Repair Successfully Completed</String>
-  <String Id="SuccessUninstallHeader">Uninstall Successfully Completed</String>
-  <String Id="SuccessInstallHeader">Installation Successfully Completed</String> 
-  <String Id="SuccessHeader">Setup Successful</String>	
-  <String Id="SuccessLaunchButton">&amp;Launch</String>
-  <String Id="SuccessRestartText">You must restart your computer before you can use the software.</String>
-  <String Id="SuccessRestartButton">&amp;Restart</String>
-  <String Id="SuccessCloseButton">&amp;Close</String>
-  <String Id="FailureHeader">Setup Failed</String>
-  <String Id="FailureInstallHeader">Setup Failed</String>
-  <String Id="FailureUninstallHeader">Uninstall Failed</String>
-  <String Id="FailureRepairHeader">Repair Failed</String> 
-  <String Id="FailureHyperlinkLogText">One or more issues caused the setup to fail. Please fix the issues and then retry setup. For more information see the &lt;a href="#"&gt;log file&lt;/a&gt;.</String>
-  <String Id="FailureRestartText">You must restart your computer to complete the rollback of the software.</String>
-  <String Id="FailureRestartButton">&amp;Restart</String>
-  <String Id="FailureCloseButton">&amp;Close</String>
-  <String Id="FilesInUseHeader">Files In Use</String>
-  <String Id="FilesInUseLabel">The following applications are using files that need to be updated:</String>
-  <String Id="FilesInUseCloseRadioButton">Close the &amp;applications and attempt to restart them.</String>
-  <String Id="FilesInUseDontCloseRadioButton">&amp;Do not close applications. A reboot will be required.</String>
-  <String Id="FilesInUseOkButton">&amp;OK</String>
-  <String Id="FilesInUseCancelButton">&amp;Cancel</String>
-  <String Id="ErrorFailNoActionReboot">No action was taken as a system reboot is required.</String>
+
+  <String Id="HelpHeader">Setup help</String>
+  <String Id="HelpText">/install, /uninstall: install or remove NdalamoPDF.
+/passive, /quiet: show only progress, or nothing at all.
+/norestart: never restart the PC.
+/log log.txt: write the setup log to this file.</String>
+  <String Id="HelpCloseButton">&amp;Close</String>
+  <String Id="ErrorFailNoActionReboot">Nothing was done because Windows needs a restart first.</String>
 </WixLocalization>

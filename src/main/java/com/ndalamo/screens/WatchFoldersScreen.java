@@ -195,7 +195,7 @@ public class WatchFoldersScreen extends BorderPane {
     private void exportLog() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Export the activity log");
-        chooser.setInitialFileName("Ndalamo activity " + LocalDate.now() + ".csv");
+        chooser.setInitialFileName("NdalamoPDF activity " + LocalDate.now() + ".csv");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV (opens in Excel)", "*.csv"));
         File target = chooser.showSaveDialog(getScene().getWindow());
         if (target == null) return;
@@ -203,7 +203,7 @@ public class WatchFoldersScreen extends BorderPane {
             service.exportLog(target.toPath());
             window.toast(Toast.success("Log exported", target.getName() + " is saved."));
         } catch (IOException e) {
-            window.toast(Toast.error("The log wasn't exported", "Ndalamo couldn't write " + target.getName()
+            window.toast(Toast.error("The log wasn't exported", "NdalamoPDF couldn't write " + target.getName()
                     + ". Choose another folder and try again."));
         }
     }

@@ -1,6 +1,6 @@
-# Ndalamo add-in for Microsoft Word
+# NdalamoPDF add-in for Microsoft Word
 
-Adds **Delete Page** to Word for Windows: a button on the Home tab (group "Ndalamo"),
+Adds **Delete Page** to Word for Windows: a button on the Home tab (group "NdalamoPDF"),
 **Delete Pages...** for a list such as `3, 5-7`, and **Delete This Page** on the right-click
 menu. Each action is one undo step. See SPEC section 7 and decision 015.
 
@@ -13,7 +13,7 @@ the GAC and embedded). Output: `bin/Release/net48/NdalamoWord.dll`.
 
 ## Install
 
-From the Ndalamo app: Settings → Word add-in → Install add-in. While developing, the app
+From the NdalamoPDF app: Settings → Word add-in → Install add-in. While developing, the app
 picks up the build output above; a packaged app ships the DLL in `word-addin/` next to its
 files. Restart Word afterwards.
 

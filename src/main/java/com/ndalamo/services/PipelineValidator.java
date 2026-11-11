@@ -38,7 +38,7 @@ public final class PipelineValidator {
         for (int i = 0; i < steps.size(); i++) {
             Optional<PdfTool> found = Tools.find(steps.get(i).getToolId());
             if (found.isEmpty() || !found.get().isReady()) {
-                problems.add(new Problem(i, Severity.ERROR, "This tool isn't available in this version of Ndalamo.", Fix.REMOVE));
+                problems.add(new Problem(i, Severity.ERROR, "This tool isn't available in this version of NdalamoPDF.", Fix.REMOVE));
                 previousOutput = null;
                 continue;
             }

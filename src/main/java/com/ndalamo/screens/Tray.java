@@ -45,7 +45,7 @@ public final class Tray {
         EventQueue.invokeLater(() -> {
             try {
                 PopupMenu menu = new PopupMenu();
-                MenuItem open = new MenuItem("Open Ndalamo");
+                MenuItem open = new MenuItem("Open NdalamoPDF");
                 open.addActionListener(e -> Platform.runLater(onOpen));
                 MenuItem watch = new MenuItem("Watch folders");
                 watch.addActionListener(e -> Platform.runLater(onWatchFolders));
@@ -55,7 +55,7 @@ public final class Tray {
                 menu.add(watch);
                 menu.addSeparator();
                 menu.add(quit);
-                icon = new TrayIcon(awtPicture, "Ndalamo", menu);
+                icon = new TrayIcon(awtPicture, "NdalamoPDF", menu);
                 icon.setImageAutoSize(true);
                 // Fires on double-click, and when a notification is clicked: shortly after one, open its log.
                 icon.addActionListener(e -> Platform.runLater(
