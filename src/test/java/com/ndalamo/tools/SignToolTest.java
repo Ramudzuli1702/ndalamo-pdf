@@ -175,4 +175,28 @@ class SignToolTest {
         assertNotNull(new SignTool().checkOptions(options(null, false)));
         assertNull(new SignTool().checkOptions(options(new Signature(blackBox(), 1, 0, 0, 0.2), false)));
     }
+
+    @Test
+    void aFadedSignatureIsDrawnSeeThrough() throws Exception {
+        Path pdf = TestFiles.pdf(dir, "letter.pdf", "Letter", 1);
+        FileResult result = new SignTool().run(List.of(pdf),
+                options(new Signature(blackBox(), 1, 0.6, 0.8, 0.3, 0.45), false), sameFolder, new Progress()).get(0);
+
+        assertTrue(result.getNote().contains("45% opacity"), result.getNote());
+        try (var doc = org.apache.pdfbox.Loader.loadPDF(result.getOutput().toFile())) {
+            var resources = doc.getPage(0).getResources();
+            float alpha = 1;
+            for (var name : resources.getExtGStateNames()) {
+                Float ca = resources.getExtGState(name).getNonStrokingAlphaConstant();
+                if (ca != null) alpha = Math.min(alpha, ca);
+            }
+            assertEquals(0.45f, alpha, 0.001f);
+        }
+    }
+
+    @Test
+    void aSolidSignatureStaysSolid() throws Exception {
+        assertEquals(1.0, new Signature(blackBox(), 1, 0, 0, 0.2).opacity());
+        assertEquals(0.5, new Signature(blackBox(), 1, 0, 0, 0.2, 0.5).movedTo(2, 0.1, 0.1, 0.3).opacity());
+    }
 }

@@ -106,7 +106,17 @@ public class SignTool implements PdfTool {
                     float x = (float) (signature.left() * width);
                     float top = (float) (signature.top() * height);
                     float y = height - top - h;                              // drawing measures from the bottom
-                    content.drawImage(image, x, y, w, h);
+                    if (signature.opacity() < 1) {
+                        // Lighter ink: the picture is drawn see-through (the date stays solid).
+                        content.saveGraphicsState();
+                        var faint = new org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState();
+                        faint.setNonStrokingAlphaConstant((float) Math.max(0.1, signature.opacity()));
+                        content.setGraphicsStateParameters(faint);
+                        content.drawImage(image, x, y, w, h);
+                        content.restoreGraphicsState();
+                    } else {
+                        content.drawImage(image, x, y, w, h);
+                    }
                     if (font != null) {
                         float size = 9;
                         content.beginText();
@@ -120,6 +130,7 @@ public class SignTool implements PdfTool {
                 Path output = saveTo.outputFor(input, outputSuffix(), "pdf", doc.getNumberOfPages());
                 SafeSave.write(output, temp -> doc.save(temp.toFile()));
                 String note = "Signed on page " + pageNumber + (date ? " · dated " + today : "")
+                        + (signature.opacity() < 1 ? " · " + Math.round(signature.opacity() * 100) + "% opacity" : "")
                         + (pageNumber < signature.page() ? " (its last page)" : "");
                 results.add(new FileResult(input, output, Files.size(input), Files.size(output), FileResult.Status.SUCCESS, note));
                 progress.file(i, 1, "Done");
