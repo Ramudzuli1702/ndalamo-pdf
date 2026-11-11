@@ -24,6 +24,7 @@ function doPost(e) {
   try {
     lock.waitLock(10000);
     const data = JSON.parse(e.postData.contents);
+    if (data.kind === 'admin-show') return adminShow(data);
     const kind = SHEETS[data.kind] ? data.kind : 'review';
     const id = String(data.id || '').slice(0, 64);
     let row;
@@ -60,8 +61,42 @@ function doPost(e) {
   }
 }
 
+/**
+ * The portfolio's admin page: everything in the sheets, and switching a review's "Show on site".
+ * Only with the admin key, kept in this script's properties (Project Settings > Script properties >
+ * ADMIN_KEY) and never in the code, which is public.
+ */
+function isAdmin(key) {
+  const real = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+  return !!real && real.length >= 16 && key === real;
+}
+
+function rowsOf(kind) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS[kind].name);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, SHEETS[kind].headings.length).getValues()
+    .map((r, i) => ({ row: i + 2, values: r.map(v => v instanceof Date ? v.toISOString() : v) }));
+}
+
+function adminData(key) {
+  if (!isAdmin(key)) return reply(false, 'wrong key');
+  return json({ ok: true, reviews: rowsOf('review'), messages: rowsOf('contact'), users: rowsOf('about') });
+}
+
+function adminShow(data) {
+  if (!isAdmin(data.key)) return reply(false, 'wrong key');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.review.name);
+  const row = Number(data.row);
+  if (!sheet || !(row >= 2 && row <= sheet.getLastRow())) return reply(false, 'no such review');
+  const cell = sheet.getRange(row, 7);
+  cell.insertCheckboxes();
+  cell.setValue(data.show === true);
+  return reply(true);
+}
+
 /** The reviews ticked "Show on site", newest first, and the average of all reviews. */
 function doGet(e) {
+  if (e && e.parameter && e.parameter.admin) return adminData(e.parameter.key);
   if (!e || !e.parameter || !e.parameter.reviews) return reply(false, 'nothing here');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.review.name);
   if (!sheet || sheet.getLastRow() < 2) return json({ reviews: [], count: 0, average: 0 });
