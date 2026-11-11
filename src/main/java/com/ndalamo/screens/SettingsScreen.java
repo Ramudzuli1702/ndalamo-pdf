@@ -75,6 +75,14 @@ public class SettingsScreen extends BorderPane {
     public void setOnShowTour(Runnable action) {
         this.onShowTour = action;
     }
+
+    /** "Tell us what you think" in Help; the button only shows once this is set. */
+    public void setOnFeedback(Runnable action) {
+        feedback.setOnAction(e -> action.run());
+        feedback.setVisible(true);
+    }
+
+    private final Button feedback = new Button("Tell us what you think");
     private final Map<Node, Button> navItems = new LinkedHashMap<>();
     /** The section last picked in the list, so it stays highlighted when it can't scroll to the top. */
     private Node picked;
@@ -445,7 +453,8 @@ public class SettingsScreen extends BorderPane {
     // ── Privacy ──────────────────────────────────────────────────────────
 
     private VBox privacy() {
-        Label statement = new Label("Everything runs on this PC. No files, usage data or crash reports are sent anywhere.");
+        Label statement = new Label("Everything runs on this PC. No files, usage data or crash reports are sent anywhere. "
+                + "The only thing Ndalamo ever sends is a review you write and submit.");
         statement.setWrapText(true);
         statement.getStyleClass().add("status-good");
         CheckBox remember = new CheckBox("Remember recent files");
@@ -482,7 +491,11 @@ public class SettingsScreen extends BorderPane {
         Label shortcuts = new Label("Keyboard shortcuts are listed above. Drop files anywhere on the window to start.");
         shortcuts.getStyleClass().add("small-muted");
         shortcuts.setWrapText(true);
-        return new VBox(10, about, tour, shortcuts);
+        feedback.getStyleClass().add("button-secondary");
+        feedback.setVisible(false);
+        feedback.managedProperty().bind(feedback.visibleProperty());
+        HBox buttons = new HBox(8, tour, feedback);
+        return new VBox(10, about, buttons, shortcuts);
     }
 
     // ── About ────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ package com.ndalamo;
 
 import com.ndalamo.models.SaveTo;
 import com.ndalamo.models.Settings;
+import com.ndalamo.screens.FeedbackDialog;
 import com.ndalamo.screens.HomeScreen;
 import com.ndalamo.screens.SettingsScreen;
 import com.ndalamo.screens.HistoryScreen;
@@ -10,6 +11,7 @@ import com.ndalamo.screens.PipelineBuilderScreen;
 import com.ndalamo.screens.PipelinesScreen;
 import com.ndalamo.screens.Toast;
 import com.ndalamo.models.Pipeline;
+import com.ndalamo.services.FeedbackService;
 import com.ndalamo.services.PipelineService;
 import com.ndalamo.services.SingleInstance;
 import com.ndalamo.services.WatchFolderService;
@@ -79,6 +81,7 @@ public class NdalamoApp extends Application {
     private WorkspaceScreen workspace;      // kept, so files left open are still there next time
     private final PipelineService pipelineService = new PipelineService();
     private com.ndalamo.services.HistoryService history;
+    private FeedbackService feedback;
     private static SingleInstance instance;  // null when started another way (tests, mvn javafx:run without it)
     private Tray tray;                      // null when Windows has no notification area for us
     private boolean toldAboutTray;
@@ -95,6 +98,9 @@ public class NdalamoApp extends Application {
 
         settings = settingsService.load();
         history = new com.ndalamo.services.HistoryService();
+        // Reviews waiting from an offline moment are sent soon after start-up (and every 15 minutes).
+        feedback = new FeedbackService(SettingsService.appDataFolder(), FeedbackService.configuredEndpoint());
+        feedback.startRetrying();
         pipelines.addAll(pipelineService.load());
         watchFolders.load();
         watchFolders.setListener(new WatchFolderService.Listener() {
@@ -121,6 +127,11 @@ public class NdalamoApp extends Application {
         refreshRecent();
         toolFlow = new ToolFlow(window, jobService, () -> SaveTo.from(settings), () -> settings.getToolDefaults(), this::showHome);
         toolFlow.onFinished(entry -> {
+            if (!entry.outputs().isEmpty()) {                      // a run that made something
+                settings.setSuccessfulRuns(settings.getSuccessfulRuns() + 1);
+                saveSettings();
+                maybeAskForFeedback();
+            }
             if (!settings.isRememberRecentFiles()) return;        // Settings › Privacy: keep no history
             history.add(entry);
             refreshRecent();
@@ -409,7 +420,56 @@ public class NdalamoApp extends Application {
             showHome();
             Platform.runLater(this::startTour);
         });
+        if (feedback.available()) screen.setOnFeedback(() -> showFeedback(false));
         window.show(screen);
+    }
+
+    // ── Tell us what you think ───────────────────────────────────────────
+
+    /**
+     * After a successful run, now and then (FeedbackService.shouldAsk): the review box, a moment
+     * after the results appear so they're seen first, and only if nothing else is open.
+     */
+    private void maybeAskForFeedback() {
+        if (!feedback.available() || !FeedbackService.shouldAsk(settings, java.time.LocalDate.now())) return;
+        javafx.animation.PauseTransition wait = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1.5));
+        wait.setOnFinished(e -> {
+            if (window.hasDialog()) return;
+            settings.setFeedbackLastAsked(java.time.LocalDate.now().toString());
+            settings.setRunsAtLastAsk(settings.getSuccessfulRuns());
+            saveSettings();
+            showFeedback(true);
+        });
+        wait.play();
+    }
+
+    private void showFeedback(boolean offered) {
+        window.showDialog(new FeedbackDialog(window, offered, this::submitFeedback, () -> {}, () -> {
+            settings.setFeedbackNeverAsk(true);
+            saveSettings();
+        }));
+    }
+
+    /** Queues the review and tries to send it straight away, off the JavaFX thread. */
+    private void submitFeedback(int stars, String text) {
+        settings.setFeedbackGiven(true);
+        saveSettings();
+        FeedbackService.Review review = FeedbackService.review(stars, text, version());
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                feedback.add(review);
+            } catch (IOException e) {
+                log.warn("Could not keep the review", e);
+                Platform.runLater(() -> window.toast(Toast.error("Your review couldn't be saved",
+                        "Nothing was sent. Try again from Settings › Help › Tell us what you think.")));
+                return;
+            }
+            feedback.sendWaiting();
+            boolean waiting = !feedback.waiting().isEmpty();
+            Platform.runLater(() -> window.toast(Toast.success("Thank you for your review",
+                    waiting ? "You seem to be offline, so it'll be sent as soon as you're connected."
+                            : "It's on its way to the Ndalamo team.")));
+        });
     }
 
     // ── The welcome tour ─────────────────────────────────────────────────

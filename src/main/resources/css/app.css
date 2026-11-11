@@ -735,3 +735,9 @@
 .tour-progress > .track { -fx-background-color: -nd-chip; -fx-background-radius: 2; -fx-background-insets: 0; }
 .tour-progress > .bar { -fx-background-radius: 2; -fx-background-insets: 0; -fx-padding: 2; }
 .word-guide-picture { -fx-background-color: -nd-chip; -fx-background-radius: 8; }
+
+/* ── Tell us what you think ─────────────────────────────────────────── */
+.feedback-star { -fx-fill: transparent; -fx-stroke: -nd-border-strong; -fx-stroke-width: 1.4; }
+.feedback-star.on { -fx-fill: #F5A524; -fx-stroke: #E0901A; }
+.feedback-stars:focused { -fx-border-color: -nd-accent; -fx-border-radius: 8; -fx-border-width: 1.5; }
+.feedback-stars { -fx-padding: 2 6; -fx-border-color: transparent; -fx-border-width: 1.5; }

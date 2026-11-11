@@ -36,6 +36,12 @@ public class Settings {
     private boolean tourSeen;            // the welcome tour has been shown (or skipped) once
     private boolean askBeforeDeletingPages = true;
     private String libreOfficePath;
+    // "Tell us what you think" (FeedbackService): when to offer the review box.
+    private int successfulRuns;          // tool runs that made at least one file
+    private boolean feedbackGiven;       // a review was sent: don't ask again
+    private boolean feedbackNeverAsk;    // "Never show this again"
+    private String feedbackLastAsked;    // the date the box was last offered (yyyy-MM-dd)
+    private int runsAtLastAsk;
     private Map<String, String> toolDefaults = new HashMap<>();
     private List<String> recentFiles = new ArrayList<>();
     private List<String> recentTools = new ArrayList<>();
@@ -64,6 +70,17 @@ public class Settings {
     public boolean isRememberRecentFiles() { return rememberRecentFiles; }
     public boolean isTourSeen() { return tourSeen; }
     public void setTourSeen(boolean tourSeen) { this.tourSeen = tourSeen; }
+
+    public int getSuccessfulRuns() { return successfulRuns; }
+    public void setSuccessfulRuns(int successfulRuns) { this.successfulRuns = successfulRuns; }
+    public boolean isFeedbackGiven() { return feedbackGiven; }
+    public void setFeedbackGiven(boolean feedbackGiven) { this.feedbackGiven = feedbackGiven; }
+    public boolean isFeedbackNeverAsk() { return feedbackNeverAsk; }
+    public void setFeedbackNeverAsk(boolean feedbackNeverAsk) { this.feedbackNeverAsk = feedbackNeverAsk; }
+    public String getFeedbackLastAsked() { return feedbackLastAsked; }
+    public void setFeedbackLastAsked(String feedbackLastAsked) { this.feedbackLastAsked = feedbackLastAsked; }
+    public int getRunsAtLastAsk() { return runsAtLastAsk; }
+    public void setRunsAtLastAsk(int runsAtLastAsk) { this.runsAtLastAsk = runsAtLastAsk; }
     public void setRememberRecentFiles(boolean rememberRecentFiles) { this.rememberRecentFiles = rememberRecentFiles; }
 
     /** Page workspace: show "Delete 2 pages?" before deleting, until the user ticks "Don't ask again". */

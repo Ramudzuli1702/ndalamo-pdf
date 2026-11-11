@@ -5,7 +5,7 @@ A free, fully offline Windows desktop app for working with PDFs: merge, split, c
 *Ndalamo* means "prosperity".
 
 ## Principles
-- **100% offline.** Files never leave the PC: no telemetry, update checks or cloud services.
+- **Files never leave the PC.** Everything runs offline: no telemetry, update checks or cloud services. The only thing Ndalamo ever sends is a review you choose to write and submit.
 - **The original file is never overwritten.** Every tool writes a new file.
 - **The UI never freezes.** Work runs in the background with progress and cancel.
 - **Plain-language errors** that say what happened, confirm the original is safe, and suggest a next step.
@@ -33,5 +33,12 @@ mvn verify        # build and run all tests
 mvn javafx:run    # start the app
 ```
 
+## Download
+Get the latest setup from [Releases](https://github.com/Ramudzuli1702/ndalamo-pdf/releases) (Windows 10 and 11, 64-bit):
+- `Ndalamo-Setup-<version>-with-LibreOffice.exe`: everything in one install: Ndalamo, the Word add-in and LibreOffice (for Word, Excel and PowerPoint to PDF). Asks for administrator permission once, for LibreOffice.
+- `Ndalamo-Setup-<version>.exe`: Ndalamo and the Word add-in only, for the current Windows user, no administrator permission.
+
+Both carry their own Java, so nothing else needs installing. The setups aren't code-signed yet, so Windows SmartScreen may say "Windows protected your PC": choose **More info › Run anyway**.
+
 ## Status
-Early development. See the progress log in [docs/SPEC.md](docs/SPEC.md#10-progress-log).
+Version 1.0.0. Build history in the progress log in [docs/SPEC.md](docs/SPEC.md#10-progress-log); packaging in [packaging/README.md](packaging/README.md).

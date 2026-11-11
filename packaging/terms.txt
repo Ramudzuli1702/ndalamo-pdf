@@ -6,24 +6,27 @@ Please read these terms before installing Ndalamo PDF ("Ndalamo"). By installing
 Ndalamo is free. You may install it on as many of your own computers as you like and use it for personal, study or work purposes. You may not sell Ndalamo itself, or pass it off as your own.
 
 2. YOUR FILES STAY ON YOUR COMPUTER
-Ndalamo works entirely on your computer. It does not send your files, their contents, usage information or crash reports anywhere, and it does not need an internet connection. Settings, history and logs are kept only on your computer, and you can clear the history in Settings at any time.
+Ndalamo works entirely on your computer and doesn't need an internet connection. It does not send your files, their contents, file names, usage information or crash reports anywhere. Settings, history and logs are kept only on your computer, and you can clear the history in Settings at any time. The only exception is a review you choose to send (section 3).
 
-3. YOUR ORIGINAL FILES
+3. REVIEWS YOU SEND
+Ndalamo may now and then ask what you think of it, and you can also open "Tell us what you think" in Settings > Help. Asking stops if you choose "Never show this again" or send a review. If you press Submit, Ndalamo sends your star rating, the words you wrote, the Ndalamo version and the date to the makers of Ndalamo, where they are stored in a spreadsheet (hosted by Google) and read to improve Ndalamo. Nothing else is sent: no files, file names, or details about you or your computer, unless you type them into the review yourself, so please don't. If you're offline, the review waits on your computer and is sent once you're connected. Nothing is sent if you don't press Submit. To have a review you sent removed, ask on the Ndalamo page on GitHub (github.com/Ramudzuli1702/ndalamo-pdf) and give the date you sent it.
+
+4. YOUR ORIGINAL FILES
 Every tool saves its result as a new file and never changes the file you gave it. Even so, keep backups of files that matter to you, and check results before relying on them or sharing them.
 
-4. CHECK SENSITIVE RESULTS
+5. CHECK SENSITIVE RESULTS
 Before sharing a document that has been redacted, protected with a password or had pages removed, open the result and check that it is what you expect. A password is only as strong as the password you choose.
 
-5. NO WARRANTY
+6. NO WARRANTY
 Ndalamo is provided "as is", without any warranty of any kind, whether express or implied, including any warranty that it is fit for a particular purpose, free of errors, or that results (for example converted documents or recognised text) will be exact.
 
-6. LIMITATION OF LIABILITY
+7. LIMITATION OF LIABILITY
 To the fullest extent the law allows, the makers of Ndalamo are not liable for any loss or damage arising from installing or using Ndalamo, including loss of data, documents, time or income. Nothing in these terms limits rights you have that the law of your country does not allow to be limited.
 
-7. OTHER SOFTWARE INCLUDED
+8. OTHER SOFTWARE INCLUDED
 Ndalamo includes open-source components and fonts, each under its own licence (Apache 2.0, MIT, BSD, EPL, LGPL, SIL Open Font License and GPL with the Classpath Exception). Their full licence texts are in the "licenses" folder where Ndalamo is installed, and in Settings > About. Where the full setup installs LibreOffice, LibreOffice is a separate program under its own licence (Mozilla Public License 2.0).
 
-8. CHANGES
+9. CHANGES
 New versions of Ndalamo may come with updated terms, which apply to those versions.
 
 Thank you for using Ndalamo.

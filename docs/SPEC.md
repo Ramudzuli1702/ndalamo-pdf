@@ -15,7 +15,7 @@ A **free, fully offline Java desktop app** for working with PDFs, similar in sco
 - **Small offices:** scan to PDF, OCR, merge, sign, protect, redact, PDF to Excel, batch work, pipelines and watch folders.
 
 **Non-negotiable principles**
-1. **100% offline.** No network calls of any kind: no telemetry, no update checks, no crash reporting, no cloud APIs, no AI services.
+1. **Offline; files never leave the PC.** No telemetry, update checks, crash reporting, cloud APIs or AI services. The one exception: a review the user writes and submits ("Tell us what you think", decision 020), sent with the JDK's HttpClient, nothing else.
 2. **Never overwrite the original file.** Every tool writes a new file. This cannot be turned off.
 3. **Never freeze the UI.** All processing runs on background threads with progress and cancel.
 4. **Plain-language errors.** Say what happened, confirm the original is safe, offer a next step. Technical details only on request.
@@ -295,7 +295,7 @@ A dark theme follows the same roles (dark surfaces, lighter accent). "Follow sys
 
 **1. Home**
 - Header: logo + "Ndalamo" · tool search with `Ctrl+K` hint · Pipelines button · Settings icon button.
-- Left sidebar: Recent files (name + what was last done), Recent tools (chips), bottom badge "Offline · files never leave this PC".
+- Left sidebar: Recent files (name + what was last done), Recent tools (chips), bottom badge "Private · files never leave this PC".
 - Main: large dashed **drop zone** ("Drop files anywhere to start" + Choose files), then tool cards grouped by category. Each card: tinted icon, name, one-line description.
 - Pinned pipelines appear as a row above the categories.
 - Dropping files anywhere on the window opens screen 3.
@@ -439,7 +439,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 2. Before writing code, briefly state the plan for the chunk and the files that will change.
 3. Follow the layout in §3: tools have no JavaFX code, screens have no PDF code. Keep classes plain and easy to follow; no extra layers.
 4. Every tool gets unit tests in `src/test/java/com/ndalamo/tools/` using small PDFs (generate them with PDFBox in a test helper where possible).
-5. Never add a dependency that is GPL/AGPL or that makes network calls. The libraries in §2 are pre-approved; ask before adding any other dependency.
+5. Never add a dependency that is GPL/AGPL or that makes network calls (reviews use the JDK's own HttpClient, decision 020). The libraries in §2 are pre-approved; ask before adding any other dependency.
 6. Never write to an input file. Assert this in tests.
 7. All user-facing text follows the error-copy formula in §6.3.
 8. Run `mvn -q verify` before declaring a chunk done.
@@ -499,6 +499,7 @@ Each chunk must end with: code compiles, tests pass, the feature can be run and 
 | Word add-in guide | Done 2026-11-10 | `WordAddInGuide`: a four-step guide with screenshots taken from Word on this PC (Home tab and the Ndalamo group, Delete Page with the cursor in the page, the Delete Pages box, the right-click menu), the part each step is about ringed in brand blue, cropped below Word's title bar. Opened from Settings › Word add-in ("How to use it in Word") and from "Show me how" on the add-in-installed toast. Back, Next, arrow keys, Esc. 283 tests. |
 | Everything in one install | Done 2026-11-10 | Both setups add Delete Page to Word as part of installing: the installer runs the installed `Ndalamo.exe --install-word-addin` after copying the files (no window; the same code as Settings › Word add-in; nothing to do without Word), and uninstalling runs `--remove-word-addin` (not during an upgrade). The full setup bundles LibreOffice 26.2.7 ("Still" branch, official .msi, SHA-256 and The Document Foundation's signature checked) with ticked boxes for the add-in and LibreOffice; LibreOffice is installed when missing, updates an older one, and is skipped when the PC has the same or newer. Tested on this PC: silent install registered the add-in, uninstall removed it and Ndalamo. 455 MB full setup, 116 MB Ndalamo only. 283 tests. |
 | Full screen, loading screen, Home grid | Done 2026-11-11 | The window opens maximised (taskbar visible); if Windows swaps the first show for "normal window" (as jpackage's launcher led it to), it is maximised again once shown. Loading screen: Java's -splash shows the logo and name on a brand-blue card the moment Ndalamo starts (packaging/splash, 1x and @2x), closed when the window is up; the installer's add-in step uses NdalamoHelper.exe (an extra jpackage launcher without it), so nothing flashes while installing. Home: `CardGrid` replaces the FlowPane: equal columns filling the width, cards in a row equally tall, and a height worked out for the actual width (on a maximised window a wrapped card ran over the next section's heading). 283 tests. |
+| Tell us what you think | Done 2026-11-11 | Decision 020. `FeedbackDialog`: five stars (click, hover, arrow or number keys) and an optional review (2,000 characters), with what's sent spelled out. Offered 1.5 s after a successful run (the 5th, then at most weekly after 5 more), with Maybe later and Never show this again; always in Settings › Help. `FeedbackService`: queue in feedback-queue.json, sent with the JDK's HttpClient to the owner's Google Apps Script (`packaging/feedback/Code.gs`: one row per review, duplicates and formulas guarded), redirect followed by hand; retried at start-up and every 15 minutes; hidden while `feedback.properties` has no address. Terms section 3, Settings › Privacy, README and the Home badge ("Private · files never leave this PC") updated. Also: version 1.0.0. 287 tests. |
 | … | | |
 
 ---

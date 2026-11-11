@@ -153,7 +153,7 @@ public class HomeScreen extends BorderPane {
         recentFiles.getChildren().setAll(sidebarSection("RECENT FILES", "Files you work on will appear here.").getChildren());
         recentTools.getChildren().setAll(sidebarSection("RECENT TOOLS", "Tools you use will appear here.").getChildren());
 
-        Label offline = new Label("Offline · files never leave this PC", Icons.lock(16, Theme.SUCCESS));
+        Label offline = new Label("Private · files never leave this PC", Icons.lock(16, Theme.SUCCESS));
         offline.getStyleClass().add("offline-badge");
         offline.setGraphicTextGap(8);
         offline.setWrapText(true);
