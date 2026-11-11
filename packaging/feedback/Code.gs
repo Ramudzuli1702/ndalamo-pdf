@@ -1,3 +1,9 @@
+/**
+ * @OnlyCurrentDoc
+ * (Limits the script's permission to the spreadsheet it's attached to. Without this line Google
+ * grants access to all of the owner's spreadsheets, because the script uses SpreadsheetApp.)
+ */
+
 // Ndalamo reviews: receives "Tell us what you think" from the app and adds each review as a row
 // of the "Reviews" sheet in the spreadsheet this script is attached to (decision 020).
 // Setup: packaging/feedback/README.md.

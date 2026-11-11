@@ -24,6 +24,11 @@ Written and ID.
 
 ## Good to know
 
+- The URL gives no access to your Google account: it can only add a review row to this one
+  spreadsheet. It can't read the sheet, reach your other files or email, or reveal your address.
+- `@OnlyCurrentDoc` at the top of `Code.gs` limits the script's permission to this spreadsheet.
+- Don't give anyone edit access to the spreadsheet or the script: whoever can edit the script can
+  change what runs as you.
 - Anyone who finds the URL could post to it. The script accepts only a 1-5 rating and short
   text, so the worst case is a junk row you can delete.
 - If you change `Code.gs` later, use **Deploy › Manage deployments › Edit › New version**, so the
