@@ -762,3 +762,15 @@
 .preview-bar { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 0 0 1 0; }
 .preview-page { -fx-background-color: white; -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.14), 10, 0, 0, 2); }
 .preview-footer { -fx-background-color: -nd-surface; -fx-border-color: -nd-border; -fx-border-width: 1 0 0 0; }
+
+/* ── Edit PDF editor (EditDialog) ──────────────────────────────────── */
+.edit-modes { -fx-background-color: -nd-bg-alt; -fx-background-radius: 10; -fx-padding: 3; }
+.edit-mode { -fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 10; -fx-text-fill: -nd-text-muted; -fx-cursor: hand; }
+.edit-mode:selected { -fx-background-color: -nd-surface; -fx-text-fill: -nd-text; -fx-effect: dropshadow(gaussian, rgba(16,24,40,0.12), 4, 0, 0, 1); }
+.colour-swatch { -fx-min-width: 28; -fx-min-height: 28; -fx-max-width: 28; -fx-max-height: 28; -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-color: transparent; -fx-border-width: 2; -fx-cursor: hand; }
+.colour-swatch:selected { -fx-border-color: -nd-accent; -fx-border-insets: -3; -fx-border-radius: 999; }
+.edit-addition { -fx-padding: 0; -fx-background-color: transparent; }
+.edit-addition:hover { -fx-border-color: rgba(47,91,234,0.45); -fx-border-style: dashed; }
+.edit-addition-selected, .edit-addition-selected:hover { -fx-border-color: #2F5BEA; -fx-border-style: solid; }
+.edit-typing { -fx-background-color: rgba(255,255,255,0.92); -fx-control-inner-background: rgba(255,255,255,0.92); -fx-border-color: #2F5BEA; -fx-border-width: 1; -fx-padding: 0; -fx-background-insets: 0; }
+.edit-typing .content { -fx-background-color: transparent; -fx-padding: 2 4; }

@@ -738,6 +738,30 @@ public class ToolScreen extends BorderPane {
                 HBox buttons = new HBox(8, create, move);
                 box.getChildren().addAll(label, buttons, chosen);
             }
+            case EDITS -> {
+                Label chosen = new Label("No changes yet");
+                chosen.getStyleClass().add("small-muted");
+                com.ndalamo.models.PdfEdits[] edits = new com.ndalamo.models.PdfEdits[1];
+                Button open = new Button("Open the editor…");
+                open.getStyleClass().add("button-primary");
+                open.setOnAction(e -> {
+                    if (files.isEmpty()) {
+                        window.toast(Toast.info("Add a file first", "The changes are made on the first file."));
+                        return;
+                    }
+                    Path first = files.get(0);
+                    int pages = info.containsKey(first) ? Math.max(1, info.get(first).getPages()) : 1;
+                    window.showDialog(new EditDialog(window, thumbnails, first, pages, edits[0], done -> {
+                        edits[0] = done.isEmpty() ? null : done;
+                        chosen.setText(done.isEmpty() ? "No changes yet" : done.describe()
+                                + (files.size() > 1 ? " · the same changes go on every file" : ""));
+                        open.setText(done.isEmpty() ? "Open the editor…" : "Keep editing…");
+                        refresh();
+                    }));
+                });
+                optionValues.put(field.getId(), () -> edits[0]);
+                box.getChildren().addAll(label, open, chosen);
+            }
         }
         return box;
     }

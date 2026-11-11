@@ -44,6 +44,7 @@ public final class Tools {
             new WatermarkTool(),
             new CropTool(),
             new SignTool(),
+            new EditTool(),
             new RedactTool(),
             new FillFormsTool(),
 

@@ -70,6 +70,7 @@ public final class WelcomeTour extends Pane {
             Map.entry("watermark", "Stamp text like DRAFT or CONFIDENTIAL, or your logo, across the pages."),
             Map.entry("crop", "Trim the edges of pages, by margins or by drawing a box on a page."),
             Map.entry("sign", "Add your signature: draw it, type it in a handwriting font, or use a picture, and place it on the page."),
+            Map.entry("edit", "Add text anywhere on a page, or select text and remove it, including text marked with a highlighter."),
             Map.entry("redact", "Remove sensitive text for good, like ID numbers. It's taken out of the file, not just covered."),
             Map.entry("fill-forms", "Type answers into a PDF form's boxes and tick boxes, and lock them in if you like."),
             Map.entry("protect", "Lock a PDF with a password, and choose whether people may print or copy from it."),

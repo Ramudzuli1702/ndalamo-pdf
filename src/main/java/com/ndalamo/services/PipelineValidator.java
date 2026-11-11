@@ -85,6 +85,9 @@ public final class PipelineValidator {
                 case FORM -> {
                     return tool.name() + " needs you to fill in each form, so it can't be a step.";
                 }
+                case EDITS -> {
+                    return tool.name() + " needs you to make the changes on each file, so it can't be a step.";
+                }
                 default -> { }
             }
         }
